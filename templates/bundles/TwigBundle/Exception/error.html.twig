@@ -1,0 +1,37 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Генерична сторінка помилки (500 та інші). Мінімальна і самодостатня. #}
+{% set isRu = app.request is not null and app.request.pathInfo starts with '/ru/' %}
+<!DOCTYPE html>
+<html lang="{{ isRu ? 'ru' : 'uk' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ isRu ? 'Произошла ошибка' : 'Сталася помилка' }}</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .box { text-align: center; padding: 48px 24px; max-width: 520px; }
+        .bolt { font-size: 56px; }
+        h1 { font-size: 40px; margin: 12px 0 8px; }
+        p.sub { color: #5b6a86; margin: 0 0 28px; }
+        a.btn { display: inline-block; background: #f98111; color: #fff; text-decoration: none;
+                padding: 14px 32px; border-radius: 8px; font-weight: 600; }
+        a.btn:hover { background: #faa125; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <div class="bolt">⚡</div>
+    {% if isRu %}
+        <h1>Что-то пошло не так</h1>
+        <p class="sub">Мы уже знаем о проблеме. Обновите страницу через минуту.</p>
+        <a class="btn" href="/ru/">На главную</a>
+    {% else %}
+        <h1>Щось пішло не так</h1>
+        <p class="sub">Ми вже знаємо про проблему. Оновіть сторінку за хвилину.</p>
+        <a class="btn" href="/">На головну</a>
+    {% endif %}
+</div>
+</body>
+</html>

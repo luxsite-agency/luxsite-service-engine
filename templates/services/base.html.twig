@@ -1,0 +1,841 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Каркас сервісного профілю. Дизайн перенесено з Joomla-шаблону першого імпортованого сайту:
+   білий фон, акцентний колір з теми паку (SiteTheme: app.theme.colors, дефолт
+   помаранчевий #f98111) з градієнтом, pill-кнопки CTA,
+   топбар години/email/телефон, бенефіти-іконки, muted-секції #f2f6f8,
+   бордери #d5dce3. Контролери передають altUrls = {uk, ru} — з нього
+   будуються hreflang, canonical і перемикач мов. #}
+{% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+    <head>
+        <meta charset="UTF-8">
+        {% block meta_generator %}<meta name="generator" content="LuxSite Service Engine">{% endblock %}
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        {# Підтвердження прав у Search Console (app.site_verification з паку). Саме тут,
+           а не через GTM: перевірник Google не виконує JavaScript, тому тег, вставлений
+           менеджером тегів, він просто не побачить. Покриває всі хости бренду, бо шаблон спільний. #}
+        {% if site_verification %}<meta name="google-site-verification" content="{{ site_verification }}">{% endif %}
+        {# app.page_meta паку перекриває title/description фіксованих сторінок (паритет після міграції) #}
+        {% set _pmTitle = page_meta('title') %}
+        <title>{% if _pmTitle %}{{ _pmTitle }}{% else %}{% block title %}{{ site.name }}{% endblock %}{% endif %}</title>
+        {# фавікони - з теми паку (public/themes/<key>/); без теми тегів нема #}
+        {% if theme.url('favicon_ico') %}<link rel="icon" href="{{ theme.url('favicon_ico') }}" sizes="32x32">{% endif %}
+        {% if theme.url('favicon_png') %}<link rel="icon" type="image/png" href="{{ theme.url('favicon_png') }}" sizes="192x192">{% endif %}
+        {% if theme.url('apple_touch_icon') %}<link rel="apple-touch-icon" href="{{ theme.url('apple_touch_icon') }}">{% endif %}
+        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+        {# canonicalUrls приходить лише там, де сторінка однакова в усіх містах
+           (блог): тоді і canonical, і hreflang ведуть на головний домен, щоб
+           чотири копії не конкурували між собою. Перемикач мов у підвалі
+           лишається на altUrls - він має тримати людину на своєму хості. #}
+        {% set _canon = canonicalUrls|default(null) ?: (altUrls|default(null)) %}
+        {% if _canon and _canon[locale] is defined %}
+        <link rel="canonical" href="{{ _canon[locale] }}">
+        {% endif %}
+        {% if _canon and _canon.uk is defined and _canon.ru is defined %}
+        <link rel="alternate" hreflang="uk-UA" href="{{ _canon.uk }}">
+        <link rel="alternate" hreflang="ru-UA" href="{{ _canon.ru }}">
+        <link rel="alternate" hreflang="x-default" href="{{ _canon.uk }}">
+        {% endif %}
+        {# опис сторінки: один блок живить і <meta description>, і og:description #}
+        {% set _desc %}{% block metaDescription %}{% endblock %}{% endset %}
+        {% set _desc = _desc|striptags|trim|replace({
+            '&nbsp;': ' ', '&#039;': "'", '&#39;': "'", '&quot;': '"',
+            '&lt;': '<', '&gt;': '>', '&amp;': '&',
+        }) %}
+        {% set _desc = page_meta('desc') ?? _desc %}
+        {% if _desc %}<meta name="description" content="{{ _desc }}">{% endif %}
+        {# og:image за замовчуванням - з теми паку; без теми - ілюстрація хіро бренду #}
+        {% set _ogImage %}{% block ogImage %}{{ theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '' }}{% endblock %}{% endset %}
+        {% set _ogImage = _ogImage|trim %}
+        <meta property="og:type" content="{% block ogType %}website{% endblock %}">
+        <meta property="og:title" content="{{ (_pmTitle ?: block('title'))|striptags|trim }}">
+        {% if _desc %}<meta property="og:description" content="{{ _desc }}">{% endif %}
+        <meta property="og:url" content="{{ _canon[locale]|default(app.request.uri) }}">
+        <meta property="og:site_name" content="{{ site.name }}">
+        <meta property="og:locale" content="{{ locale == 'ru' ? 'ru_UA' : 'uk_UA' }}">
+        {% if _ogImage %}<meta property="og:image" content="{{ _ogImage starts with 'http' ? _ogImage : app.request.schemeAndHttpHost ~ _ogImage }}">{% endif %}
+        <meta name="twitter:card" content="{{ _ogImage ? 'summary_large_image' : 'summary' }}">
+        {% block meta %}{% endblock %}
+        {% block schema %}{% endblock %}
+        {% block stylesheets %}
+        <style>
+            :root {
+                /* кольори бренду - з теми паку (app.theme.colors): accent, accent2, accent-ink
+                   (текстовий відтінок акценту з контрастом 4.5+ на білому), dark, navy, footer-bg,
+                   footer-line, footer-text; решта - спільні для всіх сайтів */
+                {{ theme.cssVars()|raw }}
+                --text: #2b3134; --muted-text: #48474c; --border: #d5dce3; --bg-muted: #f2f6f8; --radius: 12px;
+            }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; color: var(--text); background: #fff; font-size: 16px; line-height: 1.55; }
+            a { color: var(--accent-ink); }
+            .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+            h1, h2, h3 { color: var(--dark); line-height: 1.25; }
+            h1 { font-size: 2.3rem; font-weight: 800; margin: 1.2rem 0 .8rem; }
+            h2 { font-size: 1.6rem; font-weight: 700; }
+            /* підпис службового блоку (не заголовок розділу): виглядає як h2 */
+            .block-title { font-size: 1.6rem; font-weight: 700; color: var(--dark);
+                line-height: 1.25; margin: 1.4rem 0 .8rem; }
+            .btn { display: inline-block; background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; padding: .7rem 1.8rem; border-radius: 999px; text-decoration: none; border: 0; cursor: pointer; font-size: 1rem; font-weight: 600; box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent); transition: box-shadow .15s, transform .15s; }
+            .btn:hover { box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 50%, transparent); transform: translateY(-1px); }
+            /* - Топбар - */
+            .topbar { background: var(--bg-muted); border-bottom: 1px solid var(--border); font-size: .88rem; color: var(--muted-text); }
+            .topbar .container { display: flex; align-items: center; gap: 1.4rem; padding-top: .55rem; padding-bottom: .55rem; flex-wrap: wrap; }
+            .topbar a { color: var(--muted-text); text-decoration: none; }
+            .topbar a.phone { font-weight: 700; color: var(--text); }
+            .topbar .ico { color: var(--accent); margin-right: .3rem; }
+            /* месенджери міста (partials/_messengers): крапка в кольорі бренду месенджера */
+            a.msgr { font-weight: 600; text-decoration: none; white-space: nowrap; }
+            a.msgr .ico { margin-right: .3rem; }
+            a.msgr-viber .ico { color: #7360f2; } a.msgr-telegram .ico { color: #2aabee; } a.msgr-whatsapp .ico { color: #25d366; }
+            .modal-msgrs { margin: 0; padding: 0 1.6rem 1.2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; color: var(--muted-text); font-size: .92rem; }
+            .modal-msgrs a.msgr { color: var(--text); }
+            .city-switch { position: relative; }
+            .city-switch summary { display: inline-flex; align-items: center; gap: .1rem; cursor: pointer; list-style: none;
+                font-weight: 600; color: var(--text); padding: .15rem .1rem; }
+            .city-switch summary::-webkit-details-marker { display: none; }
+            .city-switch summary::after { content: '▾'; margin-left: .35rem; color: var(--muted-text); font-size: .8rem; }
+            .city-switch[open] summary::after { content: '▴'; }
+            .city-switch ul { position: absolute; z-index: 30; top: calc(100% + .45rem); left: 0; margin: 0; padding: .35rem;
+                list-style: none; min-width: 190px; background: #fff; border: 1px solid var(--border);
+                border-radius: var(--radius); box-shadow: 0 10px 24px rgba(16, 39, 44, .14); }
+            .city-switch li a, .city-switch li span { display: block; padding: .5rem .7rem; border-radius: 8px; font-size: .92rem; }
+            .city-switch li a { color: var(--text); text-decoration: none; }
+            .city-switch li a:hover { background: var(--bg-muted); color: var(--accent-ink); }
+            .city-switch li span.active { color: var(--muted-text); cursor: default; }
+            .topbar .btn { margin-left: auto; padding: .45rem 1.3rem; font-size: .88rem; }
+            /* - Шапка: бренд + нав - */
+            .brandbar .container { display: flex; align-items: center; gap: 1rem; padding-top: .8rem; padding-bottom: .8rem; }
+            .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
+            .brand .logo { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
+            .brand .logo img { width: 42px; height: 42px; object-fit: contain; display: block; }
+            /* без лого в темі - квадрат у кольорах бренду з першою літерою назви */
+            .brand .logo.logo-letter { border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 1.4rem; font-weight: 800; }
+            .brand .name { font-size: 1.45rem; font-weight: 800; color: var(--dark); letter-spacing: -.02em; }
+            .brand .tagline { display: block; font-size: .72rem; font-weight: 400; color: var(--muted-text); letter-spacing: 0; }
+            .navbar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+            .navbar .container { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; }
+            .navbar nav { display: flex; flex-wrap: wrap; }
+            .navbar nav a { color: var(--text); text-decoration: none; padding: .8rem .9rem; font-weight: 600; font-size: .95rem; }
+            .navbar nav a:hover { color: var(--accent); }
+            .lang-switch--m { display: none; }
+            .burger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0 10px; background: none; border: 0; cursor: pointer; }
+            .burger span { display: block; height: 2px; background: var(--dark); border-radius: 2px; transition: transform .2s, opacity .2s; }
+            .burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+            .burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+            .burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+            .lang-switch { margin-left: auto; font-weight: 700; font-size: .9rem; }
+            .lang-switch a { text-decoration: none; color: var(--muted-text); margin-left: .5rem; }
+            .lang-switch a.active { color: var(--accent-ink); }
+            main { padding: .5rem 0 1.5rem; }
+            /* - Хіро/бенефіти - */
+            .hero { display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap; }
+            .hero-content { flex: 1 1 420px; min-width: 0; width: 100%; }
+            .hero-img { flex: 0 1 420px; margin: 0; text-align: center; }
+            .hero-img figcaption { margin-top: .4rem; line-height: 1.3; }
+            .hero-img figcaption b { display: block; color: var(--dark); font-size: 1.05rem; }
+            .hero-img figcaption span { color: var(--muted-text); font-size: .88rem; }
+            .hero-img img { width: 100%; height: auto; display: block; }
+            .hero-img img { border-radius: var(--radius); }
+            /* пагінація списку блогу (/blog/page/N/) */
+            .pagination { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 1.5rem 0; }
+            .pagination a, .pagination .pg-cur, .pagination .pg-gap { min-width: 2.2rem; padding: .4rem .6rem; text-align: center; border-radius: var(--radius); border: 1px solid var(--line, #d5dce3); text-decoration: none; }
+            .pagination .pg-cur { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+            .pagination .pg-gap { border: 0; min-width: auto; }
+            /* лічильники під ілюстрацією хіро (ключі паку hero.stat*_value/label; порожні = блоку нема) */
+            .hero-stats { display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; margin: .9rem 0 0; padding: 0; list-style: none; }
+            .hero-stats li { text-align: center; min-width: 6.5rem; }
+            .hero-stats b { display: block; font-size: 1.5rem; line-height: 1.1; color: var(--accent-ink); }
+            .hero-stats span { display: block; font-size: .82rem; color: var(--muted-text); line-height: 1.25; }
+            .hero-actions { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; }
+            .btn-ghost { background: none; color: var(--accent-ink); border: 2px solid var(--accent);
+                box-shadow: none; padding: calc(.7rem - 2px) 1.6rem; }
+            .btn-ghost:hover { background: var(--accent); color: #fff; }
+            .hero-sub { font-size: 1.05rem; color: var(--muted-text); margin: 0 0 1.4rem; max-width: 70ch; }
+            .hero-sub p { margin: 0 0 .6rem; }
+            .hero-sub p:last-child { margin-bottom: 0; }
+            .benefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 1rem 1.2rem; margin: 1.6rem 0; }
+            .benefit { display: flex; align-items: center; gap: .6rem; font-size: .88rem; line-height: 1.35; color: var(--muted-text); }
+            .benefit .bico { flex: 0 0 auto; width: 38px; height: 38px; border: 2px solid var(--accent); border-radius: 50%; color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+            /* - Секції/картки - */
+            section.block { margin: 3.2rem 0; }
+            section.block:first-child { margin-top: 1rem; }
+            /* повноширинна сіра смуга (full-bleed з центрованого контейнера) */
+            section.block.muted { background: var(--bg-muted); margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding: 2.4rem calc(50vw - 50%); }
+            /* центровані заголовки секцій */
+            section.block.center > h2:first-child { text-align: center; font-size: 1.8rem; margin: 0 0 1.6rem; }
+            body { overflow-x: hidden; }
+            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 1.1rem; }
+            /* --- стрічка відгуків: скрол по горизонталі + розкривання --- */
+            /* широкий банер, не постер: обкладинка на всю ширину, але
+               низька, щоб не з'їдати перший екран. Однаково для району
+               й статті - формат у них спільний */
+            .district-cover, .post-cover {
+                width: 100%; height: clamp(160px, 24vw, 300px); object-fit: cover;
+                border-radius: 8px; margin: 1.2rem 0 .6rem;
+            }
+            .reviews-strip { position: relative; }
+            .reviews-row {
+                display: flex; gap: 1.1rem; overflow-x: auto; scroll-behavior: smooth;
+                /* без scroll-snap: коли лишається прогорнути менше, ніж
+                   ширина картки, снап тягнув стрічку назад на початок
+                   і стрілка «вперед» не давала жодного руху */
+                padding: .2rem; margin: 0 -.2rem;
+                /* смугу прокрутки ховаємо: гортання дають стрілки й палець,
+                   а сама смуга під картками виглядала як службовий елемент */
+                scrollbar-width: none; -ms-overflow-style: none;
+            }
+            .reviews-row::-webkit-scrollbar { width: 0; height: 0; }
+            .reviews-grid {
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+                gap: 1.1rem; align-items: stretch;
+            }
+            .review-card { display: flex; flex-direction: column; text-align: left; }
+            /* ширину задає лише стрічка; у сітці її диктує колонка */
+            .reviews-row .review-card { flex: 0 0 clamp(240px, 78vw, 320px); }
+            .review-card .card-name { display: flex; align-items: center; gap: .6rem; }
+            .review-card .card-name img { width: 44px; height: 44px; object-fit: cover; border-radius: 50%; }
+            .review-card .stars { color: var(--accent); font-size: .9rem; }
+            .review-card .meta { margin: 0 0 .5rem; }
+            .review-text { margin: 0; white-space: pre-line; }
+            /* обрізаємо лише коли JS підтвердив, що текст справді довший */
+            .review-text.is-clamped {
+                display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .review-more {
+                align-self: flex-start; margin-top: .6rem; padding: 0; border: 0; background: none;
+                font: inherit; font-size: .92rem; font-weight: 600; color: var(--accent-ink); /* accent-ink: контраст 4.5+ на білому (a11y) */
+                cursor: pointer; text-decoration: underline;
+            }
+            .reviews-nav {
+                position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+                width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
+                background: #fff; color: var(--dark); font-size: 1.5rem; line-height: 1;
+                cursor: pointer; box-shadow: 0 4px 14px rgba(43, 49, 52, .12);
+            }
+            .reviews-nav:hover { color: var(--accent); border-color: var(--accent); }
+            .reviews-nav.is-edge { opacity: .35; }
+            /* на десктопі стрічці лишаємо поля під стрілки, щоб кнопка
+               стояла в порожньому місці, а не поверх тексту відгуку */
+            @media (min-width: 721px) {
+                .reviews-strip:not(.is-grid) { padding: 0 52px; }
+                .reviews-nav.prev { left: 0; }
+                .reviews-nav.next { right: 0; }
+            }
+            @media (max-width: 720px) { .reviews-nav { display: none; } }
+            .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.2rem; background: #fff; transition: box-shadow .15s; }
+            .card:hover { box-shadow: 0 8px 22px rgba(43, 49, 52, .08); }
+            .card h3, .card .card-name { margin: 0 0 .5rem; font-size: 1.08rem;
+                font-weight: 700; color: var(--dark); line-height: 1.25; }
+            .card a { color: var(--dark); text-decoration: none; }
+            .card a:hover { color: var(--accent); }
+            .card ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+            .card li { margin: .25rem 0; }
+            .card li a { color: var(--muted-text); font-weight: 400; }
+            /* - Прайс - */
+            /* Прайс на головній показується повністю: запит там загальний,
+               і людині потрібен весь перелік, а не один таб. Чіпи згори -
+               швидкі переходи до потрібної послуги. */
+            .price-jump { margin-bottom: 1.4rem; }
+            .prices-calc-link { margin: .4rem 0 0; }
+
+            .price-pane { margin-bottom: 2rem; scroll-margin-top: 80px; }
+            .price-pane-title { margin: 0 0 .2rem; font-size: 1.08rem; text-align: left; }
+            .price-pane-title a { color: var(--dark); text-decoration: none; }
+            .price-pane-title a:hover { color: var(--accent); text-decoration: underline; }
+            /* характеристики послуги (тип авто): таблиця на сторінці й компактний список у картці категорії */
+            table.specs { border-collapse: collapse; margin: .6rem 0; }
+            table.specs th, table.specs td { text-align: left; padding: .45rem 1.2rem .45rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+            table.specs th { font-weight: 600; color: var(--dark); }
+            .card-specs { display: grid; grid-template-columns: auto 1fr; gap: .2rem .7rem; margin: .5rem 0 0; font-size: .9rem; }
+            .card-specs dt { color: var(--muted-text); } .card-specs dd { margin: 0; }
+            table.prices { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+            table.prices td, table.prices th { border-bottom: 1px solid var(--border); padding: .65rem .7rem; text-align: left; }
+            table.prices tr:nth-child(odd) td { background: var(--bg-muted); }
+            table.prices td.price { white-space: nowrap; font-weight: 700; color: var(--dark); }
+            /* - Наші роботи: сітка власних фото - */
+            .works-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+            .work-card { margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; }
+            .work-card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+            .work-card figcaption { padding: .6rem .8rem .75rem; font-size: .93rem; color: var(--dark); }
+            .work-card figcaption .meta { display: block; margin-top: .15rem; font-size: .84rem; color: var(--muted-text); }
+            /* «до/після» - дві половини одного кадру, підпис поверх знімка */
+            .work-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+            .work-shot { position: relative; display: block; }
+            .work-shot b { position: absolute; left: .4rem; bottom: .4rem; padding: .1rem .5rem; border-radius: 999px; font-size: .78rem; background: rgba(255, 255, 255, .88); color: var(--dark); }
+
+            /* - Шеврон-іконка акордеонів (оригінал uk-accordion, у нашому акценті) - */
+            /* колір шеврона - акцент теми: SVG як маска, заливка через background-color (у data-URI var() не працює) */
+            .acc-chevron::after { content: ''; width: 26px; height: 26px; background-color: var(--accent); -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%2017.4-7-7%201.4-1.4%205.6%205.6%205.6-5.6%201.4%201.4z%27%2F%3E%3C%2Fsvg%3E") no-repeat 50% 50% / cover; mask: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%2017.4-7-7%201.4-1.4%205.6%205.6%205.6-5.6%201.4%201.4z%27%2F%3E%3C%2Fsvg%3E") no-repeat 50% 50% / cover; }
+            details[open] > summary.acc-chevron::after { -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%207.6-7%207%201.4%201.4%205.6-5.6%205.6%205.6%201.4-1.4z%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%207.6-7%207%201.4%201.4%205.6-5.6%205.6%205.6%201.4-1.4z%27%2F%3E%3C%2Fsvg%3E"); }
+            /* - FAQ-акордеон - */
+            details.faq { border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1.1rem; margin: .6rem 0; background: #fff; }
+            details.faq summary { cursor: pointer; font-weight: 700; color: var(--dark); list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+            details.faq summary::after { flex: 0 0 auto; }
+            details.faq > div { padding-top: .6rem; color: var(--muted-text); }
+            /* - Чипси районів - */
+            .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+            .chips a { border: 1px solid var(--border); border-radius: 999px; padding: .35rem .95rem; text-decoration: none; color: var(--muted-text); font-size: .9rem; background: #fff; }
+            .chips a:hover { border-color: var(--accent); color: var(--accent-ink); }
+            /* клас використовувався в шаблоні, але правила не було - чипи стояли
+               ліворуч під центрованим заголовком */
+            .chips-center { justify-content: center; }
+            .chips a.more { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+            /* «Усі питання» під FAQ головної — як чип .more */
+            a.faq-all { display: inline-block; margin-top: .6rem; padding: .35rem .9rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+            /* міні-калькулятор унизу головної: параметри ліворуч, підсумок праворуч */
+            .calc-mini { background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.6rem; }
+            .calc-mini-body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1.6rem 2rem; align-items: start; }
+            .calc-mini-params { display: grid; gap: 1.1rem; }
+            .calc-mini-label { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-text); margin-bottom: .45rem; }
+            .calc-mini-label output { font-size: 1rem; font-weight: 700; color: var(--dark); text-transform: none; letter-spacing: 0; }
+            .calc-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .45rem; }
+            .calc-chips-wide { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+            .calc-chips button { font: inherit; font-size: .92rem; line-height: 1.25; padding: .6rem .9rem; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); cursor: pointer; text-align: left; transition: border-color .15s, color .15s; }
+            .calc-chips button:hover { border-color: var(--accent); color: var(--accent-ink); }
+            .calc-chips button.active { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; font-weight: 600; }
+            .calc-mini-area { display: flex; align-items: center; gap: .9rem; }
+            .calc-mini-area input[type=range] { flex: 1 1 auto; accent-color: var(--accent); }
+            .calc-mini-area input[type=number] { width: 90px; padding: .55rem .6rem; border: 1px solid var(--border); border-radius: 10px; text-align: center; font-size: 1rem; }
+            .calc-mini-result { display: flex; flex-direction: column; gap: .55rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; }
+            .calc-mini-result-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-text); }
+            .calc-mini-price { margin: 0; color: var(--dark); font-size: 1rem; }
+            .calc-mini-price b { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
+            .calc-mini-recap { margin: 0; font-size: .85rem; color: var(--muted-text); line-height: 1.4; }
+            .calc-mini-result .btn { text-align: center; width: 100%; }
+            .calc-mini-result input[type=tel], .calc-mini-result input[type=text] {
+                padding: .6rem .9rem; border: 1px solid var(--border); border-radius: 999px;
+                font-size: 1rem; background: #fff; width: 100%; }
+            .calc-mini-result input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
+            .calc-mini-full { color: var(--accent-ink); font-size: .9rem; text-align: center; }
+            .calc-mini-note { font-size: .78rem; color: var(--muted-text); line-height: 1.35; }
+            @media (max-width: 820px) {
+                .calc-mini { padding: 1.1rem; }
+                .calc-mini-body { grid-template-columns: 1fr; }
+            }
+            .chips a.active { background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; font-weight: 600; }
+            /* - Акордеон «Де ми працюємо» - */
+            .district-groups { border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.4rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 2.5rem; background: #fff; }
+            .district-groups details { padding: .55rem 0; border-bottom: 1px solid var(--bg-muted); }
+            .district-groups summary { cursor: pointer; font-weight: 600; color: var(--dark); list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+            .district-groups summary::after { flex: 0 0 auto; }
+            .district-groups .chips { padding: .7rem 0 .3rem; }
+            /* одна група в блоці (передмістя) - розтягуємо на всю ширину,
+               інакше сітка лишає її в колонці 280px і поруч порожньо */
+            .district-groups details:only-child { grid-column: 1 / -1; }
+            /* - СЕО-картки - */
+            .seo-text .seo-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.6rem; margin: 1.2rem 0; background: #fff; }
+            .seo-text .seo-card h2 { margin-top: 0; font-size: 1.35rem; }
+            .seo-text .seo-card p { color: var(--muted-text); }
+            .seo-text .seo-card ul { list-style: none; padding: 0; margin: .8rem 0; }
+            .seo-text .seo-card li { position: relative; padding-left: 1.7rem; margin: .45rem 0; color: var(--muted-text); }
+            .seo-text .seo-card li::before { content: '✔'; position: absolute; left: 0; color: var(--accent-ink); font-weight: 700; }
+            .legal-text { max-width: 760px; }
+            .legal-text h2 { font-size: 1.15rem; margin: 1.6rem 0 .5rem; }
+            .legal-text p, .legal-text li { line-height: 1.7; }
+            .legal-text ul { margin: .4rem 0 .9rem 1.1rem; }
+            .contacts-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: stretch; margin-top: 1.4rem; }
+            .contacts-cols > section.block { margin: 0; }
+            .contacts-card { background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius);
+                padding: 1.5rem 1.6rem; display: flex; flex-direction: column; justify-content: center; gap: .5rem; }
+            .contacts-card p { margin: 0; }
+            .contacts-card .meta { margin-top: .4rem; }
+            .map-block { padding: 0; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border); min-height: 320px; display: flex; flex-direction: column; }
+            .map-canvas { flex: 1 1 auto; display: flex; min-height: 280px; }
+            .map-block iframe { width: 100%; height: 100%; min-height: 280px; border: 0; display: block; }
+            .map-link { display: block; padding: .7rem 1rem; text-align: center; font-size: .9rem; font-weight: 600;
+                background: #fff; border-top: 1px solid var(--border); text-decoration: none; }
+            .map-link:hover { background: var(--bg-muted); }
+            .map-facade { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
+                background: var(--bg-muted); border: 0; cursor: pointer; font: inherit; color: var(--dark); padding: 1.5rem; }
+            .map-facade:hover { background: #e6f2f3; }
+            .map-pin { font-size: 1.9rem; color: var(--accent); line-height: 1; }
+            .map-facade-title { font-weight: 700; }
+            .map-facade-hint { font-size: .85rem; color: var(--muted-text); }
+            @media (max-width: 760px) { .contacts-cols { grid-template-columns: 1fr; } }
+            /* - Список блогу: рядок з мініатюрою, на телефоні - колонка - */
+            .post-card { display: flex; gap: 1.2rem; align-items: flex-start; margin-bottom: 1rem; }
+            .post-card .post-thumb { flex: 0 0 220px; max-width: 220px; display: block; }
+            .post-card .post-thumb img { width: 100%; height: auto; aspect-ratio: 1200 / 630;
+                object-fit: cover; border-radius: 8px; display: block; }
+            .post-card .post-body { min-width: 0; }
+            .post-card h3 { margin: 0 0 .3rem; font-size: 1.15rem; line-height: 1.35; }
+            .post-card h3 a { color: var(--dark); text-decoration: none; }
+            .post-card h3 a:hover { color: var(--accent-ink); }
+            .post-card .meta { margin: 0 0 .5rem; }
+            .post-card p:last-child { margin-bottom: 0; }
+            @media (max-width: 640px) {
+                .post-card { flex-direction: column; gap: .85rem; }
+                .post-card .post-thumb { flex: 1 1 auto; max-width: none; width: 100%; }
+                .post-card h3 { font-size: 1.05rem; }
+            }
+            .breadcrumbs { font-size: .85rem; color: var(--muted-text); margin: .8rem 0 0; }
+            .breadcrumbs a { color: var(--muted-text); text-decoration: none; }
+            .breadcrumbs a:hover { color: var(--accent); }
+            .meta { color: var(--muted-text); font-size: .85rem; }
+            /* - Форма заявки - */
+            .lead-form { background: var(--bg-muted); border-radius: var(--radius); padding: 1.6rem; }
+            .lead-form .form-sub { margin: -.5rem 0 1rem; color: var(--muted-text); max-width: 720px; }
+            .lead-form .lead-msgrs { margin: 1rem 0 0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; color: var(--muted-text); }
+            .lead-form .lead-msgrs a.msgr { color: var(--text); }
+            .lead-form .form-title { font-size: 1.6rem; font-weight: 700; color: var(--dark);
+                line-height: 1.25; margin: 0 0 .8rem; }
+            .lead-form input[type=tel], .lead-form input[type=text] { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; background: #fff; }
+            .lead-form input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
+            /* - Модалка + плаваюча CTA - */
+            dialog.lead-modal { border: 0; border-radius: var(--radius); padding: 0; max-width: 560px; width: calc(100% - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+            dialog.lead-modal::backdrop { background: rgba(8, 49, 58, .55); }
+            dialog.lead-modal .lead-form { border-radius: 0; }
+            dialog.lead-modal .close { position: absolute; top: .6rem; right: .9rem; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: var(--muted-text); }
+            .floating-cta { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 50; transition: opacity .2s, transform .2s; }
+            .floating-cta.hidden { opacity: 0; transform: translateY(10px); pointer-events: none; }
+            /* - Футер - */
+            body { min-height: 100vh; display: flex; flex-direction: column; }
+            main { flex: 1 0 auto; }
+            footer.site { flex-shrink: 0; background: var(--footer-bg); color: var(--footer-ink); border-top: 1px solid var(--footer-line); padding: 1.8rem 0; margin-top: 2.5rem; font-size: .9rem; }
+            footer.site a { color: var(--footer-ink); text-decoration: none; }
+            footer.site a:hover { color: var(--accent); }
+            footer.site .container > p { color: var(--footer-text); }
+            footer.site .container > p a { text-decoration: underline; }
+            footer.site nav a { font-weight: 600; }
+            /* каталог у футері (app.footer_catalog) */
+            .footer-catalog { margin: 0 0 1.4rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--footer-line); }
+            .footer-catalog-title { margin: 0 0 .8rem; font-weight: 700; font-size: 1rem; color: var(--footer-ink); }
+            .footer-catalog-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .8rem 1.6rem; }
+            /* target-size (Lighthouse): summary і посилання ≥24px по висоті з відступом */
+            .footer-cat summary { font-weight: 600; cursor: pointer; list-style: none; padding: .45rem 0; min-height: 24px; }
+            .footer-cat summary::-webkit-details-marker { display: none; }
+            .footer-cat ul { list-style: none; margin: .2rem 0 .6rem; padding: 0; }
+            .footer-cat li { margin: 0; font-size: .85rem; line-height: 1.35; }
+            footer.site .footer-cat li a { color: var(--footer-text); display: inline-block; padding: .35rem 0; min-height: 24px; }
+            .footer-cat summary > a { display: inline-block; min-height: 24px; line-height: 24px; }
+            @media (max-width: 759px) { .footer-cat summary::after { content: ' ▾'; color: var(--footer-text); } .footer-cat[open] summary::after { content: ' ▴'; } }
+            .footer-address, .footer-cities { margin: .4rem 0 0; color: var(--footer-text); }
+            .footer-copyright { margin: .8rem 0 0; font-size: .8rem; color: var(--footer-text); max-width: 780px; }
+            .footer-legal { margin: 1.2rem 0 0; padding-top: .85rem; border-top: 1px solid var(--footer-line); font-size: .8rem; color: var(--footer-text); }
+            footer.site .footer-legal a { color: var(--footer-text); text-decoration: underline; }
+            footer.site .footer-legal a:hover { color: var(--accent); }
+            footer.site nav { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: .8rem; }
+            @media (max-width: 700px) {
+                h1 { font-size: 1.6rem; }
+                .topbar .hide-m { display: none; }
+                /* у топбарі на мобільному лишається тільки телефон: кнопка дублюється плаваючою */
+                .topbar .btn { display: none; }
+                .benefits { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; }
+                /* сендвіч-меню: лого, мови і кнопка стоять одним рядком */
+                .burger { display: flex; margin-left: auto; margin-right: -10px; }
+                .lang-switch--m { display: inline-flex; margin-left: auto; }
+                .navbar .lang-switch { display: none; }
+                .brandbar { border-bottom: 1px solid var(--border); }
+                .navbar { border-top: 0; border-bottom: 0; }
+                .navbar .container { padding: 0 1rem; }
+                .navbar nav { display: none; width: 100%; flex-direction: column; padding-bottom: .4rem; }
+                .navbar nav.open { display: flex; }
+                .navbar nav a { padding: .85rem .2rem; border-bottom: 1px solid var(--border); }
+            }
+        </style>
+        {% endblock %}
+        {# CSS теми паку: inline у <style> (app.theme.stylesheet_inline — без render-blocking запиту) або <link> з ?v= #}
+        {% set _inlineCss = theme.inlineCss() %}
+        {% if _inlineCss %}<style>{{ _inlineCss|raw }}</style>
+        {% elseif theme.url('stylesheet') %}<link rel="stylesheet" href="{{ theme.url('stylesheet') }}">{% endif %}
+        {# живий CSS під токеном менеджера (ThemeService, theme.css) — після стилів рушія й паку #}
+        {% if theme.liveCssUrl() %}<link rel="stylesheet" href="{{ theme.liveCssUrl() }}">{% endif %}
+        <script>
+            var FORM_MSG = {
+                required: {{ 'form.required'|trans({}, 'servicesite')|json_encode|raw }},
+                phone: {{ 'form.phone'|trans({}, 'servicesite')|json_encode|raw }}
+            };
+            document.addEventListener('invalid', function (e) {
+                var el = e.target;
+                if (!el.setCustomValidity) { return; }
+                if (el.validity.valueMissing) {
+                    el.setCustomValidity(el.type === 'tel' ? FORM_MSG.phone : FORM_MSG.required);
+                } else if (el.validity.typeMismatch || el.validity.patternMismatch) {
+                    el.setCustomValidity(FORM_MSG.phone);
+                }
+            }, true);
+            document.addEventListener('input', function (e) {
+                if (e.target.setCustomValidity) { e.target.setCustomValidity(''); }
+            }, true);
+            document.addEventListener('click', function (e) {
+                var burger = e.target.closest('.burger');
+                if (!burger) { return; }
+                var nav = document.getElementById('site-nav');
+                var open = nav.classList.toggle('open');
+                document.body.classList.toggle('nav-open', open);
+                burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        </script>
+        {% block javascripts %}{% endblock %}
+        {% block analytics %}
+        {# Який саме код вставляти, вирішує тип ідентифікатора з адмінки:
+           GTM-… - контейнер Tag Manager, G-…/AW-… - лічильник напряму.
+           У поле можна вставити цілий сніпет Google, сутність дістане з нього id. #}
+        {% if analytics_defer and (city.tagKind or clarity_id) %}
+        {# app.analytics_defer: GTM/gtag і Clarity стартують після window.load + 800 мс (таймер — пасивні візити рахуються,
+           вимога /analytics-healthcheck) або раніше на першу взаємодію; прапорець проти подвійного старту. dataLayer.push
+           до старту лягає в чергу, яку контейнер підхопить, тож phone_click/generate_lead не губляться. PSI сайту
+           з Joomla-імпортом: 310 КБ gtm+gtag у ланцюжку LCP → +1,0–1,4 с render delay; з відкладенням 69–75 → 89–94. #}
+        <script>
+        (function () {
+            window.dataLayer = window.dataLayer || [];
+            {% if city.tagKind == 'gtag' %}window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };{% endif %}
+            var started = false;
+            function start() {
+                if (started) { return; }
+                started = true;
+                {% if city.tagKind == 'gtm' %}
+                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ city.gtmId }}');
+                {% elseif city.tagKind == 'gtag' %}
+                var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id={{ city.gtmId }}'; document.head.appendChild(s);
+                gtag('js', new Date()); gtag('config', '{{ city.gtmId }}');
+                {% endif %}
+                {% if clarity_id %}
+                (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ clarity_id }}");
+                {% endif %}
+            }
+            ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, start, {once: true, passive: true}); });
+            if (document.readyState === 'complete') { setTimeout(start, 800); } else { window.addEventListener('load', function () { setTimeout(start, 800); }); }
+        })();
+        </script>
+        {% else %}
+        {% if city.tagKind == 'gtm' %}
+        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ city.gtmId }}');</script>
+        {% elseif city.tagKind == 'gtag' %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ city.gtmId }}"></script>
+        <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ city.gtmId }}');</script>
+        {% endif %}
+        {# Microsoft Clarity (app.clarity_id з паку) — окремо від GTM, бо до чужого контейнера доступу може не бути #}
+        {% if clarity_id %}
+        <script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ clarity_id }}");</script>
+        {% endif %}
+        {% endif %}
+        {% endblock %}
+    </head>
+    <body{% if theme.get('key') %} class="theme-{{ theme.get('key') }}"{% endif %}>
+        {% if city.tagKind == 'gtm' %}
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ city.gtmId }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        {% endif %}
+        {# шапка (топбар, бренд, меню, перемикач мов): пак перекриває весь блок через
+           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається #}
+        {% block header %}
+        <div class="topbar">
+            <div class="container">
+                {% set _cities = city_switcher(site, city) %}
+                {% if _cities|length > 1 %}
+                {# вибір міста - контекст усієї сторінки, тому стоїть найпершим зліва.
+                   Маркер city-raw просить CityWordsSubscriber не підміняти тут назви. #}
+                <!--city-raw-->
+                <details class="city-switch">
+                    <summary><span class="ico">📍</span>{{ city.name(locale) }}</summary>
+                    <ul>
+                        {% for c in _cities %}
+                        <li>
+                            {% if c.id == city.id %}
+                            <span class="active">{{ c.name(locale) }}</span>
+                            {% else %}
+                            <a href="https://{{ c.host }}{{ locale == 'ru' ? '/ru/' : '/' }}"
+                               {% if c.noindex %}rel="nofollow"{% endif %}>{{ c.name(locale) }}</a>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                <!--/city-raw-->
+                {% endif %}
+                {% if city.hours %}<span class="hide-m"><span class="ico">🕐</span>{{ city.hours }}</span>{% endif %}
+                {% if city.email %}<a class="hide-m" href="mailto:{{ city.email }}"><span class="ico">✉</span>{{ city.email }}</a>{% endif %}
+                {% if city.phone %}<a class="phone" href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}"><span class="ico">📞</span>{{ city.phone }}</a>{% endif %}
+                {% include 'services/partials/_messengers.html.twig' %}
+                <button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button>
+            </div>
+        </div>
+        <div class="brandbar">
+            <div class="container">
+                <a class="brand" href="{{ path('sv_home') }}">
+                    {# лого - з теми паку; без нього квадрат з першою літерою назви бренду #}
+                    {% if theme.url('logo') %}
+                    <span class="logo"><img src="{{ asset(theme.url('logo')) }}" alt="{{ site.name }}" width="42" height="42"></span>
+                    {% else %}
+                    <span class="logo logo-letter" aria-hidden="true">{{ site.name|slice(0, 1)|upper }}</span>
+                    {% endif %}
+                    {# назва - з БД (ServiceSite.name); слоган - ключ brand.tagline з перекладів паку, порожній = без слогана #}
+                    {% set _tagline = 'brand.tagline'|trans({}, 'servicesite') %}
+                    <span class="name">{{ site.name }}{% if _tagline and _tagline != 'brand.tagline' %}<span class="tagline">{{ _tagline }}</span>{% endif %}</span>
+                </a>
+                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
+                <span class="lang-switch lang-switch--m">
+                    <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
+                    <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
+                </span>
+                {% endif %}
+                <button class="burger" type="button" aria-label="{{ 'nav.menu'|trans({}, 'servicesite') }}"
+                        aria-expanded="false" aria-controls="site-nav">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+        <div class="navbar">
+            <div class="container">
+                <nav id="site-nav">
+                    {% block nav %}
+                        <a href="{{ path('sv_services') }}">{{ 'nav.services'|trans({}, 'servicesite') }}</a>
+                        {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
+                        <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
+                        {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
+                        <a href="{{ path('sv_reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>
+                        <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
+                        {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                        <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                    {% endblock %}
+                </nav>
+                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
+                <span class="lang-switch">
+                    <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
+                    <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endblock %}
+        <main>
+            <div class="container">
+                {% block body %}{% endblock %}
+            </div>
+        </main>
+        <footer class="site">
+            <div class="container">
+                {# пак може дописати/перекрити футер через {% extends '@engine/services/base.html.twig' %} + block footer #}
+                {% block footer %}
+                {% if footer_catalog %}{% set _fc = footer_catalog(site) %}{% if _fc %}
+                {# app.footer_catalog: повний каталог колонками за категоріями (назви послуг без міста, як у списках);
+                   на мобільному категорії згорнуті (details), на десктопі розкриті скриптом нижче #}
+                <div class="footer-catalog">
+                    {% set _fct = 'footer.catalog_title'|trans({}, 'servicesite') %}
+                    {% if _fct and _fct != 'footer.catalog_title' %}<p class="footer-catalog-title">{{ _fct }}</p>{% endif %}
+                    <div class="footer-catalog-cols">
+                    {% for g in _fc %}
+                        <details class="footer-cat">
+                            <summary>{% if catalog_url_scheme == 'nested' and g.category.landing %}<a href="{{ path('sv_category', {category: g.category.slug(locale)}) }}">{{ g.category.loc('title', locale) }}</a>{% else %}{{ g.category.loc('title', locale) }}{% endif %}</summary>
+                            <ul>{% for item in g.items %}<li><a href="{{ service_path(item, locale) }}">{{ item.loc('title', locale) }}</a></li>{% endfor %}</ul>
+                        </details>
+                    {% endfor %}
+                    </div>
+                </div>
+                <script>if (window.matchMedia('(min-width: 760px)').matches) { document.querySelectorAll('details.footer-cat').forEach(function (d) { d.open = true; }); }</script>
+                {% endif %}{% endif %}
+                <nav>
+                    <a href="{{ path('sv_services') }}">{{ 'nav.services'|trans({}, 'servicesite') }}</a>
+                    {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
+                    <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
+                    {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
+                    <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
+                    {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                    <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                </nav>
+                <p>© {{ 'now'|date('Y') }} {{ site.name }} - {{ city.name(locale) }}.
+                {% if city.hours %}{{ city.hours }}.{% endif %}
+                {% if city.phone %}<a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ city.phone }}</a>{% endif %}
+                {% if city.email %}· <a href="mailto:{{ city.email }}">{{ city.email }}</a>{% endif %}
+                {% if city.hasMessengers %}· {% include 'services/partials/_messengers.html.twig' %}{% endif %}</p>
+                {# перелік міст - ключ footer.cities з перекладів паку, порожній = рядка нема;
+                   city-raw, інакше CityWordsSubscriber зробить з «Києві» поточне місто #}
+                {% set _cities = 'footer.cities'|trans({}, 'servicesite') %}
+                {% if _cities and _cities != 'footer.cities' %}<p class="footer-cities"><!--city-raw-->{{ _cities }}<!--/city-raw--></p>{% endif %}
+                {% if city.address(locale) %}{# адреса - як її записали в адмінці; city-raw, інакше CityWordsSubscriber зробить з «Київ» поточне місто #}
+                <p class="footer-address"><!--city-raw-->{{ city.address(locale)|nl2br }}<!--/city-raw--></p>{% endif %}
+                <p class="footer-copyright">{{ 'footer.copyright'|trans({}, 'servicesite') }}</p>
+                {# юридичні сторінки є завжди: текст із адмінки (ServiceSite) або типовий текст рушія #}
+                <p class="footer-legal">
+                    <a href="{{ path('sv_privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
+                    · <a href="{{ path('sv_terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>
+                </p>
+                {% endblock %}
+            </div>
+        </footer>
+        <script>
+            /* Джерело заявки. Мітки приходять на першій сторінці візиту, а форму
+               людина часто відправляє вже з іншої - тому кладемо в localStorage
+               і підставляємо в приховані поля перед відправкою. Прямий захід
+               збережену рекламну мітку не затирає. */
+            (function () {
+                /* ключ спільний для всіх сайтів рушія; старі ключі форків (pc_src, el_src)
+                   дочитуються, щоб не втратити мітки відвідувачів за 90 днів після переїзду */
+                var KEY = 'sv_src', TTL = 7776e6; /* 90 днів */
+                var LEGACY_KEYS = ['pc_src', 'el_src'];
+                var q = new URLSearchParams(location.search);
+                var UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+                var click = q.get('gclid') || q.get('fbclid') || q.get('ttclid') || '';
+                var fresh = click !== '' || UTM.some(function (k) { return q.get(k); });
+
+                var saved = null;
+                try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+                if (saved && Date.now() - (saved.t || 0) > TTL) { saved = null; }
+
+                if (fresh || !saved) {
+                    var ref = document.referrer || '';
+                    if (ref.indexOf(location.origin) === 0) { ref = ''; }
+                    var data = {t: Date.now(), click_id: click, referrer: ref.slice(0, 500),
+                                landing_url: location.href.slice(0, 500)};
+                    UTM.forEach(function (k) { data[k] = q.get(k) || ''; });
+                    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+                    saved = data;
+                }
+                if (!saved) {
+                    LEGACY_KEYS.forEach(function (k) {
+                        if (saved) { return; }
+                        try { saved = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+                    });
+                }
+                if (!saved) { return; }
+
+                var fields = UTM.concat(['click_id', 'referrer', 'landing_url']);
+                function fill(form) {
+                    fields.forEach(function (name) {
+                        if (!saved[name] || form.querySelector('[name="' + name + '"]')) { return; }
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = saved[name];
+                        form.appendChild(input);
+                    });
+                }
+                /* У момент відправки, а не при завантаженні: модалка із формою
+                   лежить у розмітці нижче за цей скрипт, тож на старті її ще
+                   немає в DOM - і саме звідти йде більшість заявок. Capture,
+                   щоб устигнути до самої відправки.
+                   Тут же захист від подвійного натискання (перенесено з першого сайту на рушії):
+                   друга відправка тієї ж форми глушиться, кнопка гасне до переходу
+                   на подяку (було по дві однакові заявки з інтервалом 1-3 с). */
+                document.addEventListener('submit', function (e) {
+                    var form = e.target;
+                    if (!form || !form.matches || !form.matches('form[data-lead-form]')) { return; }
+                    if (form.dataset.sent === '1') { e.preventDefault(); return; }
+                    form.dataset.sent = '1';
+                    fill(form);
+                    var btn = form.querySelector('[type="submit"]');
+                    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+                    /* якщо мережа впала й сторінка лишилась - дати відправити знову */
+                    setTimeout(function () {
+                        form.dataset.sent = '';
+                        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+                    }, 15000);
+                }, true);
+            })();
+        </script>
+        <script>
+            /* Події для GTM: клік по номеру - єдиний спосіб бачити дзвінки без
+               платного колтрекінгу, тож шлемо з тими самими мітками джерела. */
+            (function () {
+                window.dataLayer = window.dataLayer || [];
+                var src = {};
+                try { src = JSON.parse(localStorage.getItem('sv_src') || localStorage.getItem('pc_src') || localStorage.getItem('el_src') || '{}'); } catch (e) {}
+
+                document.addEventListener('click', function (e) {
+                    var msgr = e.target.closest('a[data-messenger]');
+                    if (msgr) {
+                        window.dataLayer.push({event: 'messenger_click', messenger: msgr.getAttribute('data-messenger'), page_path: location.pathname, site_host: location.host});
+                        return;
+                    }
+                    var tel = e.target.closest('a[href^="tel:"]');
+                    if (tel) {
+                        window.dataLayer.push({
+                            event: 'phone_click',
+                            phone: tel.getAttribute('href').replace('tel:', ''),
+                            page_path: location.pathname,
+                            site_host: location.host,
+                            utm_source: src.utm_source || '',
+                            utm_medium: src.utm_medium || '',
+                            utm_campaign: src.utm_campaign || ''
+                        });
+                        return;
+                    }
+                    var open = e.target.closest('[onclick*="lead-modal"]');
+                    if (open) {
+                        window.dataLayer.push({event: 'lead_form_open', page_path: location.pathname});
+                    }
+                });
+            })();
+        </script>
+        <script>
+            /* Стрічка відгуків. Обрізаємо текст лише тим карткам, які реально
+               довші за вісім рядків - інакше кнопка «читати повністю» висіла б
+               і над двома реченнями. Стрілки показуємо, тільки якщо є куди
+               гортати; на телефоні гортають пальцем. */
+            (function () {
+                var MORE = {{ 'reviews.more'|trans({}, 'servicesite')|json_encode|raw }};
+                var LESS = {{ 'reviews.less'|trans({}, 'servicesite')|json_encode|raw }};
+
+                document.querySelectorAll('.review-card').forEach(function (card) {
+                    var text = card.querySelector('.review-text');
+                    if (!text) return;
+                    text.classList.add('is-clamped');
+                    if (text.scrollHeight <= text.clientHeight + 4) {
+                        text.classList.remove('is-clamped');
+                        return;
+                    }
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'review-more';
+                    btn.textContent = MORE;
+                    btn.setAttribute('aria-expanded', 'false');
+                    btn.addEventListener('click', function () {
+                        var open = text.classList.toggle('is-clamped') === false;
+                        btn.textContent = open ? LESS : MORE;
+                        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    });
+                    card.appendChild(btn);
+                });
+
+                document.querySelectorAll('.reviews-strip').forEach(function (strip) {
+                    var row = strip.querySelector('.reviews-row');
+                    var prev = strip.querySelector('.reviews-nav.prev');
+                    var next = strip.querySelector('.reviews-nav.next');
+                    if (!row || !prev || !next) return;
+
+                    function step() {
+                        var card = row.querySelector('.review-card');
+                        return card ? card.getBoundingClientRect().width + 18 : row.clientWidth * 0.8;
+                    }
+                    /* обидві стрілки лишаються на місці: кнопка, що зникає,
+                       смикає верстку й читається як збій */
+                    function sync() {
+                        var max = row.scrollWidth - row.clientWidth;
+                        prev.classList.toggle('is-edge', row.scrollLeft < 8);
+                        next.classList.toggle('is-edge', row.scrollLeft > max - 8);
+                    }
+                    prev.addEventListener('click', function () { row.scrollBy({left: -step(), behavior: 'smooth'}); });
+                    next.addEventListener('click', function () { row.scrollBy({left: step(), behavior: 'smooth'}); });
+                    row.addEventListener('scroll', sync, {passive: true});
+                    window.addEventListener('resize', sync);
+                    sync();
+                });
+            })();
+        </script>
+        <div class="floating-cta">
+            <button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button>
+        </div>
+        <dialog class="lead-modal" id="lead-modal">
+            <button class="close" onclick="this.closest('dialog').close()" aria-label="✕">✕</button>
+            {% include 'services/partials/_lead_form.html.twig' %}
+            {% if city.hasMessengers %}<p class="modal-msgrs"><span>{{ 'lead.messengers'|trans({}, 'servicesite') }}</span>{% include 'services/partials/_messengers.html.twig' %}</p>{% endif %}
+        </dialog>
+        <script>
+            // плаваюча CTA ховається, коли футер у в'юпорті (не налазить на низ сторінки)
+            (function () {
+                var cta = document.querySelector('.floating-cta');
+                var footer = document.querySelector('footer.site');
+                if (!cta || !footer) return;
+                var update = function () {
+                    cta.classList.toggle('hidden', footer.getBoundingClientRect().top < window.innerHeight);
+                };
+                window.addEventListener('scroll', update, { passive: true });
+                window.addEventListener('resize', update);
+                update();
+            })();
+        </script>
+    </body>
+</html>

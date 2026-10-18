@@ -1,0 +1,32 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Відгуки. Два режими:
+   - layout = 'row' (головна) - стрічка зі скролом і стрілками, бо відгуки там
+     лише один блок серед багатьох і не повинні займати пів екрана;
+   - layout = 'grid' (сторінка відгуків) - усі одразу, людина прийшла саме за ними.
+   В обох довгий текст згорнутий до восьми рядків: один відгук на 500 символів
+   інакше розтягує картку й ламає ряд. Без JS тексти видно повністю. #}
+{% set layout = layout|default('row') %}
+<div class="reviews-strip{% if layout == 'grid' %} is-grid{% endif %}">
+    {% if layout == 'row' %}
+    <button class="reviews-nav prev" type="button" aria-label="{{ 'reviews.prev'|trans({}, 'servicesite') }}">‹</button>
+    {% endif %}
+    <div class="{{ layout == 'grid' ? 'reviews-grid' : 'reviews-row' }}"{% if layout == 'row' %} tabindex="0" role="region" aria-label="{{ 'nav.reviews'|trans({}, 'servicesite') }}"{% endif %}>
+        {% for review in reviews %}
+        <article class="card review-card">
+            <div class="card-name">
+                {% if review.imageName %}
+                <img src="/media/service_review/{{ review.imageName }}" alt="{{ review.imageAlt ?? review.loc('author', locale) }}" width="44" height="44" loading="lazy">
+                {% elseif review.avatarUrl %}
+                <img src="{{ review.avatarUrl }}" alt="{{ review.loc('author', locale) }}" referrerpolicy="no-referrer" width="44" height="44" loading="lazy">
+                {% endif %}
+                <span>{{ review.loc('author', locale) }}{% if review.location %}, <span class="review-loc">{{ review.location }}</span>{% endif %}<br><span aria-label="{{ review.stars }}/5" class="stars">{{ '★★★★★'|slice(0, review.stars) }}</span></span>
+            </div>
+            {% if review.reviewedAt %}<p class="meta">{{ review.reviewedAt|date('d.m.Y') }}</p>{% endif %}
+            <p class="review-text">{{ review.loc('text', locale) }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% if layout == 'row' %}
+    <button class="reviews-nav next" type="button" aria-label="{{ 'reviews.next'|trans({}, 'servicesite') }}">›</button>
+    {% endif %}
+</div>

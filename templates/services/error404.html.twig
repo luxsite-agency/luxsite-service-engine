@@ -1,0 +1,44 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Брендована 404 рушія. Рендериться ErrorController-ом поза контекстом тенанта, тому самодостатня: без site/city,
+   локаль визначаємо з path запиту. Пак перекриває її файлом templates/services/error404.html.twig (→ templates/site/),
+   теж самодостатнім (доступні app.request, theme, path()/asset()). #}
+{% set isRu = app.request is not null and app.request.pathInfo starts with '/ru/' %}
+<!DOCTYPE html>
+<html lang="{{ isRu ? 'ru' : 'uk' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ isRu ? 'Страница не найдена (404)' : 'Сторінку не знайдено (404)' }}</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .box { text-align: center; padding: 48px 24px; max-width: 520px; }
+        .bolt { font-size: 56px; }
+        h1 { font-size: 96px; margin: 8px 0 0; color: #f98111; line-height: 1; }
+        p.msg { font-size: 20px; margin: 16px 0 8px; }
+        p.sub { color: #5b6a86; margin: 0 0 28px; }
+        a.btn { display: inline-block; background: #f98111; color: #fff; text-decoration: none;
+                padding: 14px 32px; border-radius: 8px; font-weight: 600; }
+        a.btn:hover { background: #faa125; }
+        a.plain { display: inline-block; margin-top: 14px; color: #5b6a86; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <div class="bolt">⚡</div>
+    <h1>404</h1>
+    {% if isRu %}
+        <p class="msg">Такой страницы нет</p>
+        <p class="sub">Возможно, ссылка устарела или в адресе опечатка.</p>
+        <a class="btn" href="/ru/">На главную</a><br>
+        <a class="plain" href="/ru/services/">Все услуги</a>
+    {% else %}
+        <p class="msg">Такої сторінки немає</p>
+        <p class="sub">Можливо, посилання застаріло або в адресі одрук.</p>
+        <a class="btn" href="/">На головну</a><br>
+        <a class="plain" href="/services/">Всі послуги</a>
+    {% endif %}
+</div>
+</body>
+</html>

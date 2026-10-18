@@ -1,0 +1,6 @@
+# Пакет віджета відгуків gbp-manager (packages/gmb-reviews-*, копія з репо gmb-manager): клієнт JSON віджета з кешем
+# (stale до 7 діб) і Twig gmb_rating()/gmb_rating_badge(). Токен — app.gbp_reviews.token паку (ReviewsRating, шаблони).
+gmb_reviews:
+    base_url: 'https://gbp-manager.app'
+    ttl: 600
+    cache_pool: cache.app

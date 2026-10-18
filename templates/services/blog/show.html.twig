@@ -1,0 +1,50 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ post.loc('metaTitle', locale) ?? (post.loc('title', locale) ~ ' - ' ~ site.name) }}{% endblock %}
+
+{% block metaDescription %}{{ (post.loc('metaDesc', locale) ?? post.loc('lead', locale))|striptags|slice(0, 300) }}{% endblock %}
+{% block ogType %}article{% endblock %}
+{% block ogImage %}{{ post.imageName ? '/media/service_post/' ~ post.imageName : (site.heroImagePath ?? '') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.blog'|trans({}, 'servicesite'), 'url': url('sv_blog', {_locale: locale})},
+        {'name': post.loc('title', locale)},
+    ]) }}
+    {% set art = {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        'headline': post.loc('title', locale)|slice(0, 110),
+        'url': altUrls[locale],
+        'mainEntityOfPage': {'@type': 'WebPage', '@id': altUrls[locale]},
+        'inLanguage': locale == 'ru' ? 'ru-UA' : 'uk-UA',
+        'author': {'@type': 'Organization', 'name': site.name},
+        'publisher': {
+            '@type': 'Organization',
+            'name': site.name,
+            'url': app.request.schemeAndHttpHost ~ '/',
+        },
+    } %}
+    {% if post.loc('lead', locale) %}{% set art = art|merge({'description': post.loc('lead', locale)|striptags}) %}{% endif %}
+    {% if post.publishedAt %}{% set art = art|merge({'datePublished': post.publishedAt|date('c'), 'dateModified': (post.updatedAt ?? post.publishedAt)|date('c')}) %}{% endif %}
+    {% if post.imageName %}{% set art = art|merge({'image': app.request.schemeAndHttpHost ~ '/media/service_post/' ~ post.imageName}) %}{% endif %}
+    {{ schema.ld(art) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        <a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a> →
+        {{ post.loc('title', locale) }}
+    </nav>
+    <h1>{{ post.loc('title', locale) }}</h1>
+    {% if post.publishedAt %}<p class="meta">{{ post.publishedAt|date('d.m.Y') }}</p>{% endif %}
+    {% if post.imageName %}
+    <img src="/media/service_post/{{ post.imageName }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}" width="1200" height="675" class="post-cover">
+    {% endif %}
+    {% if post.loc('lead', locale) %}<p><strong>{{ post.loc('lead', locale)|striptags }}</strong></p>{% endif %}
+    {% if post.loc('desc', locale) %}<div>{{ post.loc('desc', locale)|raw }}</div>{% endif %}
+{% endblock %}

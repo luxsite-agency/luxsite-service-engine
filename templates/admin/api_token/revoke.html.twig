@@ -1,0 +1,13 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{# Підтвердження відкликання токена (AdminApiTokenCrudController::revoke, GET): POST з CSRF на той самий маршрут. Змінні: token, index_url, revoke_url. #}
+{% block content_title %}Відкликати API-токен{% endblock %}
+{% block main %}
+    <p>Токен <strong>«{{ token.name }}»</strong> ({{ token.maskedToken }}{% if is_granted('ROLE_ADMIN') %}, власник: {{ token.ownerName }}{% endif %}) перестане працювати одразу. Повернути його не можна — лише створити новий.</p>
+    <form method="post" action="{{ revoke_url }}" id="api-token-revoke">
+        <input type="hidden" name="token" value="{{ csrf_token('api-token-revoke') }}">
+        <input type="hidden" name="id" value="{{ token.id }}">
+        <button type="submit" class="btn btn-danger">Відкликати</button>
+        <a href="{{ index_url }}" class="btn btn-secondary">Скасувати</a>
+    </form>
+{% endblock %}

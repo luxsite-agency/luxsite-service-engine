@@ -1,0 +1,16 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/crud/index.html.twig' %}
+{# API-токени (AdminApiTokenCrudController): над списком — щойно створений токен (token_plain із сесії), показується один раз. #}
+{% block main %}
+    {% if token_plain is defined and token_plain %}
+        <div class="alert alert-warning" id="api-token-plain" role="alert">
+            <p class="mb-2"><strong>Новий токен.</strong> Скопіюйте зараз: удруге він не покажеться, у базі лише хеш.</p>
+            <input type="text" class="form-control font-monospace" readonly value="{{ token_plain }}" onclick="this.select()" aria-label="Значення токена" autocomplete="off">
+            <p class="text-muted small mt-2 mb-0">
+                content-studio: движок <code>service_sites</code>, адреса <code>https://&lt;сайт&gt;/api/studio</code>, токен — це значення (потрібен дозвіл studio:write).<br>
+                Claude Code / скрипт: <code>curl -H "Authorization: Bearer …" {{ app.request.schemeAndHttpHost }}/api/admin/v1/me</code> — опис у docs/admin-api.md рушія.
+            </p>
+        </div>
+    {% endif %}
+    {{ parent() }}
+{% endblock %}

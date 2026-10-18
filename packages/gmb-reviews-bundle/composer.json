@@ -1,0 +1,28 @@
+{
+    "name": "luxsite/gmb-reviews-bundle",
+    "description": "Symfony bundle: Google reviews block from GMB Manager — Twig function gmb_reviews(token), JSON-LD, review form.",
+    "version": "1.1.1",
+    "type": "symfony-bundle",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "LuxSite",
+            "homepage": "https://luxsite.agency",
+            "role": "Platform developers"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "luxsite/gmb-reviews-core": "^1.0",
+        "symfony/framework-bundle": "^7.0|^8.0",
+        "symfony/cache": "^7.0|^8.0",
+        "psr/simple-cache": "^2.0|^3.0",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Luxsite\\GmbReviewsBundle\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}

@@ -1,0 +1,14 @@
+framework:
+    # Українська за замовчуванням: адмінка не має _locale у маршрутах і без
+    # цього показувалась англійською (Edit, Save changes). Публічні сторінки
+    # задають мову самі - uk без префікса, ru під /ru/, - тому їх це не чіпає.
+    default_locale: uk
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        # Перекриття перекладів паком сайту (бренд-тексти: слоган, переваги хіро, мета-описи, заголовки).
+        # Деплой копіює translations/*.yaml паку в translations/site/ (поза git). Файли вантажаться
+        # у порядку повного шляху, і «servicesite.*» < «site/…», тож ключі паку перекривають дефолти рушія
+        # (теку перейменовувати не можна: ім'я має сортуватися після «servicesite»).
+        paths:
+            - '%kernel.project_dir%/translations/site'
+        providers:

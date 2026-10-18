@@ -1,0 +1,32 @@
+twig:
+    file_name_pattern: '*.twig'
+    # Свій дизайн сайту: деплой кладе templates/ паку в templates/site/ (поза git). Twig шукає там першим, тож
+    # templates/site/services/home.html.twig перекриває services/home.html.twig рушія. Шаблони рушія доступні ще й як
+    # @engine/…, щоб пак міг успадкувати: {% extends '@engine/services/home.html.twig' %} і перевизначити блок.
+    # Тека templates/site/ має існувати завжди (.gitkeep) — інакше FilesystemLoader кидає виняток.
+    paths:
+        # живий дизайн під токеном (ThemeService): var/theme → <root>/shared/theme; теку гарантує Kernel::boot()
+        '%kernel.project_dir%/var/theme/templates': ~
+        '%kernel.project_dir%/templates/site': ~
+        '%kernel.project_dir%/templates': engine
+    globals:
+        # тема сайту з паку (кольори, лого, фавікони, og-зображення): {{ theme.get('logo') }}, {{ theme.cssVars() }}
+        theme: '@App\ServiceSite\SiteTheme'
+        # схема URL каталогу (flat|nested) — шаблони ховають посилання на категорії у flat
+        catalog_url_scheme: '%app.catalog.url_scheme%'
+        site_verification: '%app.site_verification%'
+        clarity_id: '%app.clarity_id%'
+        viber_plus: '%app.viber_plus%'
+        analytics_defer: '%app.analytics_defer%'
+        lead_events: '%app.lead_events%'
+        home_lead_position: '%app.home_lead_position%'
+        footer_catalog: '%app.footer_catalog%'
+        schema_business: '%app.schema%'
+        # вхід через Google для відгуків: {% if google_oauth.configured %} — без кредів кнопку й форму не показуємо
+        google_oauth: '@App\Security\GoogleOAuthConfig'
+        # віджет відгуків gbp-manager: {token, base}; token порожній — віджета нема
+        gbp_reviews: '%app.gbp_reviews%'
+
+when@test:
+    twig:
+        strict_variables: true

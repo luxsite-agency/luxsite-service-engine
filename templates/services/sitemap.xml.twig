@@ -1,0 +1,18 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+{%- for e in entries %}
+{%- for locale in ['uk', 'ru'] %}
+    <url>
+        <loc>{{ attribute(e, locale) }}</loc>
+{%- if e.lastmod %}
+        <lastmod>{{ e.lastmod|date('Y-m-d') }}</lastmod>
+{%- endif %}
+        <xhtml:link rel="alternate" hreflang="uk" href="{{ e.uk }}"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="{{ e.ru }}"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="{{ e.uk }}"/>
+    </url>
+{%- endfor %}
+{%- endfor %}
+</urlset>

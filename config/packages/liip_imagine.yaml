@@ -1,0 +1,49 @@
+# Розміри зображень під шаблони. Перший запит іде через /media/cache/resolve
+# (контролер генерує файл у public/media/cache/<фільтр>/... і редіректить),
+# далі nginx віддає статику; Cloudflare кешує на edge.
+liip_imagine:
+    driver: "gd"
+
+    # Релізи bin/site: public/media — симлінк на <site>/shared/media. Liip звіряє realpath файлу з realpath коренів,
+    # тому лише public/ не підходить («outside of the defined root path», 404 на /media/cache/resolve) — додаємо корінь
+    # через сам симлінк, він розкриється в shared/media (стенд і прод однаково)
+    loaders:
+        default:
+            filesystem:
+                data_root:
+                    - '%kernel.project_dir%/public'
+                    - '%kernel.project_dir%/public/media'
+
+    default_filter_set_settings:
+        quality: 82
+        format: jpg
+
+    filter_sets:
+        # тізер у стрічках (новини/афіша/заклади)
+        teaser:
+            filters:
+                thumbnail: { size: [480, 270], mode: outbound }
+        # головне зображення сторінки + og:image (1.91:1 — стандарт OG)
+        hero:
+            filters:
+                thumbnail: { size: [1200, 630], mode: outbound }
+        # дрібна квадратна мініатюра (адмінка, списки)
+        thumb:
+            filters:
+                thumbnail: { size: [96, 96], mode: outbound }
+        # портрет персоналії (профіль/картка)
+        avatar:
+            filters:
+                thumbnail: { size: [320, 320], mode: outbound }
+        # фото послуги у хіро сторінки послуги (3:2, webp): 920 для 2x/десктопа, 460 для 1x; оригінали по 180–750 КБ
+        # були LCP-кандидатом (заміряно на сайті з Joomla-імпортом, 10.2026). og:image/JSON-LD лишаються оригіналом
+        item_hero:
+            quality: 80
+            format: webp
+            filters:
+                thumbnail: { size: [920, 613], mode: outbound }
+        item_hero_sm:
+            quality: 80
+            format: webp
+            filters:
+                thumbnail: { size: [460, 307], mode: outbound }

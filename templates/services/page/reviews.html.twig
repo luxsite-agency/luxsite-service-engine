@@ -1,0 +1,91 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{# Місто в title/H1/og:title — app.reviews.title_city; прийменник узгоджено з кінцем назви бренду («Майстри» в Чернівцях) #}
+{% block title %}{{ (reviews_title_city(site, city) ? 'title.reviews_city' : 'title.reviews')|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale, site_brand(site, locale)), '%cityNom%': city.name(locale), '%site%': site_brand(site, locale)}, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.reviews'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.reviews'|trans({}, 'servicesite')},
+    ]) }}
+    {% set extra = {} %}
+    {% if reviewsAggregate %}
+        {% set reviewLd = [] %}
+        {% for r in reviews %}
+            {% set entry = {
+                '@type': 'Review',
+                'author': {'@type': 'Person', 'name': r.loc('author', locale)},
+                'reviewBody': r.loc('text', locale),
+                'reviewRating': {'@type': 'Rating', 'ratingValue': r.stars, 'bestRating': 5},
+            } %}
+            {% if r.reviewedAt %}{% set entry = entry|merge({'datePublished': r.reviewedAt|date('Y-m-d')}) %}{% endif %}
+            {% set reviewLd = reviewLd|merge([entry]) %}
+        {% endfor %}
+        {% set extra = {
+            'aggregateRating': {'@type': 'AggregateRating', 'ratingValue': reviewsAggregate.avg, 'reviewCount': reviewsAggregate.count, 'bestRating': 5},
+            'review': reviewLd,
+        } %}
+    {% endif %}
+    {{ schema.business(site, city, locale, altUrls[locale], app.request.schemeAndHttpHost, extra) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.reviews'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ (reviews_title_city(site, city) ? 'reviews.h1_city' : 'reviews.h1')|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale, site_brand(site, locale)), '%cityNom%': city.name(locale), '%site%': site_brand(site, locale)}, 'servicesite') }}</h1>
+    {% if reviewsAggregate %}
+    <p class="meta rating-line">{{ 'reviews.rating'|trans({'%avg%': reviewsAggregate.avg, '%count%': reviewsAggregate.count}, 'servicesite') }}</p>
+    {% endif %}
+
+    {% if gbp_reviews.token|default('') %}
+    {# Віджет gbp-manager (app.gbp_reviews): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
+       власні форма, список і оцінка рушія не показуються, щоб на сторінці була одна оцінка. Мова — мова сторінки. #}
+    <section class="block" id="add-review">
+        <div data-gmb-reviews="{{ gbp_reviews.token }}" data-layout="grid" data-theme="light" data-lang="{{ locale }}"></div>
+        <script src="{{ gbp_reviews.base|default('https://gbp-manager.app')|trim('/', 'right') }}/w/embed/v1" data-token="{{ gbp_reviews.token }}" async></script>
+    </section>
+    {% else %}
+    {# Без кредів Google OAuth (.env.local) увійти неможливо: блок не показуємо зовсім, попередження — в адмінці #}
+    {% if app.user or google_oauth.configured %}
+    <section class="block lead-form" id="add-review">
+        {# не h2: заголовок форми не входить у структуру контенту #}
+        <p class="form-title">{{ 'review.form_title'|trans({}, 'servicesite') }}</p>
+        {% for msg in app.flashes('review_success') %}<p style="color:#0a7a2f;font-weight:600">{{ msg }}</p>{% endfor %}
+        {% for msg in app.flashes('review_error') %}<p style="color:#b00020;font-weight:600">{{ msg }}</p>{% endfor %}
+        {% if app.user %}
+        <form method="post" action="{{ path('sv_review_submit') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('sv_review') }}">
+            <p style="margin:.2rem 0 .6rem">
+                <span class="meta">{{ 'review.as'|trans({}, 'servicesite') }} <strong>{{ app.user.displayName ?? app.user.email }}</strong></span>
+                &nbsp;<label>{{ 'review.stars'|trans({}, 'servicesite') }}
+                <select name="stars" style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px">
+                    <option value="5">5 ★★★★★</option>
+                    <option value="4">4 ★★★★</option>
+                    <option value="3">3 ★★★</option>
+                    <option value="2">2 ★★</option>
+                    <option value="1">1 ★</option>
+                </select></label>
+            </p>
+            <textarea name="text" required minlength="20" maxlength="2000" rows="4"
+                placeholder="{{ 'review.placeholder'|trans({}, 'servicesite') }}"
+                style="width:100%;padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;font-size:1rem;font-family:inherit"></textarea>
+            <p><button class="btn" type="submit">{{ 'review.submit'|trans({}, 'servicesite') }}</button></p>
+        </form>
+        {% else %}
+        <p>{{ 'review.login_hint'|trans({}, 'servicesite') }}</p>
+        <a class="btn" href="{{ path('connect_google_start', {return: app.request.pathInfo}) }}">{{ 'review.login_google'|trans({}, 'servicesite') }}</a>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% include 'services/partials/_reviews_row.html.twig' with {'layout': 'grid'} %}
+    {% endif %}
+
+    {% include 'services/partials/_lead_form.html.twig' %}
+{% endblock %}

@@ -1,0 +1,226 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'calc.title'|trans({}, 'servicesite') }} - {{ site.name }} {{ city.name(locale) }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.calculator'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.calculator'|trans({}, 'servicesite')},
+    ]) }}
+{% endblock %}
+
+{% block meta %}
+    <style>
+        .calc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 2rem; align-items: start; margin-top: 1.5rem; }
+        .calc-step { margin-bottom: 1.8rem; }
+        .calc-step > .calc-step-title { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-text); margin: 0 0 .55rem; font-weight: 700; }
+        .calc-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .5rem; }
+        .calc-chip { display: block; }
+        .calc-chip input { position: absolute; opacity: 0; pointer-events: none; }
+        .calc-chip span { display: block; height: 100%; border: 1px solid var(--border); border-radius: 10px; padding: .7rem .9rem; color: var(--text); font-size: .95rem; line-height: 1.3; background: #fff; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+        .calc-chip span small { display: block; margin-top: .2rem; font-size: .8rem; color: var(--muted-text); }
+        .calc-chip:hover span { border-color: var(--accent); color: var(--accent-ink); }
+        .calc-chip input:checked + span { background: var(--accent-ink); color: #fff; border-color: var(--accent-ink); font-weight: 600; }
+        .calc-chip input:checked + span small { color: #fff; }
+        .calc-chip input:focus-visible + span { outline: 2px solid var(--accent2); outline-offset: 2px; }
+        .calc-area { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; }
+        .calc-area input[type=range] { flex: 1 1 220px; accent-color: var(--accent); }
+        .calc-area input[type=number] { width: 90px; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+        .calc-options { border: 1px solid var(--border); border-radius: var(--radius); background: #fff; overflow: hidden; }
+        .calc-option { display: flex; align-items: center; gap: .8rem; padding: .7rem 1rem; border-bottom: 1px solid var(--bg-muted); }
+        .calc-option:hover { background: var(--bg-muted); }
+        .calc-option:last-child { border-bottom: 0; }
+        .calc-option .co-name { flex: 1; }
+        .calc-option .co-name .meta { display: block; }
+        .calc-option input[type=checkbox] { width: 19px; height: 19px; accent-color: var(--accent); }
+        .calc-qty { display: flex; align-items: center; gap: .35rem; }
+        .calc-qty button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: #fff; color: var(--dark); font-size: 1.05rem; line-height: 1; cursor: pointer; }
+        .calc-qty button:hover { border-color: var(--accent); color: var(--accent-ink); }
+        .calc-qty input { width: 52px; text-align: center; padding: .35rem .2rem; border: 1px solid var(--border); border-radius: 8px; font-size: .95rem; }
+        .calc-summary { position: sticky; top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; box-shadow: 0 10px 30px -22px rgba(18, 58, 65, .5); padding: 1.3rem 1.4rem; }
+        .calc-summary .calc-summary-title { margin: 0 0 .8rem; font-size: 1.15rem; }
+        .calc-summary .btn { width: 100%; }
+        .calc-summary .row { display: flex; justify-content: space-between; gap: 1rem; margin: .35rem 0; color: var(--muted-text); font-size: .95rem; }
+        .calc-summary .row.total { border-top: 1px solid var(--border); margin-top: .7rem; padding-top: .7rem; color: var(--dark); font-size: 1.15rem; font-weight: 700; }
+        .calc-summary .row.total b { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+        .calc-summary .min-note { font-size: .82rem; color: var(--muted-text); margin: .2rem 0 0; }
+        .calc-summary form { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }
+        .calc-summary input[type=tel], .calc-summary input[type=text] { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; background: #fff; }
+        .calc-summary input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
+        .calc-summary .disclaimer { font-size: .8rem; color: var(--muted-text); margin: .6rem 0 0; }
+        @media (max-width: 900px) {
+            .calc-layout { grid-template-columns: 1fr; }
+            .calc-summary { position: static; }
+        }
+        /* плаваюча CTA не потрібна: форма заявки вже в підсумку і перекривалась би нею */
+        .floating-cta { display: none; }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.calculator'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'calc.title'|trans({}, 'servicesite') }}</h1>
+    <p class="hero-sub">{{ 'calc.intro'|trans({}, 'servicesite') }}</p>
+
+    {% for msg in app.flashes('lead_error') %}
+    <p style="color:#b00020;font-weight:600">{{ msg }}</p>
+    {% endfor %}
+
+    {# id типу з передвибору міні-калькулятора або перший у списку #}
+    {% set checkedTypeId = (types|filter(t => t.id == presetType)|first ?: types|first).id %}
+    {% set areaValue = presetArea >= areaMin and presetArea <= areaMax ? presetArea : 50 %}
+
+    <div class="calc-layout">
+        <div>
+            <div class="calc-step">
+                <p class="calc-step-title">{{ 'calc.type_label'|trans({}, 'servicesite') }}</p>
+                <div class="calc-chips">
+                    {% for type in types %}
+                    <label class="calc-chip">
+                        <input type="radio" form="calc-form" name="type" value="{{ type.id }}"
+                               data-pps="{{ type.pricePerSqm }}" data-min="{{ type.minPrice }}"
+                               {{ type.id == checkedTypeId ? 'checked' }}>
+                        <span>{{ type.loc('name', locale) }}
+                            <small>{{ 'prices.from'|trans({}, 'servicesite') }} {{ type.pricePerSqm|number_format(0, '.', ' ') }} {{ 'calc.per_m2'|trans({}, 'servicesite') }}{% if type.loc('desc', locale) %} · {{ type.loc('desc', locale) }}{% endif %}</small>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="calc-step">
+                <p class="calc-step-title">{{ 'calc.area_label'|trans({}, 'servicesite') }}, {{ 'calc.m2'|trans({}, 'servicesite') }}</p>
+                <div class="calc-area">
+                    <input type="range" id="calc-area-range" min="{{ areaMin }}" max="300" step="5" value="{{ areaValue }}" aria-hidden="true" tabindex="-1">
+                    <input type="number" form="calc-form" id="calc-area" name="area" min="{{ areaMin }}" max="{{ areaMax }}" value="{{ areaValue }}" required
+                           aria-label="{{ 'calc.area_label'|trans({}, 'servicesite') }}">
+                </div>
+            </div>
+
+            {% for group, rows in factorGroups %}
+            <div class="calc-step">
+                <p class="calc-step-title">{{ ('calc.group.' ~ group)|trans({}, 'servicesite') }}</p>
+                <div class="calc-chips">
+                    {% set checkedFactorId = (rows|filter(f => f.isDefault)|first ?: rows|first).id %}
+                    {% for factor in rows %}
+                    <label class="calc-chip">
+                        <input type="radio" form="calc-form" name="factors[{{ group }}]" value="{{ factor.id }}"
+                               data-mult="{{ factor.multiplier }}" {{ factor.id == checkedFactorId ? 'checked' }}>
+                        <span>{{ factor.loc('name', locale) }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if options is not empty %}
+            <div class="calc-step">
+                <p class="calc-step-title">{{ 'calc.options_title'|trans({}, 'servicesite') }}</p>
+                <div class="calc-options">
+                    {% for option in options %}
+                    <label class="calc-option">
+                        {% if option.perUnit %}
+                        <span class="co-name">{{ option.loc('name', locale) }}
+                            <span class="meta">{{ option.price|number_format(0, '.', ' ') }} {{ 'catalog.uah'|trans({}, 'servicesite') }}{% if option.loc('unit', locale) %} / {{ option.loc('unit', locale) }}{% endif %}</span>
+                        </span>
+                        <span class="calc-qty">
+                            <button type="button" data-step="-1" aria-label="-">−</button>
+                            <input type="number" form="calc-form" name="opt[{{ option.id }}]" value="0"
+                                   min="0" max="{{ option.maxQty }}" data-opt-price="{{ option.price }}" data-per-unit="1">
+                            <button type="button" data-step="1" aria-label="+">+</button>
+                        </span>
+                        {% else %}
+                        <input type="checkbox" form="calc-form" name="opt[{{ option.id }}]" value="1" data-opt-price="{{ option.price }}">
+                        <span class="co-name">{{ option.loc('name', locale) }}
+                            <span class="meta">+{{ option.price|number_format(0, '.', ' ') }} {{ 'catalog.uah'|trans({}, 'servicesite') }}</span>
+                        </span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <aside class="calc-summary">
+            <p class="calc-step-title calc-summary-title">{{ 'calc.summary_title'|trans({}, 'servicesite') }}</p>
+            <div class="row"><span>{{ 'calc.base_label'|trans({}, 'servicesite') }}</span><span id="calc-base">0</span></div>
+            <div class="row"><span>{{ 'calc.options_label'|trans({}, 'servicesite') }}</span><span id="calc-opts">0</span></div>
+            <div class="row total"><span>{{ 'calc.total_label'|trans({}, 'servicesite') }}</span>
+                <b>{{ 'prices.from'|trans({}, 'servicesite') }} <span id="calc-total">0</span> {{ 'catalog.uah'|trans({}, 'servicesite') }}</b></div>
+            <p class="min-note" id="calc-min-note" hidden>{{ 'calc.min_note'|trans({}, 'servicesite') }}</p>
+
+            <form id="calc-form" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form>
+                <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+                <input type="hidden" name="loc" value="{{ locale }}">
+                <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+                <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
+                <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+                <button class="btn" type="submit">{{ 'calc.submit'|trans({}, 'servicesite') }}</button>
+            </form>
+            <p class="disclaimer">{{ 'calc.disclaimer'|trans({}, 'servicesite') }}</p>
+        </aside>
+    </div>
+
+    <script>
+        // Підрахунок наживо. Формула дублює App\ServiceSite\CalcPricer -
+        // авторитетним є сервер, він перераховує суму при відправці заявки.
+        (function () {
+            var form = document.getElementById('calc-form');
+            var areaInput = document.getElementById('calc-area');
+            var areaRange = document.getElementById('calc-area-range');
+            var fmt = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+
+            var recompute = function () {
+                var type = document.querySelector('input[name=type]:checked');
+                if (!type) { return; }
+                var area = Math.min(Math.max(parseInt(areaInput.value, 10) || 0, {{ areaMin }}), {{ areaMax }});
+
+                var base = area * parseFloat(type.dataset.pps);
+                document.querySelectorAll('input[name^="factors["]:checked').forEach(function (f) {
+                    base *= parseFloat(f.dataset.mult);
+                });
+                var minApplied = base < parseFloat(type.dataset.min);
+                if (minApplied) { base = parseFloat(type.dataset.min); }
+                base = Math.ceil(base);
+
+                var opts = 0;
+                document.querySelectorAll('[data-opt-price]').forEach(function (el) {
+                    var qty = el.type === 'checkbox' ? (el.checked ? 1 : 0) : (parseInt(el.value, 10) || 0);
+                    opts += Math.ceil(parseFloat(el.dataset.optPrice) * qty);
+                });
+
+                document.getElementById('calc-base').textContent = fmt(base);
+                document.getElementById('calc-opts').textContent = fmt(opts);
+                document.getElementById('calc-total').textContent = fmt(base + opts);
+                document.getElementById('calc-min-note').hidden = !minApplied;
+            };
+
+            // слайдер і число площі синхронізовані в обидва боки
+            areaRange.addEventListener('input', function () { areaInput.value = areaRange.value; recompute(); });
+            areaInput.addEventListener('input', function () { areaRange.value = areaInput.value; recompute(); });
+
+            document.querySelectorAll('.calc-qty button').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var input = btn.parentElement.querySelector('input');
+                    var next = (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.step, 10);
+                    input.value = Math.min(Math.max(next, 0), parseInt(input.max, 10));
+                    recompute();
+                });
+            });
+
+            document.addEventListener('change', function (e) {
+                if (e.target.closest('.calc-chip, .calc-option, .calc-area')) { recompute(); }
+            });
+
+            recompute();
+        })();
+    </script>
+{% endblock %}

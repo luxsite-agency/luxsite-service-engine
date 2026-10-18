@@ -1,0 +1,13 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block content_title %}Service Sites{% endblock %}
+
+{% block main %}
+    {% if not google_oauth.configured %}
+    <div class="alert alert-warning">{{ google_oauth.warning }}</div>
+    {% endif %}
+    <p>Платформа сервісних сайтів: {{ 'now'|date('d.m.Y') }}.</p>
+    <p>Розділи - у меню ліворуч. Новий бренд = «Сайти-бренди», нове місто бренду  - 
+        «Міста сервісів» (хост + контакти + тексти головної).</p>
+{% endblock %}

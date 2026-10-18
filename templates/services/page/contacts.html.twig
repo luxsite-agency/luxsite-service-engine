@@ -1,0 +1,89 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'title.contacts'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.contacts'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.contacts'|trans({}, 'servicesite')},
+    ]) }}
+    {{ schema.business(site, city, locale, altUrls[locale], app.request.schemeAndHttpHost, {}) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.contacts'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'nav.contacts'|trans({}, 'servicesite') }} - {{ city.name(locale) }}</h1>
+
+    <div class="contacts-cols">
+    <section class="block contacts-card">
+        {% if city.phone %}
+        <p><strong>{{ 'lead.phone'|trans({}, 'servicesite') }}:</strong>
+            <a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ city.phone }}</a></p>
+        {% endif %}
+        {% if city.hasMessengers %}
+        <p class="contacts-msgrs">{% include 'services/partials/_messengers.html.twig' %}</p>
+        {% endif %}
+        {% if city.email %}
+        <p><strong>Email:</strong> <a href="mailto:{{ city.email }}">{{ city.email }}</a></p>
+        {% endif %}
+        {% if city.hours %}
+        <p><strong>{{ 'contacts.hours'|trans({}, 'servicesite') }}:</strong> {{ city.hours }}</p>
+        {% endif %}
+        {% if city.address(locale) %}
+        <p><strong>{{ 'contacts.address'|trans({}, 'servicesite') }}:</strong><br><!--city-raw-->{{ city.address(locale)|nl2br }}<!--/city-raw--></p>
+        {% endif %}
+        <p class="meta">{{ 'contacts.coverage'|trans({'%city%': city.name(locale)}, 'servicesite') }}</p>
+    </section>
+
+    {% if city.mapEmbedUrl or city.mapLinkUrl %}
+    {# карту вантажимо лише після кліку: інакше вона тягне ~1 МБ чужих скриптів #}
+    <section class="block map-block" id="map-block" data-src="{{ city.mapEmbedUrl }}"
+             data-title="{{ 'contacts.map_title'|trans({}, 'servicesite') }}">
+        <div class="map-canvas">
+            {% if city.mapEmbedUrl %}
+            <button type="button" class="map-facade">
+                <span class="map-pin" aria-hidden="true">◉</span>
+                <span class="map-facade-title">{{ 'contacts.map_title'|trans({}, 'servicesite') }}</span>
+                <span class="map-facade-hint">{{ 'contacts.map_hint'|trans({}, 'servicesite') }}</span>
+            </button>
+            {% endif %}
+        </div>
+        {% if city.mapLinkUrl %}
+        <a class="map-link" href="{{ city.mapLinkUrl }}" target="_blank" rel="noopener nofollow">
+            {{ 'contacts.map_open'|trans({}, 'servicesite') }} →
+        </a>
+        {% endif %}
+    </section>
+    {% endif %}
+    </div>
+
+    {% include 'services/partials/_team.html.twig' %}
+
+    {% include 'services/partials/_lead_form.html.twig' %}
+
+    {% if city.mapEmbedUrl %}
+    <script>
+        (function () {
+            var block = document.getElementById('map-block');
+            var canvas = block.querySelector('.map-canvas');
+            var button = canvas.querySelector('.map-facade');
+            button.addEventListener('click', function () {
+                var frame = document.createElement('iframe');
+                frame.src = block.dataset.src;
+                frame.title = block.dataset.title;
+                frame.loading = 'lazy';
+                frame.referrerPolicy = 'no-referrer-when-downgrade';
+                frame.setAttribute('allowfullscreen', '');
+                canvas.replaceChild(frame, button);
+            });
+        })();
+    </script>
+    {% endif %}
+{% endblock %}

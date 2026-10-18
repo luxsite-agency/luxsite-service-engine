@@ -1,0 +1,26 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{# title/H1 — ключі паку faq.page_title / faq.page_h1 (дефолт рушія = «Питання й відповіді - Бренд Місто»);
+   параметри всередині кожного блоку: set поза блоком дочірнього шаблону в блоках не видно #}
+{% block title %}{{ 'faq.page_title'|trans({'%faq_title%': 'nav.faq'|trans({}, 'servicesite'), '%site%': site.name, '%city%': city.name(locale), '%cityGen%': city.loc('nameGen', locale) ?? city.name(locale), '%cityLoc%': city.loc('nameLoc', locale) ?? city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.faq'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.faq'|trans({}, 'servicesite')},
+    ]) }}
+    {{ schema.faqPage(city.loc('faq', locale) ?? []) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.faq'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'faq.page_h1'|trans({'%faq_title%': 'nav.faq'|trans({}, 'servicesite'), '%site%': site.name, '%city%': city.name(locale), '%cityGen%': city.loc('nameGen', locale) ?? city.name(locale), '%cityLoc%': city.loc('nameLoc', locale) ?? city.name(locale)}, 'servicesite') }}</h1>
+    {% include 'services/partials/_faq.html.twig' with {faq: city.loc('faq', locale) ?? [], faqTitle: false} %}
+{% endblock %}

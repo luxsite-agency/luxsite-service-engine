@@ -1,0 +1,17 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{# Форма «Створити API-токен» (AdminApiTokenCrudController::issue). Змінні: form (NewApiTokenType), max_days, index_url. #}
+{% form_theme form 'bootstrap_5_layout.html.twig' %}
+{% block content_title %}Створити API-токен{% endblock %}
+{% block main %}
+    <p class="text-muted">Токен дає content-studio, Claude Code або скрипту ті самі права, що у вас, у межах вибраних дозволів. Значення покажемо один раз.</p>
+    {{ form_start(form, {attr: {id: 'api-token-issue', class: 'ea-new-form'}}) }}
+        {{ form_row(form.name) }}
+        {{ form_row(form.scopes) }}
+        {{ form_row(form.days) }}
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Створити</button>
+            <a href="{{ index_url }}" class="btn btn-secondary">Скасувати</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

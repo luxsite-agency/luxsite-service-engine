@@ -1,0 +1,45 @@
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+# city-sites local
+/.env.local
+/.env.local.prod-ref
+/db/
+
+###> liip/imagine-bundle ###
+/public/media/cache/
+###< liip/imagine-bundle ###
+
+# завантажені медіа (оригінали) — не в git
+/public/media/
+/local/import/
+
+###> service-engine: пак сайту (копіює деплой, у git рушія не потрапляє) ###
+/config/site/*.local.yaml
+/public/themes/*
+!/public/themes/.gitkeep
+/translations/site/*
+!/translations/site/.gitkeep
+/templates/site/*
+!/templates/site/.gitkeep
+/public/theme-live
+###< service-engine ###
+
+__pycache__/
+*.pyc
+
+# реєстр живих сайтів — поза рушієм (SITES_FILE=…; приклад — sites.example.yaml)
+/sites.yaml
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

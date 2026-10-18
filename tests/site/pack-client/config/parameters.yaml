@@ -1,0 +1,38 @@
+# Параметри сайту client.example.com без секретів (деплой копіює в config/site/parameters.local.yaml рушія).
+# Дефолти й повний перелік ключів — config/services.yaml і App\ServiceSite\SiteTheme::DEFAULTS у рушії.
+# Секрети (DATABASE_URL, MAILER_DSN, STUDIO_API_TOKEN, GOOGLE_CLIENT_*, PIPEDRIVE_API_TOKEN, BITRIX24_WEBHOOK_URL) — лише .env.local на сервері.
+parameters:
+    # URL каталогу: nested = /services/<категорія>/<послуга>/ + сторінки категорій; flat = /services/<послуга>/
+    app.catalog.url_scheme: nested
+    # google-site-verification (html-тег GSC); порожньо = без тега
+    app.site_verification: ''
+    app.theme:
+        key: client
+        colors:
+            accent: '#f98111'
+            accent2: '#faa125'
+            accent_ink: '#a35a08'
+            dark: '#22304e'
+            navy: '#24334f'
+            footer_bg: '#f2f6f8'
+            footer_line: '#d5dce3'
+            footer_text: '#48474c'
+            footer_ink: '#22304e'
+        # файли в themes/client/ (шляхи від public/, без початкового слеша); порожньо = дефолт рушія
+        logo: ''
+        favicon_ico: ''
+        favicon_png: ''
+        apple_touch_icon: ''
+        og_image: ''
+        hero_image: ''
+        hero_srcset: ''
+        hero_width: ''
+        hero_height: ''
+        stylesheet: ''
+    # JSON-LD бізнесу (LocalBusiness); порожнє поле в розмітку не йде
+    app.schema:
+        legal_name: ''
+        founder: ''
+        opening_hours: 'Mo-Su 08:00-20:00'
+    # 301 зі старого сайту: старий-слаг: { city: slug|null, item: slug|null, route: назва|null, locale: uk|ru }
+    app.legacy_redirects: {}

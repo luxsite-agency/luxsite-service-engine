@@ -1,0 +1,89 @@
+# Реєстр сайтів service-engine — одне місце правди для bin/site (docs/site-pack.md#реєстр, перевірка — `bin/site validate`).
+# ЦЕ ПРИКЛАД: справжній реєстр живе ПОЗА рушієм (приватний ops-репо чи файл на операторській машині) і передається
+# змінною SITES_FILE: `SITES_FILE=/path/ops/sites.yaml bin/site deploy <key>` (типовий шлях <рушій>/sites.yaml — у .gitignore).
+# СЕКРЕТІВ ТУТ НЕМА: паролі, ключі, токени, .env — лише на сервері сайту (<path>/shared/.env.local, 600).
+# Новий запис друкує `bin/site new`.
+#
+#   key            ключ сайту: a-z, 0-9, '-', до 31 символу (пак site-<key>, тема themes/<key>, клас body.theme-<key>,
+#                  тека на сервері …/site-<key>, compose-проєкт service-<key>)
+#   name           назва для людей
+#   repo           пак сайту на GitHub (owner/name, приватний); pack — необов'язковий локальний шлях до паку (має пріоритет)
+#   server         host (ssh-аліас; local = ця машина), runtime: fastpanel (PHP-FPM + nginx панелі FastPanel) | docker
+#                  (compose), proxy (лише docker: traefik — стенд, docker-compose.traefik.yml | edge — прод за зовнішнім nginx
+#                  у мережі edge, docker-compose.edge.yml; docs/site-ops.md), compose (лише docker: свій compose-файл — ім'я
+#                  в релізі або абсолютний шлях на сервері; порожньо = типовий для proxy), path (…/site-<key>), user (власник
+#                  файлів у FastPanel; ssh іде під root), php (бінарник на сервері), fpm_reload (команда після перемикання
+#                  релізу), docroot (симлінк docroot панелі, який cutover переводить на current/public), legacy_app (стара
+#                  робоча копія — перший деплой бере звідти .env.local і public/media), check_ip (IP nginx для перевірки
+#                  через веб-сервер), docroot_extra — інші docroot-симлінки того ж сайту в панелі (піддомени міст, адмінка):
+#                  cutover перемикає всі
+#   domains        site (апекс; міста — піддомени або окремі домени з БД ServiceCity), admin — хост адмінки (ADMIN_HOST)
+#   locales        мови сайту, перша — за замовчуванням
+#   engine         тег рушія vX.Y.Z (або sha коміту / гілка) — що зараз має бути на сервері
+#   status         active | archived | handed-over
+#   support        true | false — сайт на підтримці
+#   auto_update    true | false (типово false) — bin/site sync --all (cron) сам доводить сайт до engine з реєстру
+#   backup_target  куди копіювати бекапи: /шлях, host:/шлях або null
+#   notes          вільний текст
+version: 1
+sites:
+    - key: example
+      name: 'Example Services (example.com) — прод на FastPanel'
+      repo: example-org/site-example
+      server:
+          host: myserver
+          user: example_usr
+          runtime: fastpanel
+          path: /var/www/example_usr/data/www/site-example
+          php: /opt/php84/bin/php
+          fpm_reload: systemctl reload fp2-php84-fpm
+          docroot: /var/www/example_usr/data/www/example.com
+          docroot_extra: [/var/www/example_usr/data/www/admin.example.com, /var/www/example_usr/data/www/north.example.com]
+          check_ip: 203.0.113.10
+      domains:
+          site: example.com
+          admin: admin.example.com
+      locales: [uk, ru]
+      engine: v1.0.0
+      status: active
+      support: true
+      auto_update: false
+      backup_target: backups:/srv/backups/sites
+      notes: >-
+          Схема URL каталогу nested (/services/<категорія>/<послуга>/), міста на піддоменах (north.example.com —
+          окремий docroot-симлінк панелі, cutover перемикає разом з головним).
+    - key: example-edge
+      name: 'Example Services — прод у Docker за зовнішнім nginx'
+      repo: example-org/site-example-edge
+      server:
+          host: edge.example.net
+          user: www-data
+          runtime: docker
+          proxy: edge
+          path: /opt/sites/site-example-edge
+      domains:
+          site: edge.example.com
+          admin: admin.edge.example.com
+      locales: [uk]
+      engine: v1.0.0
+      status: active
+      support: true
+      auto_update: false
+      backup_target: null
+    - key: example-stand
+      name: 'Example Services — стенд на цій машині (docker за traefik, оновлюється з main)'
+      repo: example-org/site-example
+      pack: /opt/packs/site-example
+      server:
+          host: local
+          runtime: docker
+          path: /opt/stand/site-example-stand
+      domains:
+          site: example-stand.stand.example.net
+          admin: example-stand-admin.stand.example.net
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      auto_update: true
+      backup_target: /opt/backups/sites

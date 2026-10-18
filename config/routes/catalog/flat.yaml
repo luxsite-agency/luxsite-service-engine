@@ -1,0 +1,8 @@
+# Схема URL каталогу «flat» (типова): /services/<послуга>/, проміжних сторінок
+# категорій нема. Вмикається параметром app.catalog.url_scheme: flat (див. src/Kernel.php::configureRoutes).
+# Посилання на послугу в шаблонах і коді — лише через service_path() / CatalogUrls, не через path('sv_service').
+sv_service:
+    path: { uk: '/services/{slug}/', ru: '/ru/services/{slug}/' }
+    controller: App\Controller\Services\CatalogController::item
+    requirements: { slug: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city')"

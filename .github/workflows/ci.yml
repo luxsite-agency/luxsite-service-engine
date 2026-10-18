@@ -1,0 +1,118 @@
+# CI рушія service-engine. Юніт-тести — tests/Unit (з 13.10.2026); крім них перевіряємо те, що ламає прод
+# найчастіше: синтаксис PHP, Twig і YAML, валідність composer, схему Doctrine проти міграцій, і секрети в git.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: engine_ci
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      APP_ENV: test
+      APP_SECRET: ci-only-not-a-secret
+      DATABASE_URL: "mysql://root:root@127.0.0.1:3306/engine_ci?serverVersion=8.0&charset=utf8mb4"
+      MAILER_DSN: "null://null"
+      ADMIN_HOST: admin.ci.local
+      DEFAULT_URI: http://ci.local
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Секрети в коді: паролі/токени/DSN з реальними кредами не мають потрапляти в репо (правило §0).
+      # Хибні спрацювання відсікаємо шляхами й коментарями, а не слабшим regex (10.10.2026):
+      #  - .env/.env.dev/.env.test — Symfony-конвенція: плейсхолдери й dev-секрет, не прод;
+      #  - рядки-коментарі (#, //, *) — закоментовані зразки DSN;
+      #  - dev-плейсхолдери стенда/шаблонів (engine:engine у compose, USER:PASSWORD у заготовці .env.local, фікстури тестів).
+      # Під забороною лишаються .env.local, дампи, ключі та будь-який живий DSN/токен у коді, зокрема вхідний вебхук
+      # Bitrix24 (BITRIX24_WEBHOOK_URL=… або будь-яке …/rest/<id>/<токен ≥10 символів>) - 13.10.2026, конектор CRM.
+      - name: Guard — секрети й дампи
+        run: |
+          set -e
+          if git ls-files | grep -E '^\.env\.local|\.env\.prod(\.local)?$|\.sql(\.gz)?$|\.secrets|id_rsa|id_ed25519|\.pem$|\.p12$'; then
+            echo "::error::у репо відстежуються файли з секретами/дампами"; exit 1; fi
+          hits=$(git grep -nE 'mysql://[^:/ ]+:[^@/ ]{6,}@|PIPEDRIVE_API_TOKEN=[A-Za-z0-9]{12,}|APP_SECRET=[0-9a-f]{20,}|STUDIO_API_TOKEN=[A-Za-z0-9_-]{16,}|GOOGLE_[A-Z_]*(SECRET|KEY)=[A-Za-z0-9_-]{16,}|BITRIX24_WEBHOOK_URL=https?://[^ ]+|/rest/[0-9]+/[A-Za-z0-9]{10,}'             -- ':!*.md' ':!.github/**' ':!.env' ':!.env.dev' ':!.env.test'             | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|//|\*|/\*)'             | grep -vE 'mysql://(engine:engine|USER:PASSWORD|u:secretpass|root:root|shop:shop)@' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"; echo "::error::схоже на реальні креди в коді"; exit 1; fi
+          echo "guard OK"
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, pdo_mysql, gd, zip, opcache
+          coverage: none
+          tools: composer:v2
+
+      - name: Composer validate + install
+        run: |
+          composer validate --no-check-publish
+          composer install --no-interaction --no-progress --prefer-dist
+
+      # Юніт-тести (tests/Unit, PHPUnit): мапінг імпорту, додаткові поля, редиректи — без БД
+      - name: PHPUnit
+        run: php bin/phpunit --colors=never
+
+      - name: PHP syntax
+        run: |
+          set -e
+          git ls-files '*.php' | xargs -n 200 -P 4 php -l > /tmp/lint.txt 2>&1 || { grep -v "No syntax errors" /tmp/lint.txt; exit 1; }
+          echo "php -l OK ($(wc -l < /tmp/lint.txt) файлів)"
+
+      - name: Twig / YAML / контейнер
+        run: |
+          php bin/console lint:twig templates tests/site/pack-demo/templates
+          php bin/console lint:yaml config translations
+          php bin/console lint:container
+
+      # Схема сутностей має збігатися з ланцюгом міграцій — інакше деплой тихо лишає БД «майже» потрібною.
+      - name: Міграції → схема
+        run: |
+          # APP_ENV=test → Doctrine додає суфікс _test до назви БД (when@test у doctrine.yaml), тому БД створюємо самі
+          php bin/console doctrine:database:create --if-not-exists
+          php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          php bin/console doctrine:schema:validate --skip-sync || { echo "::error::схема сутностей ≠ міграції"; exit 1; }
+
+      # Місто в title/H1/og:title відгуків (app.reviews.title_city: auto) — на хостах міст заголовки різні
+      - name: Відгуки — місто в заголовку
+        run: php tests/reviews-title-city.php
+
+      # Без кредів Google OAuth сторінка відгуків не показує відвідувачу кнопку входу й технічних повідомлень
+      - name: Відгуки й Google OAuth
+        run: |
+          GOOGLE_CLIENT_ID= GOOGLE_CLIENT_SECRET= php tests/reviews-google-oauth.php off
+          GOOGLE_CLIENT_ID=ci-id.apps.googleusercontent.com GOOGLE_CLIENT_SECRET=ci-not-a-secret php tests/reviews-google-oauth.php on
+
+
+  # bin/site: shellcheck, валідатор реєстру й паків, compose стенда, сухі прогони команд і запобіжники (tests/site/run.sh)
+  site-ops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y -q python3-yaml shellcheck >/dev/null
+      - run: bash tests/site/run.sh
+
+  # Тег vX.Y.Z → GitHub Release з автонотатками (що ввійшло з минулого тегу). Деплой на сервери — pull-модель:
+  # cron на операторській машині (bin/site sync) бачить новий engine у реєстрі й розгортає з бекапом/відкатом.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [lint, site-ops]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release create "$GITHUB_REF_NAME" --title "service-engine $GITHUB_REF_NAME" --generate-notes
+        env: { GH_TOKEN: '${{ github.token }}' }
+

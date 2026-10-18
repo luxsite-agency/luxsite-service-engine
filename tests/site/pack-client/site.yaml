@@ -1,0 +1,11 @@
+# Пак сайту service-engine (формат 1, docs/site-pack.md рушія). Сервер, статус, бекапи — у реєстрі sites.yaml рушія.
+# СЕКРЕТІВ ТУТ НЕМА: .env.local, паролі, токени — лише на сервері сайту.
+format: 1
+key: client
+name: 'Client'
+locales: [uk, ru]
+domains:
+    site: client.example.com
+    admin: admin.client.example.com
+# Версія рушія, з якою пак перевірено (тег vX.Y.Z; до перших тегів — sha коміту main)
+engine: main

@@ -1,0 +1,14 @@
+# Схема URL каталогу «nested»: /services/<категорія>/ і /services/<категорія>/<послуга>/.
+# Вмикається параметром app.catalog.url_scheme: nested у паку сайту (config/site/parameters.local.yaml).
+# Посилання на послугу в шаблонах і коді — лише через service_path() / CatalogUrls, не через path('sv_service').
+sv_category:
+    path: { uk: '/services/{category}/', ru: '/ru/services/{category}/' }
+    controller: App\Controller\Services\CatalogController::category
+    requirements: { category: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city')"
+
+sv_service:
+    path: { uk: '/services/{category}/{slug}/', ru: '/ru/services/{category}/{slug}/' }
+    controller: App\Controller\Services\CatalogController::item
+    requirements: { category: '[a-z0-9-]+', slug: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city')"

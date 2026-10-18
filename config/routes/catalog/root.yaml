@@ -1,0 +1,17 @@
+# Схема URL каталогу «root» (сайт, перенесений з Joomla): категорії й послуги від кореня сайту —
+# /<категорія>/ і /<категорія>/<послуга>/, без префікса /services/. Вмикається параметром
+# app.catalog.url_scheme: root у паку. Фіксовані сторінки (/about/, /news/, /faq/ …) додаються раніше
+# й мають пріоритет; слаг «ru» як категорія заборонений (інакше /ru/x/ зловить uk-маршрут).
+# Невідомий /<x>/ — CatalogController::category віддає legacy-редірект (як sv_legacy_redirect) або 404.
+# Посилання на послугу в шаблонах і коді — лише через service_path() / CatalogUrls, не через path('sv_service').
+sv_category:
+    path: { uk: '/{category}/', ru: '/ru/{category}/' }
+    controller: App\Controller\Services\CatalogController::category
+    requirements: { category: '(?!ru/)[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city')"
+
+sv_service:
+    path: { uk: '/{category}/{slug}/', ru: '/ru/{category}/{slug}/' }
+    controller: App\Controller\Services\CatalogController::item
+    requirements: { category: '(?!ru/)[a-z0-9-]+', slug: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city')"

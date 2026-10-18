@@ -1,0 +1,140 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% set _loc = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{# три патерни заголовків по колу: сусідні локації йдуть підряд за position,
+   тож у списку району вони не повторюють один одного #}
+{% set _v = ['a', 'b', 'c'][district.position % 3] %}
+{% set _suffix = {'a': '', 'b': '_b', 'c': '_c'}[_v] %}
+{% set districtH1 = district.loc('title', _loc) ?? ('district.h1_' ~ _v)|trans({
+    '%district%': district.loc('name', _loc),
+    '%cityNom%': city.name(_loc),
+}, 'servicesite') %}
+{% block title %}{% set dname = district.loc('name', locale) %}
+{# довгі назви беруть скорочений патерн, короткі - найповніший, решта - по колу #}
+{% set _titleKey = dname|length > 21
+    ? 'title.district_long'
+    : (dname|length < 11
+        ? ['title.district', 'title.district_b'][district.position % 2]
+        : 'title.district' ~ _suffix) %}
+{{- district.loc('metaTitle', locale)
+    ?? _titleKey|trans({'%district%': dname, '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ district.loc('metaDesc', locale) ?? district.loc('lead', locale)
+    ?? ('meta.district' ~ _suffix)|trans({'%district%': district.loc('name', locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'district.title'|trans({}, 'servicesite'), 'url': url('sv_districts', {_locale: locale})},
+        {'name': district.loc('name', locale)},
+    ]) }}
+    {{ schema.faqPage(faq) }}
+    {{ schema.business(site, city, locale, altUrls[locale], app.request.schemeAndHttpHost, {
+        'name': districtH1 ~ ', ' ~ city.name(locale),
+        'areaServed': {
+            '@type': 'Place',
+            'name': district.loc('name', locale),
+            'containedInPlace': {'@type': 'City', 'name': city.name(locale)},
+        },
+    }) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        <a href="{{ path('sv_districts') }}">{{ 'district.title'|trans({}, 'servicesite') }}</a> →
+        {{ district.loc('name', locale) }}
+    </nav>
+    <h1>{{ districtH1 }}</h1>
+    {% if district.loc('lead', locale) %}<div><strong>{{ district.loc('lead', locale)|striptags }}</strong></div>{% endif %}
+    {% if city.phone %}
+    <p><a class="btn" href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ 'common.call'|trans({}, 'servicesite') }}: {{ city.phone }}</a></p>
+    {% endif %}
+    {% if district.minPrice %}
+    <p class="meta">{{ 'district.min_price'|trans({}, 'servicesite') }}: {{ district.minPrice }} {{ 'catalog.uah'|trans({}, 'servicesite') }}</p>
+    {% endif %}
+
+    {# Обкладинка: своє фото району, якщо його поставили в адмінці; інакше
+       краєвид свого міста з пулу. Кадр міста, а не абстрактне прибирання -
+       сторінка району про житловий фонд, і люди впізнають своє місто. Пул
+       у кожного міста свій, тож харківська сторінка не покаже Київ. #}
+    {% set _pool = {'kyiv': 5, 'kharkiv': 4, 'odesa': 4, 'dnipro': 3} %}
+    {% set _img = district.imageName
+        ? '/media/service_district/' ~ district.imageName
+        : '/media/service_district/' ~ city.slug ~ '-' ~ (district.id % (_pool[city.slug] ?? 3) + 1) ~ '.webp' %}
+    <img src="{{ _img }}" alt="{{ district.imageAlt ?? 'district.image_alt'|trans({'%cityGen%': city.loc('nameGen', locale) ?? city.name(locale)}, 'servicesite') }}"
+         width="1200" height="675" loading="lazy" class="district-cover">
+
+    {% if district.loc('desc', locale) %}
+    <section class="block">
+        {{ district.loc('desc', locale)|raw }}
+        {% if siblings is not empty %}
+        {# перелік сусідніх локацій прямо в тексті - на кожній сторінці свій:
+           у районі це його місцевості, у місцевості - решта того самого району #}
+        {# на сторінках місцевостей фраза чергується: інакше назва району
+           повторювалась би слово в слово на всіх сторінках групи #}
+        <p>{{ (district.isPrimary ? 'district.contains' : 'district.also_here_' ~ _v)|trans({
+                '%group%': district.loc('group', locale) ?? city.name(locale),
+            }, 'servicesite') }}
+            {% for d in siblings %}<a href="{{ path('sv_district', {slug: d.slug(locale)}) }}">{{ d.loc('name', locale) }}</a>{{ loop.last ? '.' : ', ' }}{% endfor %}
+        </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {# напрями робіт: однакові для всіх локацій, тому в перекладах паку (district.area_*), а не в базі.
+       Покривають увесь каталог бренду; у рушії дефолти порожні - без текстів у паку блоку нема #}
+    {% set _areas = [] %}
+    {% for area in ['home', 'commercial', 'textile', 'extra'] %}
+        {% set _t = ('district.area_' ~ area ~ '_title')|trans({}, 'servicesite') %}
+        {% if _t and _t != 'district.area_' ~ area ~ '_title' %}{% set _areas = _areas|merge([area]) %}{% endif %}
+    {% endfor %}
+    {% if _areas %}
+    <section class="block muted">
+        <h2>{{ 'district.areas_title'|trans({}, 'servicesite') }}</h2>
+        <div class="grid">
+            {% for area in _areas %}
+            <div class="card">
+                <div class="card-name">{{ ('district.area_' ~ area ~ '_title')|trans({}, 'servicesite') }}</div>
+                <p>{{ ('district.area_' ~ area ~ '_text')|trans({}, 'servicesite') }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="block">
+        <h2>{{ 'district.services_title'|trans({}, 'servicesite') }}</h2>
+        <div class="chips">
+            {% for item in items %}
+            <a href="{{ service_path(item, locale) }}">{{ item.loc('title', locale) }}</a>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# розрахунок просто на сторінці району: людина вже бачить, що ми тут
+       працюємо, і наступне її питання - скільки це коштує #}
+    {% if calcTypes|default([]) %}
+        {% include 'services/partials/_calc_mini.html.twig' with {
+            calcDistrict: district.slug(locale),
+            calcTitle: 'calc.mini_title_district',
+        } %}
+    {% endif %}
+
+    {% if faq is not empty %}
+    {% include 'services/partials/_faq.html.twig' with {
+        faq: faq,
+        faqTitle: 'district.faq_title'|trans({'%district%': district.loc('name', locale)}, 'servicesite'),
+        muted: true,
+    } %}
+    {% endif %}
+
+    {% if parent %}
+    <p class="meta">{{ 'district.parent_link'|trans({}, 'servicesite') }}:
+        <a href="{{ path('sv_district', {slug: parent.slug(locale)}) }}">{{ parent.loc('name', locale) }}</a></p>
+    {% endif %}
+
+    {% include 'services/partials/_lead_form.html.twig' %}
+{% endblock %}

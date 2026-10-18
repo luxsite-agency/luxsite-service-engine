@@ -1,0 +1,186 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    # Фолбек: хост адмінки, якщо ADMIN_HOST не задано в оточенні
+    # (dev — service-sites.localhost; прод задасть свій хост у .env.local)
+    env(ADMIN_HOST): 'service-sites.localhost'
+    # Google OAuth (вхід для відгуків): значення — в .env.local; порожні дефолти щоб dev не падав
+    env(GOOGLE_CLIENT_ID): ''
+    env(GOOGLE_CLIENT_SECRET): ''
+    # Відправник листів заявок (Gmail SMTP вимагає збігу з акаунтом); порожньо = noreply@апекс
+    env(MAIL_FROM): ''
+    # Токен приймача статей content-studio (satellit); порожньо = приймач вимкнений. Прод: .env.local
+    env(STUDIO_API_TOKEN): ''
+    # Pipedrive (CRM клієнта/партнера): порожній токен = інтеграція вимкнена,
+    # щоб dev, локальний стек і сайти без CRM не створювали лідів у чужому акаунті
+    env(PIPEDRIVE_API_TOKEN): ''
+    # власник лідів у Pipedrive; 0 = не передавати. Значення сайту — у паку (config/site/parameters.local.yaml)
+    env(PIPEDRIVE_OWNER_ID): '0'
+    # Bitrix24 (CRM клієнта): вхідний вебхук https://<портал>/rest/<id>/<токен>/ - СЕКРЕТ, лише .env.local сайту.
+    # Порожньо = конектор вимкнений (стенд і dev у чужу CRM не пишуть, лише info «CRM вимкнено» в лог)
+    env(BITRIX24_WEBHOOK_URL): ''
+    # IP, які не впираються в ліміт заявок (свої, для тестів); кома між адресами,
+    # приймає й підмережі
+    env(LEAD_RATE_LIMIT_ALLOWLIST): ''
+
+    # ---- Дефолти рушія; сайт перекриває їх у config/site/parameters.local.yaml (пак, поза git) ----
+    # Схема URL каталогу: flat = /services/<послуга>/, nested = /services/<категорія>/<послуга>/,
+    # root = /<категорія>/<послуга>/ від кореня (сайт з Joomla). Усі схеми в індексі живих сайтів, тому
+    # вибирає пак; див. src/Kernel.php::configureRoutes і config/routes/catalog/*.yaml.
+    app.catalog.url_scheme: flat
+    # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
+    app.blog_prefix: blog
+    # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
+    #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
+    # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
+    # порожньо = як будує шаблон рушія. Сторінки з даними в БД (головна, послуги, категорії, пости) — через адмінку.
+    app.page_meta: {}
+    # Додаткові поля записів (без міграцій): { item|post|category: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized,
+    # filter, categories: [slug_uk розділу…] } ] }. Значення — колонка extra запису, адмінка показує поля сама, шаблони —
+    # custom_fields(entity, locale). Деталі — App\ServiceSite\CustomFields, docs/site-pack.md.
+    app.custom_fields: {}
+    # місто автора у відгуку обовʼязкове в адмінці (пак вмикає; за умовчанням вимкнено,
+    # щоб не ламати редагування старих відгуків на чинних сайтах)
+    app.reviews.require_location: false
+    # Мета-тег google-site-verification у <head> (перевірник GSC не виконує JS, тому не через GTM); порожньо = без тега
+    app.site_verification: ''
+    # Персональні API-токени менеджерів (адмінка → API-токени; docs/admin-api.md): найдовший строк і ліміт невдалих
+    # автентифікацій з IP за хвилину
+    app.admin_api_token_max_days: 90
+    app.admin_api_auth_rate_limit: 30
+    # Microsoft Clarity (id проєкту, напр. qo204yt1uv) — тег у <head> поруч із GTM на всіх хостах сайту; порожньо = без тега.
+    # Параметр паку, а не поле міста: проєкт Clarity один на бренд (у сайтів з Joomla-імпортом тег часто сидів у шаблоні, не в GTM)
+    app.clarity_id: ''
+    # Viber-посилання з %2B перед номером (так його відкривають усі клієнти Viber). false — без плюса: лише якщо тригер
+    # GTM, до якого нема доступу, шукає viber://chat?number=380… (трапляється в успадкованих контейнерах)
+    app.viber_plus: true
+    # true = GTM/gtag і Clarity стартують після window.load + 800 мс або на першу взаємодію (швидший перший кадр, PSI);
+    # пасивні візити рахуються (таймер). false = одразу в head, як було на перших сайтах
+    app.analytics_defer: false
+    # Події dataLayer після успішної заявки (/thanks): кожна з тими самими полями lead_type, city, site_host. Пак із чужим
+    # GTM, де ціль GA4 висить на іншій події, додає її: [generate_lead, form_submit]
+    app.lead_events: [generate_lead]
+    # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
+    # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
+    app.theme: {}
+    # Юридична особа для JSON-LD бізнесу (LocalBusiness): legalName, founder, openingHours (машинний формат schema.org);
+    # порожньо = поле в розмітку не йде
+    app.schema: { legal_name: '', founder: '', opening_hours: '' }
+    # 301-редіректи зі старого сайту (ключ = старий слаг першого рівня без слешів):
+    #   { city: slug|null, item: slug-послуги|null, route: назва-маршруту|null, locale: uk|ru }
+    # city/item — на сторінку послуги (null = головна) з урахуванням міста; route — на фіксований маршрут (sv_contacts).
+    #   Нове (10.2026, міграції з Joomla): ключ = повний старий шлях без слешів (services/heating/old-slug, ru/services/x),
+    #   значення — цільовий шлях рядком ('/services/heating/new-slug/') або { path: … }. Exact-match, зі слешем і без,
+    #   до роутингу (LegacyUrlSubscriber). Збирається з seo/legacy-redirects.yaml паку командою app:site:redirects.
+    app.legacy_redirects: {}
+    # Прибрані розділи старого сайту → 410 Gone (дорвеї зламу, старі «новини»): список префіксів шляху ('/n/').
+    app.gone_prefixes: []
+    # Гігієна URL на хостах сайту (App\ServiceSite\LegacyUrls; пак перекриває лише потрібні ключі):
+    #   trailing_slash — 301 на адресу зі слешем (крім файлів із розширенням і skip_prefixes);
+    #   strip_query — на сторінках за strip_query_paths зрізати зайві параметри (?task=no), лишивши трекінг keep_query.
+    app.clean_urls:
+        trailing_slash: true
+        skip_prefixes: ['/api/', '/admin', '/account', '/_', '/connect/']
+        strip_query: true
+        strip_query_paths: '#^/(ru/)?(services|districts|blog)(/|$)#'
+        keep_query: ['utm_*', 'gclid', 'fbclid', 'yclid', 'msclkid', 'dclid', 'wbraid', 'gbraid', 'ttclid', 'x', 'src']
+        # 404 району на хості одного міста, а район з таким slug є в іншому місті сайту → 301 туди (CrossCityDistrictSubscriber)
+        cross_city: true
+        # префіксні 301 до роутингу: { '/uk/': '/' } — мовний префікс Joomla для мови за замовчуванням (сайт з Joomla);
+        # хвіст шляху зберігається, ціль ще раз звіряється з app.legacy_redirects
+        prefix_redirects: {}
+    # Скільки питань FAQ міста показувати на головній (решта — на /faq/); 0 = усі (FAQPage головної = повний список)
+    app.home_faq_limit: 8
+    # Район без власного FAQ показує FAQ міста (так робить типовий Joomla-шаблон: FAQPage на кожній сторінці району)
+    app.district_faq_fallback: false
+    # /districts/: групи (group_uk) з цього списку — «Передмістя» (акордеон як є); решта груп — «Райони %cityGen%»:
+    # акордеон адмінрайонів із чипами місцевостей, назва групи веде на її primary-сторінку (якщо є). Порожньо = стара
+    # поведінка (картки лише primary-районів + усі групи без primary у «передмісті»).
+    app.district_suburb_groups: []
+    # Власна загальна оцінка рушія (рядок «Середня оцінка X з 5 за N відгуками» під H1 /reviews/ і на головній +
+    # aggregateRating/review[] у JSON-LD LocalBusiness/Product на всіх сторінках). false — коли оцінку з мікророзміткою
+    # дає зовнішній віджет (gbp-manager «Яку оцінку показувати»): на сторінці має бути одна оцінка, і розмітка = видима.
+    app.reviews.own_rating: true
+    # Місто в title/H1/og:title сторінки відгуків (власник 18.10.2026: на піддоменах міст заголовки не мають бути однакові):
+    # auto — «…про компанію %site% у Києві», якщо в сайту більше одного активного міста або це хост не апексного міста;
+    # always — завжди з містом (і апекс одного міста); never — без міста (загальнонаціональна компанія, місто-заглушка).
+    # Тексти — ключі перекладів title.reviews_city / reviews.h1_city (з містом) і title.reviews / reviews.h1 (без).
+    app.reviews.title_city: auto
+    # Віджет відгуків gbp-manager на /reviews/ (власник 18.10.2026): токен віджета (публічний, з gbp-manager → картка →
+    # «Відгуки на сайті» → Код вставки). Заданий — блок віджета (Google + відгуки з сайту, форма) замість власних форми
+    # й списку рушія, а власна оцінка рушія вимикається на всіх сторінках: оцінку й мікророзмітку дає віджет
+    # (на сторінці одна оцінка). Порожньо — як було. Відгуки сайту перед увімкненням імпортуйте в gbp-manager.
+    app.gbp_reviews:
+        token: ''
+        base: 'https://gbp-manager.app'
+    # Коротка назва бренду для текстів ({uk: …, ru: …}), якщо в адмінці (Сайти-бренди → «Коротка назва бренду») порожньо;
+    # нема й тут — назва сайту. Підставляється як %site% у title/H1 сторінки відгуків («Відгуки клієнтів про компанію %site%»).
+    app.brand_name: {}
+    # Де показувати блок «Наша команда» (ServiceTeamMember міста): about | contacts | home (правило власника 11.10.2026 — «Про нас»)
+    app.team_pages: [about]
+    # Чипи районів на головній: { slug-міста: [slug_uk район…] (порядок = порядок показу) | '*' (усі активні) };
+    # нема ключа міста = лише primary-райони (як було). Невідомі/неактивні slug мовчки пропускаються.
+    app.home_districts: {}
+    # Форма заявки на головній (лід-магніт: lead.subtitle, lead.messengers_hint з паку): after_works (як було) | after_hero
+    app.home_lead_position: after_works
+    # Повний каталог у футері (категорії = посилання + усі послуги, колонками; мобільний — згорнуті details); заголовок —
+    # ключ перекладу footer.catalog_title. false = футер як було
+    app.footer_catalog: false
+    # Блог: статей на сторінці списку (/blog/, /blog/page/N/); 0 = усі на одній сторінці
+    app.blog_per_page: 12
+    # CRM сайту (App\ServiceSite\Crm\LeadCrmRegistry): куди йдуть заявки форм і калькулятора.
+    #   system: auto (дефолт: Pipedrive, якщо є PIPEDRIVE_API_TOKEN, інакше none - поведінка до конекторів) |
+    #           none | pipedrive (налаштування - app.pipedrive нижче) | bitrix24 (налаштування - bitrix24 нижче).
+    #   Доступи (токени, вебхуки) - лише .env.local. Пак задає app.crm цілком (перекриває всю мапу).
+    #   bitrix24: category_id, stage_id, title ('Lead from: {host}'), source_id (website), utm_medium_default ('_organic'),
+    #     register_sonet_event (true), contact_fields / deal_fields: { UF_CRM_…: джерело | '{шаблон}' | '=константа' | число }.
+    #     Джерела - Bitrix24Crm::SOURCES (page_url, site_url, host, city, service, name, phone, message, comments, utm_*…).
+    app.crm:
+        system: auto
+        bitrix24: {}
+    # Pipedrive: ключі кастомних полів і опції довідників конкретного акаунта (хеші полів, id опцій).
+    # Порожні fields = кастомні поля не передаються, лише контакт + лід + примітка.
+    app.pipedrive:
+        title_prefix: ''            # префікс назви ліда в Leads Inbox (бренд); порожньо = site.name
+        fields: {}                  # { city: '<hash>', deal_type: '<hash>', source: '<hash>', utm_source: '<hash>', object: '<hash>' }
+        source_option: null         # id опції «Джерело» для заявок із сайту
+        city_options: {}            # { 'host.міста': id-опції }
+        type_by_slug: {}            # { 'slug-послуги': id-опції «Тип угоди» }
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+
+    # Активна CRM сайту за app.crm.system - те, що отримують LeadController/CalculatorController.
+    # autoconfigure: false - інакше аліас сам потрапив би в тег app.lead_crm (циклічна залежність реєстру).
+    App\ServiceSite\Crm\LeadCrmConnector:
+        factory: ['@App\ServiceSite\Crm\LeadCrmRegistry', 'active']
+        autoconfigure: false
+
+    # HTTP-клієнт конекторів CRM без логера: у URL Pipedrive - api_token, у URL Bitrix24 - токен вебхука, а
+    # fingers_crossed на проді при першій же помилці скидає в журнал буфер з «Request: POST <url>».
+    app.crm_http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        autoconfigure: false
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+
+# Локальний стек: дев-токен приймача content-studio (панель satellit на 8112 → host.docker.internal:<порт стека>)
+when@dev:
+    parameters:
+        env(STUDIO_API_TOKEN): 'dev-studio-token'

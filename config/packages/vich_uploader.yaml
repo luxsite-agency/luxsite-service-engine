@@ -1,0 +1,30 @@
+vich_uploader:
+    db_driver: orm
+
+    # Оригінали: public/media/<тип>/<унікальне-ім'я>; віддача nginx-ом як статика.
+    # Розміри під шаблони генерує LiipImagine у public/media/cache (див. liip_imagine.yaml).
+    mappings:
+        service_category_media:
+            uri_prefix: /media/service_category
+            upload_destination: '%kernel.project_dir%/public/media/service_category'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_item_media:
+            uri_prefix: /media/service_item
+            upload_destination: '%kernel.project_dir%/public/media/service_item'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_team_media:
+            uri_prefix: /media/service_team
+            upload_destination: '%kernel.project_dir%/public/media/service_team'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_review_media:
+            uri_prefix: /media/service_review
+            upload_destination: '%kernel.project_dir%/public/media/service_review'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_post_media:
+            uri_prefix: /media/service_post
+            upload_destination: '%kernel.project_dir%/public/media/service_post'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_work_media:
+            uri_prefix: /media/service_work
+            upload_destination: '%kernel.project_dir%/public/media/service_work'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer

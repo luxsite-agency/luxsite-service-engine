@@ -1,0 +1,20 @@
+# php-fpm для проду в Docker за зовнішнім nginx (docker-compose.edge.yml, рантайм docker + proxy: edge).
+# Відмінності від Dockerfile.traefik (стенд): без mysql-клієнта й redis, працює від www-data (uid 33 = server.user на хості: shared/.env.local 600 і
+# shared/media належать йому), mysql-клієнт не потрібен (дамп робить контейнер mysql), TZ платформи Europe/Kyiv.
+FROM php:8.4-fpm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git unzip libicu-dev libzip-dev libpng-dev libjpeg-dev libwebp-dev libfreetype-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" intl pdo_mysql zip opcache gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+COPY edge.ini /usr/local/etc/php/conf.d/zz-edge.ini
+
+# томи vendor/var ініціалізуються з прав цих тек образу (інакше docker створить їх root-ом і composer/кеш впадуть)
+RUN mkdir -p /app/vendor /app/var /tmp/composer && chown -R www-data:www-data /app /tmp/composer
+USER www-data
+
+WORKDIR /app

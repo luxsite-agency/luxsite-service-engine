@@ -1,0 +1,204 @@
+# UI-строки движка сервисных сайтов (домен servicesite). Нейтральные дефолты: бренд-тексты задаёт пак сайта
+# в translations/servicesite.*.yaml → translations/site/ (ключ с пустым значением = элемент не показывается).
+nav.menu: Меню
+nav.services: Услуги
+nav.districts: Районы
+nav.blog: Блог
+nav.about: О нас
+nav.faq: Вопросы и ответы
+faq.page_title: '%faq_title% - %site% %city%'
+faq.page_h1: '%faq_title%'
+nav.contacts: Контакты
+nav.privacy: Политика конфиденциальности
+nav.terms: Условия оказания услуг
+footer.privacy: Политика конфиденциальности
+footer.terms: Условия использования
+nav.reviews: Отзывы
+
+contacts.hours: Часы работы
+contacts.address: Адрес
+about.where: Где мы работаем
+about.cities: ''
+about.legal: ''
+footer.cities: ''
+footer.catalog_title: ''
+contacts.map_title: Мы на карте
+contacts.map_hint: Нажмите, чтобы показать карту Google
+contacts.map_open: Открыть на Google Картах
+contacts.coverage: 'Выезд мастера: %city% и пригород.'
+
+home.services_title: 'Наши услуги'
+home.districts_title: 'Районы обслуживания'
+home.reviews_title: 'Отзывы клиентов'
+home.team_title: Наша команда
+home.faq_title: 'Частые вопросы'
+home.faq_all: 'Все вопросы'
+
+catalog.title: Услуги
+catalog.all_in_category: Все услуги категории
+catalog.prices_title: Цены
+# заголовок таблицы цен: вопрос в той форме, в какой его задают в поиске
+catalog.prices_title_full: Сколько стоит %service% %in% %city%
+catalog.related_title: Другие услуги категории
+catalog.specs_title: Характеристики
+catalog.price_free_text: Цена уточняется
+catalog.uah: грн
+
+prices.from: от
+prices.title: Цены на услуги %in% %city%
+prices.col_service: Услуга
+prices.col_price: Цена, грн
+
+district.title: Районы обслуживания
+district.page_title: '%district_title% - %site% %city%'
+district.page_h1: '%district_title% - %city%'
+district.h1_prefix: Услуги
+districts.other: Другие районы
+district.min_price: Минимальная стоимость выезда
+district.image_alt: 'Панорама %cityGen%'
+district.services_title: 'Все услуги'
+
+common.order: Заказать
+common.call: Позвонить
+common.breadcrumb_home: Главная
+
+review.form_title: Оставить отзыв
+review.login_hint: Чтобы оставить отзыв, войдите через Google - это один клик.
+review.login_google: Войти через Google
+review.as: "Вы пишете как:"
+review.stars: "Оценка:"
+review.placeholder: Расскажите, какие работы выполнял мастер и довольны ли результатом (минимум 20 символов)
+review.submit: Опубликовать отзыв
+
+thanks.title: Заявка принята!
+thanks.text: Мы перезвоним в течение 30 минут в рабочее время, согласуем детали и время визита.
+thanks.urgent: Если вопрос срочный, звоните сразу
+thanks.back: На главную
+
+lead.title: Оставить заявку
+lead.cta: Оставить заявку
+lead.messengers: 'Или напишите в мессенджер:'
+lead.subtitle: ''
+lead.messengers_hint: ''
+form.required: Заполните это поле
+form.phone: Укажите номер телефона
+lead.phone: Телефон
+lead.name: Имя
+lead.message: Что нужно сделать?
+lead.submit: Отправить
+
+brand.tagline: ''
+brand.in: в
+
+hero.person_name: ''
+hero.person_role: ''
+# лічильники під ілюстрацією хіро: value (число) і label (підпис); порожній value = пункту нема
+hero.stat1_value: ''
+hero.stat1_label: ''
+hero.stat2_value: ''
+hero.stat2_label: ''
+hero.stat3_value: ''
+hero.stat3_label: ''
+hero.benefit1: Опытные мастера
+hero.benefit2: Цена известна до начала работ
+hero.benefit3: Весь город и пригород
+hero.benefit4: Выезд в удобное время
+hero.benefit5: Оплата после приёмки работы
+
+# Мета-описания страниц без собственного текста (city подставляется)
+meta.catalog: 'Услуги в %city%: полный перечень работ, цены и сроки. Выезд мастера, цена известна до начала работ.'
+meta.districts: 'Выезжаем во все районы %cityGen% и пригороды. Ближайший свободный мастер, работа ежедневно, цена известна до начала работ.'
+meta.blog: 'Советы и полезные материалы от мастеров в %city%.'
+meta.faq: 'Ответы на частые вопросы о наших услугах в %city%: сроки, цены, состав работ, гарантия и оплата.'
+meta.contacts: 'Телефон, email и график работы в %city%. Принимаем заявки ежедневно.'
+meta.reviews: 'Отзывы клиентов о наших услугах в %city%.'
+
+# Калькулятор стоимости
+nav.calculator: Калькулятор
+calc.title: Калькулятор стоимости
+calc.intro: Выберите тип работ, укажите площадь и дополнительные услуги - ориентировочная стоимость появится сразу. Финальную сумму менеджер подтвердит после уточнения деталей.
+calc.type_label: Тип работ
+calc.area_label: Площадь
+calc.mini_note: Ориентировочно. Точную сумму менеджер подтвердит после уточнения деталей
+calc.object_label: Тип объекта
+calc.dirt_label: Состояние
+calc.m2: м²
+calc.per_m2: грн/м²
+calc.group.object_type: Тип объекта
+calc.group.dirt_level: Степень загрязнения
+calc.group.urgency: Срочность
+calc.group.floor: Этаж и лифт
+calc.group.weekend: День выезда
+calc.options_title: Дополнительные услуги
+calc.summary_title: Ваш расчёт
+calc.base_label: Основная стоимость
+calc.options_label: Дополнительные услуги
+calc.total_label: Итого
+calc.min_note: применён минимальный чек
+calc.disclaimer: Расчёт ориентировочный. Точную стоимость менеджер подтвердит по телефону после уточнения деталей.
+calc.submit: Отправить заявку
+calc.mini_title: Посчитайте стоимость
+calc.mini_title_service: Рассчитайте стоимость этой услуги
+calc.mini_title_district: Рассчитайте стоимость в вашем районе
+calc.service_label: Услуга
+calc.mini_result: Ориентировочная стоимость
+calc.mini_order: Заказать
+calc.mini_full: Полный расчёт с опциями
+meta.calculator: 'Онлайн-калькулятор стоимости в %city%: выберите тип работ, площадь и дополнительные услуги - и сразу узнайте ориентировочную цену.'
+meta.district: '%district%, %cityNom%: наши услуги с выездом мастера. Цена известна до начала работ.'
+meta.about: 'О компании: кто мы, как работаем в %city%, почему нам доверяют.'
+meta.privacy: 'Какие данные собирает сайт, зачем они нужны, кому передаются и как их удалить. Политика конфиденциальности.'
+meta.terms: 'Как оформить заказ, из чего складывается цена, когда платить и что с гарантией. Условия оказания услуг.'
+title.catalog: 'Услуги в %city% - полный перечень и цены'
+title.blog: 'Блог - %cityNom%'
+title.about: 'О компании - %cityNom%'
+title.contacts: 'Контакты в %city%'
+title.reviews: 'Отзывы клиентов о компании %site%'
+title.reviews_city: 'Отзывы клиентов о компании %site% %in% %city%'
+title.district: '%district% - наши услуги, %cityNom%'
+reviews.rating: 'Средняя оценка %avg% из 5 по %count% отзывам'
+reviews.count: '%count% отзыв|%count% отзыва|%count% отзывов'
+reviews.more: Читать полностью
+reviews.less: Свернуть
+reviews.prev: Предыдущие отзывы
+reviews.next: Следующие отзывы
+title.district_long: '%district% - услуги, %cityNom%'
+blog.h1: Блог
+blog.page_suffix: ' - страница %page%'
+blog.pagination: 'Страницы блога'
+blog.prev: '← Новее'
+blog.next: 'Старее →'
+reviews.h1: 'Отзывы клиентов о компании %site%'
+reviews.h1_city: 'Отзывы клиентов о компании %site% %in% %city%'
+district.official_title: 'Районы %cityGen%'
+district.suburbs_title: 'Пригороды и населённые пункты рядом'
+district.all_link: 'Все районы'
+district.inside_title: 'Местности: %group%'
+district.nearby_title: 'Рядом в районе: %group%'
+district.parent_link: 'Административный район'
+district.service_title: 'Выезжаем во все районы %cityGen%'
+district.faq_title: 'Частые вопросы'
+title.district_b: '%district%: выезд мастера - %cityNom%'
+title.district_c: 'Услуги - %district%, %cityNom%'
+district.h1_a: 'Услуги - %district%'
+district.h1_b: 'Выезд мастера - %district%'
+district.h1_c: 'Наши услуги - %district%, %cityNom%'
+meta.district_b: '%district%, %cityNom%: выезд мастера, цена известна до начала работ, оплата после приёмки.'
+meta.district_c: 'Закажите услуги - %district%, %cityNom%. Выезд мастера в удобное время, цена известна до начала работ.'
+district.contains: 'В район входят'
+district.areas_title: 'Направления работ'
+district.area_home_title: ''
+district.area_home_text: ''
+district.area_commercial_title: ''
+district.area_commercial_text: ''
+district.area_textile_title: ''
+district.area_textile_text: ''
+district.area_extra_title: ''
+district.area_extra_text: ''
+district.also_here_a: '%group% - работаем также здесь:'
+district.also_here_b: 'Рядом выезжаем в такие местности:'
+district.also_here_c: 'Те же мастера обслуживают:'
+footer.copyright: 'Все материалы сайта защищены законом Украины «Об авторском праве и смежных правах».'
+works.title: 'Наши работы'
+works.before: 'До'
+works.after: 'После'

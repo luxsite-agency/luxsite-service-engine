@@ -1,0 +1,11 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Загальна оцінка біля блоку відгуків (ReviewsRating): з віджета gbp-manager — «5.0 ★★★★★ · 102 відгуки» (ті самі числа,
+   що в шапці віджета), власна — «Середня оцінка X з 5 за N відгуками», як було. agg = reviewsAggregate або null. #}
+{% if agg %}
+    {% if agg.source|default('own') == 'gbp' %}
+        {% set full = agg.avg|round %}
+        <p class="meta rating-line rating-line--gbp"><b>{{ agg.avg|number_format(1, '.', '') }}</b> <span class="rating-stars" aria-label="{{ agg.avg }}/5">{% for i in 1..5 %}<span style="color:{{ i <= full ? '#f5b301' : 'currentColor' }};{{ i <= full ? '' : 'opacity:.3' }}">★</span>{% endfor %}</span> · {{ 'reviews.count'|trans({'%count%': agg.count}, 'servicesite') }}</p>
+    {% else %}
+        <p class="meta rating-line">{{ 'reviews.rating'|trans({'%avg%': agg.avg, '%count%': agg.count}, 'servicesite') }}</p>
+    {% endif %}
+{% endif %}

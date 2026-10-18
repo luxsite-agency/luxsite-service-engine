@@ -1,0 +1,50 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'title.about'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.about'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.about'|trans({}, 'servicesite')},
+    ]) }}
+    {{ schema.business(site, city, locale, url('sv_home', {_locale: locale}), app.request.schemeAndHttpHost, {}) }}
+    {{ schema.ld({
+        '@context': 'https://schema.org',
+        '@type': 'AboutPage',
+        'url': altUrls[locale],
+        'mainEntity': {'@id': app.request.schemeAndHttpHost ~ '/#business'},
+    }) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.about'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ site.loc('aboutTitle', locale) ?? 'nav.about'|trans({}, 'servicesite') }}</h1>
+    {# текст «Про нас»: міський (ServiceCity.about, 10.2026) має пріоритет над спільним ServiceSite.about #}
+    {% set _about = city.loc('about', locale) ?: site.loc('about', locale) %}
+    {% if _about %}
+        {# райони й передмістя - свої в кожного міста; у спільному тексті на їхньому місці маркер #}
+        {% set where = city.loc('aboutWhere', locale) %}
+        {# about.cities / about.legal - бренд-рядки з перекладів паку; порожні = абзаців нема #}
+        {% set _cities = 'about.cities'|trans({'%brand%': site.name}, 'servicesite') %}
+        {% set _citiesHtml = _cities and _cities != 'about.cities' ? '<p><!--city-raw-->' ~ (_cities|e) ~ '<!--/city-raw--></p>' : '' %}
+        {% set whereHtml = where
+            ? '<h2>' ~ ('about.where'|trans({}, 'servicesite')|e) ~ '</h2>' ~ '
+<p><!--city-raw-->' ~ (where|e) ~ '<!--/city-raw--></p>' ~ _citiesHtml
+            : '' %}
+        <div>{{ _about|replace({'<!--city-where-->': whereHtml})|raw }}</div>
+        {% set _legal = 'about.legal'|trans({}, 'servicesite') %}
+        {% if _legal and _legal != 'about.legal' %}<p class="meta">{{ _legal }}</p>{% endif %}
+    {% else %}
+        <p class="meta"> - </p>
+    {% endif %}
+
+    {# команда — тут за замовчуванням (правило власника 11.10.2026; пак: app.team_pages) #}
+    {% include 'services/partials/_team.html.twig' %}
+{% endblock %}

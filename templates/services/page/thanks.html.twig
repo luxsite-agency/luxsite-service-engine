@@ -1,0 +1,40 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'thanks.title'|trans({}, 'servicesite') }} - {{ site.name }}{% endblock %}
+
+{% block meta %}
+    <meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block body %}
+    {# конверсія: подія летить у dataLayer, звідти GTM робить ціль GA4. Перелік подій — app.lead_events паку
+       (дефолт [generate_lead]; чужий контейнер може чекати form_submit) — усі з тими самими полями.
+       src=dup - повторна відправка того самого номера: конверцію вдруге не рахуємо #}
+    {% if app.request.query.get('src') != 'dup' %}
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        {% for _ev in lead_events %}
+        window.dataLayer.push({
+            event: {{ _ev|json_encode|raw }},
+            lead_type: {{ (({calc: 'calculator', magnet: 'magnet'})[app.request.query.get('src')] ?? 'form')|json_encode|raw }},
+            city: {{ city.name('uk')|json_encode|raw }},
+            site_host: {{ app.request.host|json_encode|raw }}
+        });
+        {% endfor %}
+    </script>
+    {% endif %}
+
+    <section class="block" style="text-align:center;padding:3rem 0">
+        <div style="width:84px;height:84px;margin:0 auto 1.2rem;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h1 style="margin:.4rem 0">{{ 'thanks.title'|trans({}, 'servicesite') }}</h1>
+        <p style="font-size:1.15rem;color:var(--muted-text);max-width:560px;margin:0 auto 1.6rem">
+            {{ 'thanks.text'|trans({}, 'servicesite') }}
+            {% if city.phone %}<br>{{ 'thanks.urgent'|trans({}, 'servicesite') }}
+            <a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}" style="font-weight:700;white-space:nowrap">{{ city.phone }}</a>{% endif %}
+        </p>
+        <a class="btn" href="{{ path('sv_home') }}">{{ 'thanks.back'|trans({}, 'servicesite') }}</a>
+    </section>
+{% endblock %}

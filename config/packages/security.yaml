@@ -1,0 +1,62 @@
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_MODERATOR]      # адмін платформи: все
+        ROLE_MODERATOR: [ROLE_EDITOR]     # контент і черги заявок сервісних сайтів
+        ROLE_EDITOR: [ROLE_USER]
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        # REST для менеджерів і Claude Code — персональні токени Bearer svc_… (App\AdminApi), без сесії; лише на хості
+        # адмінки (AdminHostSubscriber ріже /api/admin на хостах сайтів). Стоїть ПЕРЕД main. Вимкнений користувач → 401,
+        # без дозволу → 403 JSON (ApiAccessDeniedHandler). Приймач студії /api/studio лишається на хостах сайтів.
+        admin_api:
+            pattern: ^/(api/admin|mcp)(/|$)
+            stateless: true
+            provider: app_user_provider
+            user_checker: App\Security\ActiveUserChecker
+            custom_authenticators: [App\AdminApi\Auth\ApiTokenAuthenticator]
+            entry_point: App\AdminApi\Auth\ApiTokenAuthenticator
+            access_denied_handler: App\AdminApi\Auth\ApiAccessDeniedHandler
+        main:
+            lazy: true
+            provider: app_user_provider
+            user_checker: App\Security\ActiveUserChecker
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+                default_target_path: admin
+            custom_authenticator: App\Security\GoogleAuthenticator
+            entry_point: App\Security\AppAuthenticationEntryPoint
+            logout:
+                path: app_logout
+                # на ADMIN_HOST роута '/' немає (тенант не резолвиться) — ведемо на логін
+                target: app_login
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 1209600 # 2 тижні
+
+    access_control:
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/(api/admin|mcp), roles: ROLE_USER }
+        - { path: ^/admin, roles: ROLE_MODERATOR }
+
+when@test:
+    security:
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

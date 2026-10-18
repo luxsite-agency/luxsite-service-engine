@@ -1,0 +1,21 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Блок «Наша команда» (ServiceTeamMember міста). Де показувати — пак: app.team_pages ([about] типово; about|contacts).
+   Очікує team (масив) і locale; порожня команда = блоку нема. #}
+{% if team is defined and team is not empty %}
+<section class="block muted">
+    <h2>{{ 'home.team_title'|trans({}, 'servicesite') }}</h2>
+    <div class="grid">
+        {% for member in team %}
+        <div class="card">
+            {% if member.imageName %}
+            <img src="/media/service_team/{{ member.imageName }}" alt="{{ member.imageAlt ?? member.loc('name', locale) }}"
+                 style="width:100%;max-width:260px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;display:block;margin-bottom:.6rem">
+            {% endif %}
+            <div class="card-name">{{ member.loc('name', locale) }}</div>
+            {% if member.loc('role', locale) %}<p class="meta">{{ member.loc('role', locale) }}</p>{% endif %}
+            {% if member.loc('desc', locale) %}<p>{{ member.loc('desc', locale) }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

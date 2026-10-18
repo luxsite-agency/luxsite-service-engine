@@ -1,0 +1,8 @@
+{# Свій дизайн сайту: шаблон паку перекриває services/home.html.twig рушія. Тут — успадкування з перевизначенням блоку;
+   можна й повністю свій шаблон (без extends). Шаблони рушія — за простором імен @engine. #}
+{% extends '@engine/services/home.html.twig' %}
+
+{% block body %}
+    <section class="demo-banner"><div class="wrap">{{ 'brand.tagline'|trans({}, 'servicesite') }}</div></section>
+    {{ parent() }}
+{% endblock %}

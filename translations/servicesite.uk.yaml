@@ -1,0 +1,210 @@
+# UI-рядки рушія сервісних сайтів (домен servicesite). Нейтральні дефолти: бренд-тексти (слоган, переваги хіро,
+# мета-описи, заголовки, напрями робіт, копірайт) задає пак сайту в translations/servicesite.*.yaml → translations/site/
+# (ключ з порожнім значенням = елемент не показується). Тексти контенту — в БД.
+nav.menu: Меню
+nav.services: Послуги
+nav.districts: Райони
+nav.blog: Блог
+nav.about: Про нас
+nav.faq: Питання й відповіді
+# <title> і H1 сторінки /faq/: пак перекриває цілком (параметри %faq_title% = nav.faq, %site%, %city%, %cityGen%, %cityLoc%)
+faq.page_title: '%faq_title% - %site% %city%'
+faq.page_h1: '%faq_title%'
+nav.contacts: Контакти
+nav.privacy: Політика конфіденційності
+nav.terms: Умови надання послуг
+footer.privacy: Політика конфіденційності
+footer.terms: Умови використання
+nav.reviews: Відгуки
+
+contacts.hours: Години роботи
+contacts.address: Адреса
+about.where: Де ми працюємо
+about.cities: ''
+about.legal: ''
+footer.cities: ''
+# заголовок каталогу у футері (app.footer_catalog); порожньо = без заголовка
+footer.catalog_title: ''
+contacts.map_title: Ми на карті
+contacts.map_hint: Натисніть, щоб показати карту Google
+contacts.map_open: Відкрити на Google Картах
+contacts.coverage: 'Виїзд майстра: %city% і передмістя.'
+
+home.services_title: 'Наші послуги'
+home.districts_title: 'Райони обслуговування'
+home.reviews_title: 'Відгуки клієнтів'
+home.team_title: Наша команда
+home.faq_title: 'Часті питання'
+home.faq_all: 'Усі питання'
+
+catalog.title: Послуги
+catalog.all_in_category: Всі послуги категорії
+catalog.prices_title: Ціни
+# заголовок таблиці цін: питання, яким його ставить людина в пошуку
+catalog.prices_title_full: Скільки коштує %service% %in% %city%
+catalog.related_title: Інші послуги категорії
+catalog.specs_title: Характеристики
+catalog.price_free_text: Ціна уточнюється
+catalog.uah: грн
+
+prices.from: від
+prices.title: Ціни на послуги %in% %city%
+prices.col_service: Послуга
+prices.col_price: Ціна, грн
+
+district.title: Райони обслуговування
+# <title> і H1 сторінки /districts/: пак перекриває цілком (параметри %site%, %city%, %cityGen%, %cityLoc%)
+district.page_title: '%district_title% - %site% %city%'
+district.page_h1: '%district_title% - %city%'
+# TODO мультиніша: винести професію в поле ServiceSite разом із prices.title
+district.h1_prefix: Послуги
+districts.other: Інші райони
+district.min_price: Мінімальна вартість виїзду
+district.image_alt: 'Панорама %cityGen%'
+district.services_title: 'Всі послуги'
+
+common.order: Замовити
+common.call: Подзвонити
+common.breadcrumb_home: Головна
+
+review.form_title: Залишити відгук
+review.login_hint: Щоб залишити відгук, увійдіть через Google - це один клік.
+review.login_google: Увійти через Google
+review.as: "Ви пишете як:"
+review.stars: "Оцінка:"
+review.placeholder: Розкажіть, які роботи виконував майстер і чи задоволені результатом (мінімум 20 символів)
+review.submit: Опублікувати відгук
+
+thanks.title: Заявку прийнято!
+thanks.text: Ми передзвонимо протягом 30 хвилин у робочий час, узгодимо деталі й час візиту.
+thanks.urgent: Якщо питання термінове, телефонуйте одразу
+thanks.back: На головну
+
+lead.title: Залишити заявку
+lead.cta: Залишити заявку
+lead.messengers: 'Або напишіть у месенджер:'
+# лід-магніт на головній (app.home_lead_position): абзац під заголовком і підпис до месенджерів під формою; порожньо = нема
+lead.subtitle: ''
+lead.messengers_hint: ''
+form.required: Заповніть це поле
+form.phone: Вкажіть номер телефону
+lead.phone: Телефон
+lead.name: "Ім'я"
+lead.message: Що потрібно зробити?
+lead.submit: Надіслати
+
+brand.tagline: ''
+brand.in: у
+
+hero.person_name: ''
+hero.person_role: ''
+# лічильники під ілюстрацією хіро: value (число) і label (підпис); порожній value = пункту нема
+hero.stat1_value: ''
+hero.stat1_label: ''
+hero.stat2_value: ''
+hero.stat2_label: ''
+hero.stat3_value: ''
+hero.stat3_label: ''
+hero.benefit1: Досвідчені майстри
+hero.benefit2: Ціна відома до початку робіт
+hero.benefit3: Усе місто і передмістя
+hero.benefit4: Виїзд у зручний час
+hero.benefit5: Оплата після приймання роботи
+
+# Мета-описи сторінок без власного тексту (city підставляється)
+meta.catalog: 'Послуги %in% %city%: повний перелік робіт, ціни й терміни. Виїзд майстра, ціна відома до початку робіт.'
+meta.districts: 'Виїжджаємо в усі райони %cityGen% та передмістя. Найближчий вільний майстер, робота щодня, ціна відома до початку робіт.'
+meta.blog: 'Поради й корисні матеріали від майстрів %in% %city%.'
+meta.faq: 'Відповіді на часті питання про наші послуги %in% %city%: терміни, ціни, склад робіт, гарантія та оплата.'
+meta.contacts: 'Телефон, email і графік роботи %in% %city%. Приймаємо заявки щодня.'
+meta.reviews: 'Відгуки клієнтів про наші послуги %in% %city%.'
+
+# Калькулятор вартості
+nav.calculator: Калькулятор
+calc.title: Калькулятор вартості
+calc.intro: Оберіть тип робіт, вкажіть площу й додаткові послуги - орієнтовна вартість зʼявиться одразу. Фінальну суму менеджер підтвердить після уточнення деталей.
+calc.type_label: Тип робіт
+calc.area_label: Площа
+calc.mini_note: Орієнтовно. Точну суму менеджер підтвердить після уточнення деталей
+calc.object_label: Тип об'єкта
+calc.dirt_label: Стан
+calc.m2: м²
+calc.per_m2: грн/м²
+calc.group.object_type: Тип обʼєкта
+calc.group.dirt_level: Стан забруднення
+calc.group.urgency: Терміновість
+calc.group.floor: Поверх і ліфт
+calc.group.weekend: День виїзду
+calc.options_title: Додаткові послуги
+calc.summary_title: Ваш розрахунок
+calc.base_label: Основна вартість
+calc.options_label: Додаткові послуги
+calc.total_label: Разом
+calc.min_note: застосовано мінімальний чек
+calc.disclaimer: Розрахунок орієнтовний. Точну вартість менеджер підтвердить за телефоном після уточнення деталей.
+calc.submit: Надіслати заявку
+calc.mini_title: Порахуйте вартість
+calc.mini_title_service: Порахуйте вартість цієї послуги
+calc.mini_title_district: Порахуйте вартість у вашому районі
+calc.service_label: Послуга
+calc.mini_result: Орієнтовна вартість
+calc.mini_order: Замовити
+calc.mini_full: Повний розрахунок з опціями
+meta.calculator: 'Онлайн-калькулятор вартості %in% %city%: оберіть тип робіт, площу й додаткові послуги - і одразу дізнайтесь орієнтовну ціну.'
+meta.district: '%district%, %cityNom%: наші послуги з виїздом майстра. Ціна відома до початку робіт.'
+meta.about: 'Про компанію: хто ми, як працюємо %in% %city%, чому нам довіряють.'
+meta.privacy: 'Які дані збирає сайт, навіщо вони потрібні, кому передаються і як їх видалити. Політика конфіденційності.'
+meta.terms: 'Як оформити замовлення, з чого складається ціна, коли платити і що з гарантією. Умови надання послуг.'
+title.catalog: 'Послуги %in% %city% - повний перелік і ціни'
+title.blog: 'Блог - %cityNom%'
+title.about: 'Про компанію - %cityNom%'
+title.contacts: 'Контакти %in% %city%'
+title.reviews: 'Відгуки клієнтів про компанію %site%'
+title.reviews_city: 'Відгуки клієнтів про компанію %site% %in% %city%'
+title.district: '%district% - наші послуги, %cityNom%'
+reviews.rating: 'Середня оцінка %avg% з 5 за %count% відгуками'
+reviews.count: '%count% відгук|%count% відгуки|%count% відгуків'
+reviews.more: Читати повністю
+reviews.less: Згорнути
+reviews.prev: Попередні відгуки
+reviews.next: Наступні відгуки
+title.district_long: '%district% - послуги, %cityNom%'
+blog.h1: Блог
+blog.page_suffix: ' - сторінка %page%'
+blog.pagination: 'Сторінки блогу'
+blog.prev: '← Новіші'
+blog.next: 'Давніші →'
+reviews.h1: 'Відгуки клієнтів про компанію %site%'
+reviews.h1_city: 'Відгуки клієнтів про компанію %site% %in% %city%'
+district.official_title: 'Райони %cityGen%'
+district.suburbs_title: 'Передмістя та населені пункти поруч'
+district.all_link: 'Всі райони'
+district.inside_title: 'Місцевості: %group%'
+district.nearby_title: 'Поруч у районі: %group%'
+district.parent_link: 'Адміністративний район'
+district.service_title: 'Виїжджаємо в усі райони %cityGen%'
+district.faq_title: 'Часті питання'
+title.district_b: '%district%: виїзд майстра - %cityNom%'
+title.district_c: 'Послуги - %district%, %cityNom%'
+district.h1_a: 'Послуги - %district%'
+district.h1_b: 'Виїзд майстра - %district%'
+district.h1_c: 'Наші послуги - %district%, %cityNom%'
+meta.district_b: '%district%, %cityNom%: виїзд майстра, ціна відома до початку робіт, оплата після приймання.'
+meta.district_c: 'Замовте послуги - %district%, %cityNom%. Виїзд майстра у зручний час, ціна відома до початку робіт.'
+district.contains: 'До району входять'
+district.areas_title: 'Напрями робіт'
+district.area_home_title: ''
+district.area_home_text: ''
+district.area_commercial_title: ''
+district.area_commercial_text: ''
+district.area_textile_title: ''
+district.area_textile_text: ''
+district.area_extra_title: ''
+district.area_extra_text: ''
+district.also_here_a: '%group% - працюємо також тут:'
+district.also_here_b: 'Поруч виїжджаємо в такі місцевості:'
+district.also_here_c: 'Ті самі майстри обслуговують:'
+footer.copyright: 'Усі матеріали сайту захищені законом України «Про авторське право і суміжні права».'
+works.title: 'Наші роботи'
+works.before: 'До'
+works.after: 'Після'

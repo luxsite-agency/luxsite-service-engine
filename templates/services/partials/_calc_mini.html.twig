@@ -1,0 +1,156 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Скорочений калькулятор унизу головної (замість простої форми звязку).
+   Розкладка як на сторінці /calculator/: параметри ліворуч, підсумок праворуч -
+   щоб перехід на повний розрахунок не ламав звичку. Рахує ту саму формулу,
+   що CalcPricer; опції й терміновість - уже на повній сторінці. #}
+{# Параметри: calcActive - id передвибраного типу, calcSlug - слаг послуги,
+   calcDistrict - слаг району (те саме призначення: повернути людину туди,
+   звідки вона надіслала форму), calcTitle - заголовок. #}
+{% set calcActiveId = calcActive|default(null) %}
+{% set objectTypes = calcFactors.object_type|default([]) %}
+{% set dirtLevels = calcFactors.dirt_level|default([]) %}
+<section class="block calc-mini" id="calc-mini">
+    <p class="form-title">{{ (calcTitle|default('calc.mini_title'))|trans({}, 'servicesite') }}</p>
+
+    <div class="calc-mini-body">
+        <div class="calc-mini-params">
+            <div class="calc-mini-field">
+                <span class="calc-mini-label">{{ 'calc.type_label'|trans({}, 'servicesite') }}</span>
+                <div class="calc-chips calc-chips-wide" data-group="type">
+                    {% for type in calcTypes %}
+                    <button type="button" class="{{ calcActiveId ? (type.id == calcActiveId ? 'active') : (loop.first ? 'active') }}" data-value="{{ type.id }}"
+                            data-pps="{{ type.pricePerSqm }}" data-min="{{ type.minPrice }}">
+                        {{ type.loc('name', locale) }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="calc-mini-field">
+                <span class="calc-mini-label">
+                    {{ 'calc.area_label'|trans({}, 'servicesite') }}
+                    <output for="calc-mini-range" id="calc-mini-area-out">50</output> {{ 'calc.m2'|trans({}, 'servicesite') }}
+                </span>
+                <div class="calc-mini-area">
+                    <input type="range" id="calc-mini-range" min="20" max="300" step="5" value="50"
+                           aria-label="{{ 'calc.area_label'|trans({}, 'servicesite') }}">
+                    <input type="number" id="calc-mini-area" value="50" min="10" max="5000"
+                           aria-label="{{ 'calc.area_label'|trans({}, 'servicesite') }}">
+                </div>
+            </div>
+
+            {% if objectTypes %}
+            <div class="calc-mini-field">
+                <span class="calc-mini-label">{{ 'calc.object_label'|trans({}, 'servicesite') }}</span>
+                <div class="calc-chips" data-group="object">
+                    {% for f in objectTypes %}
+                    <button type="button" class="{{ f.isDefault ? 'active' }}" data-value="{{ f.id }}"
+                            data-k="{{ f.multiplier }}">{{ f.loc('name', locale) }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if dirtLevels %}
+            <div class="calc-mini-field">
+                <span class="calc-mini-label">{{ 'calc.dirt_label'|trans({}, 'servicesite') }}</span>
+                <div class="calc-chips" data-group="dirt">
+                    {% for f in dirtLevels %}
+                    <button type="button" class="{{ f.isDefault ? 'active' }}" data-value="{{ f.id }}"
+                            data-k="{{ f.multiplier }}">{{ f.loc('name', locale) }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <form class="calc-mini-result" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form aria-live="polite">
+            <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+            <input type="hidden" name="loc" value="{{ locale }}">
+            <input type="hidden" name="from" value="{{ calcSlug is defined ? 'service' : (calcDistrict is defined ? 'district' : 'home') }}">
+            {% if calcSlug is defined %}<input type="hidden" name="svc" value="{{ calcSlug }}">{% endif %}
+            {% if calcDistrict is defined %}<input type="hidden" name="dst" value="{{ calcDistrict }}">{% endif %}
+            <input type="hidden" name="type" id="calc-mini-f-type" value="">
+            <input type="hidden" name="area" id="calc-mini-f-area" value="50">
+            <input type="hidden" name="factors[]" id="calc-mini-f-object" value="">
+            <input type="hidden" name="factors[]" id="calc-mini-f-dirt" value="">
+            <input type="text" name="website" value="" tabindex="-1" autocomplete="off"
+                   style="position:absolute;left:-9999px" aria-hidden="true">
+
+            <span class="calc-mini-result-label">{{ 'calc.mini_result'|trans({}, 'servicesite') }}</span>
+            <p class="calc-mini-price">
+                <span>{{ 'prices.from'|trans({}, 'servicesite') }}</span>
+                <b id="calc-mini-total">0</b>
+                <span>{{ 'catalog.uah'|trans({}, 'servicesite') }}</span>
+            </p>
+            <p class="calc-mini-recap" id="calc-mini-recap"></p>
+
+            <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
+            <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+            <button type="submit" class="btn">{{ 'calc.mini_order'|trans({}, 'servicesite') }}</button>
+
+            <a class="calc-mini-full" href="{{ path('sv_calculator') }}" id="calc-mini-order">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>
+            <span class="calc-mini-note">{{ 'calc.mini_note'|trans({}, 'servicesite') }}</span>
+        </form>
+    </div>
+
+    <script>
+        (function () {
+            var root = document.getElementById('calc-mini');
+            var area = document.getElementById('calc-mini-area');
+            var range = document.getElementById('calc-mini-range');
+            var areaOut = document.getElementById('calc-mini-area-out');
+            var out = document.getElementById('calc-mini-total');
+            var recap = document.getElementById('calc-mini-recap');
+            var order = document.getElementById('calc-mini-order');
+            var base = order.getAttribute('href');
+
+            var pick = function (group) {
+                return root.querySelector('.calc-chips[data-group="' + group + '"] button.active');
+            };
+
+            var recompute = function () {
+                var type = pick('type');
+                if (!type) { return; }
+                var value = Math.min(Math.max(parseInt(area.value, 10) || 0, 10), 5000);
+                var k = 1;
+                var parts = [type.textContent.trim(), value + ' ' + areaOut.nextSibling.textContent.trim()];
+                ['object', 'dirt'].forEach(function (group) {
+                    var chip = pick(group);
+                    if (!chip) { return; }
+                    k *= parseFloat(chip.dataset.k) || 1;
+                    parts.push(chip.textContent.trim().toLowerCase());
+                });
+                var total = Math.ceil(Math.max(value * parseFloat(type.dataset.pps) * k, parseFloat(type.dataset.min)));
+                out.textContent = String(total).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                recap.textContent = parts.join(' · ');
+                areaOut.textContent = value;
+
+                document.getElementById('calc-mini-f-type').value = type.dataset.value;
+                document.getElementById('calc-mini-f-area').value = value;
+
+                var url = base + '?type=' + type.dataset.value + '&area=' + value;
+                ['object', 'dirt'].forEach(function (group) {
+                    var chip = pick(group);
+                    document.getElementById('calc-mini-f-' + group).value = chip ? chip.dataset.value : '';
+                    if (chip) { url += '&factor[]=' + chip.dataset.value; }
+                });
+                order.href = url + '#calc-form';
+            };
+
+            root.addEventListener('click', function (e) {
+                var chip = e.target.closest('.calc-chips button');
+                if (!chip) { return; }
+                chip.parentNode.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+                chip.classList.add('active');
+                recompute();
+            });
+            area.addEventListener('input', function () {
+                if (parseInt(area.value, 10) <= parseInt(range.max, 10)) { range.value = area.value; }
+                recompute();
+            });
+            range.addEventListener('input', function () { area.value = range.value; recompute(); });
+            recompute();
+        })();
+    </script>
+</section>

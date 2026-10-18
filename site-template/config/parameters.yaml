@@ -1,0 +1,51 @@
+# Параметри сайту sitetemplate.example.com без секретів (деплой копіює в config/site/parameters.local.yaml рушія).
+# Дефолти й повний перелік ключів — config/services.yaml і App\ServiceSite\SiteTheme::DEFAULTS у рушії.
+# Секрети (DATABASE_URL, MAILER_DSN, STUDIO_API_TOKEN, GOOGLE_CLIENT_*, PIPEDRIVE_API_TOKEN, BITRIX24_WEBHOOK_URL) — лише .env.local на сервері.
+parameters:
+    # URL каталогу: nested = /services/<категорія>/<послуга>/ + сторінки категорій; flat = /services/<послуга>/
+    app.catalog.url_scheme: nested
+    # google-site-verification (html-тег GSC); порожньо = без тега
+    app.site_verification: ''
+    # Microsoft Clarity: id проєкту (тег у head поруч із GTM); порожньо = без тега
+    app.clarity_id: ''
+    # відкласти старт GTM/gtag/Clarity до load+800 мс або першої взаємодії (PSI); false = одразу в head
+    app.analytics_defer: true
+    # події dataLayer після заявки (/thanks); чужий GTM із ціллю на іншій події — додати її: [generate_lead, form_submit]
+    app.lead_events: [generate_lead]
+    # форма заявки на головній: after_works (типово) | after_hero (лід-магніт одразу під першим екраном)
+    app.home_lead_position: after_works
+    # повний каталог у футері (категорії + всі послуги колонками); заголовок — footer.catalog_title у перекладах
+    app.footer_catalog: false
+    app.theme:
+        key: sitetemplate
+        colors:
+            accent: '#f98111'
+            accent2: '#faa125'
+            accent_ink: '#a35a08'
+            dark: '#22304e'
+            navy: '#24334f'
+            footer_bg: '#f2f6f8'
+            footer_line: '#d5dce3'
+            footer_text: '#48474c'
+            footer_ink: '#22304e'
+        # файли в themes/sitetemplate/ (шляхи від public/, без початкового слеша); порожньо = дефолт рушія
+        logo: ''
+        favicon_ico: ''
+        favicon_png: ''
+        apple_touch_icon: ''
+        og_image: ''
+        hero_image: ''
+        hero_srcset: ''
+        hero_width: ''
+        hero_height: ''
+        stylesheet: ''
+        # true = вміст stylesheet у <style> в head замість <link> (швидше перший кадр; відносні url(…) переписуються самі);
+        # вмикати разом із app.analytics_defer (docs/site-pack.md «Швидкість»)
+        stylesheet_inline: true
+    # JSON-LD бізнесу (LocalBusiness); порожнє поле в розмітку не йде
+    app.schema:
+        legal_name: ''
+        founder: ''
+        opening_hours: 'Mo-Su 08:00-20:00'
+    # 301 зі старого сайту: старий-слаг: { city: slug|null, item: slug|null, route: назва|null, locale: uk|ru }
+    app.legacy_redirects: {}

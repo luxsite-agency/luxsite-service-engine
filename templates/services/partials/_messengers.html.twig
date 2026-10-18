@@ -1,0 +1,8 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Месенджери міста (ServiceCity.viber/telegram/whatsapp): шапка біля телефону, футер, контакти, модалка заявки.
+   Порожнє поле = посилання нема. Клік → dataLayer messenger_click (base.html.twig); href стабільні для тригерів GTM:
+   viber://chat?number=%2B… (плюс закодований: без нього на частині Android/iOS чат не відкривається; app.viber_plus: false — без плюса,
+   якщо чужий тригер GTM шукає number=380…), https://t.me/…, https://wa.me/… #}
+{% if city.viber %}<a class="msgr msgr-viber" href="viber://chat?number={{ viber_plus ? '%2B' : '' }}{{ city.viber }}" rel="nofollow" data-messenger="viber"><span class="ico">●</span>Viber</a>{% endif %}
+{% if city.telegram %}<a class="msgr msgr-telegram" href="https://t.me/{{ city.telegram }}" target="_blank" rel="nofollow noopener" data-messenger="telegram"><span class="ico">●</span>Telegram</a>{% endif %}
+{% if city.whatsapp %}<a class="msgr msgr-whatsapp" href="https://wa.me/{{ city.whatsapp }}" target="_blank" rel="nofollow noopener" data-messenger="whatsapp"><span class="ico">●</span>WhatsApp</a>{% endif %}

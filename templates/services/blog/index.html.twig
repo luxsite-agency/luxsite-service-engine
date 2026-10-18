@@ -1,0 +1,58 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'title.blog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% if page|default(1) > 1 %}{{ 'blog.page_suffix'|trans({'%page%': page}, 'servicesite') }}{% endif %}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.blog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block meta %}
+    {# сторінки списку: prev/next для обходу (Google їх не вимагає, але не шкодять); canonical — своя адреса на апексі #}
+    {% if page|default(1) > 1 %}<link rel="prev" href="{{ page == 2 ? url('sv_blog', {_locale: locale}) : url('sv_blog_page', {page: page - 1, _locale: locale}) }}">{% endif %}
+    {% if page|default(1) < pages|default(1) %}<link rel="next" href="{{ url('sv_blog_page', {page: page|default(1) + 1, _locale: locale}) }}">{% endif %}
+{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.blog'|trans({}, 'servicesite')},
+    ]) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.blog'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'blog.h1'|trans({}, 'servicesite') }}</h1>
+    {% for post in posts %}
+    <article class="card post-card">
+        {% if post.imageName %}
+        <a class="post-thumb" href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}">
+            <img src="/media/service_post/{{ post.imageName }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}"
+                 width="220" height="116" loading="lazy">
+        </a>
+        {% endif %}
+        <div class="post-body">
+            <h2><a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}">{{ post.loc('title', locale) }}</a></h2>
+            {% if post.publishedAt %}<p class="meta">{{ post.publishedAt|date('d.m.Y') }}</p>{% endif %}
+            {% if post.loc('lead', locale) %}<p>{{ post.loc('lead', locale)|striptags }}</p>{% endif %}
+        </div>
+    </article>
+    {% else %}
+    <p class="meta"> - </p>
+    {% endfor %}
+
+    {% if pages|default(1) > 1 %}
+    {% set _p = page|default(1) %}
+    <nav class="pagination" aria-label="{{ 'blog.pagination'|trans({}, 'servicesite') }}">
+        {% if _p > 1 %}<a class="pg-prev" href="{{ _p == 2 ? path('sv_blog') : path('sv_blog_page', {page: _p - 1}) }}" rel="prev">{{ 'blog.prev'|trans({}, 'servicesite') }}</a>{% endif %}
+        {% for n in 1..pages %}
+            {% if n == _p %}<span class="pg-cur" aria-current="page">{{ n }}</span>
+            {% elseif n == 1 or n == pages or (n >= _p - 2 and n <= _p + 2) %}<a href="{{ n == 1 ? path('sv_blog') : path('sv_blog_page', {page: n}) }}">{{ n }}</a>
+            {% elseif n == _p - 3 or n == _p + 3 %}<span class="pg-gap">…</span>{% endif %}
+        {% endfor %}
+        {% if _p < pages %}<a class="pg-next" href="{{ path('sv_blog_page', {page: _p + 1}) }}" rel="next">{{ 'blog.next'|trans({}, 'servicesite') }}</a>{% endif %}
+    </nav>
+    {% endif %}
+{% endblock %}

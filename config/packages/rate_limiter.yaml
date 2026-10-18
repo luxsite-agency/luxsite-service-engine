@@ -1,0 +1,19 @@
+# Ліміти за IP (реальний IP на проді — з CF-Connecting-IP через nginx realip).
+framework:
+    rate_limiter:
+        # невдалі автентифікації API-токенів з однієї IP (ApiTokenAuthenticator); ліміт — app.admin_api_auth_rate_limit
+        admin_api_auth_ip:
+            policy: sliding_window
+            limit: '%app.admin_api_auth_rate_limit%'
+            interval: '1 minute'
+        # POST /lead — заявки сервісних сайтів
+        # жорсткий ліміт для всіх; свої адреси - у LEAD_RATE_LIMIT_ALLOWLIST
+        service_lead_ip:
+            policy: sliding_window
+            limit: 5
+            interval: '60 minutes'
+        # POST /reviews/submit — подача відгуків (Google-юзери)
+        service_review_ip:
+            policy: sliding_window
+            limit: 10
+            interval: '60 minutes'

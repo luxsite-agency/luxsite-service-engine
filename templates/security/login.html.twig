@@ -1,0 +1,41 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Самодостатня сторінка логіну адмінки (без фронтового каркаса) #}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Вхід - Service Sites</title>
+</head>
+<body>
+<div style="max-width:360px;margin:10vh auto;font-family:system-ui,sans-serif">
+    <h1 style="font-size:1.4rem">Service Sites</h1>
+
+    {% if error %}
+        <div style="color:#b00020;margin-bottom:1rem">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+    {% endif %}
+
+    <form method="post">
+        <label for="username" style="display:block;margin-bottom:.25rem">Email</label>
+        <input type="email" value="{{ last_username }}" name="_username" id="username"
+               autocomplete="email" required autofocus
+               style="width:100%;padding:.5rem;margin-bottom:1rem">
+
+        <label for="password" style="display:block;margin-bottom:.25rem">Пароль</label>
+        <input type="password" name="_password" id="password"
+               autocomplete="current-password" required
+               style="width:100%;padding:.5rem;margin-bottom:1rem">
+
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+        <label style="display:block;margin-bottom:1rem">
+            <input type="checkbox" name="_remember_me"> Запам'ятати мене
+        </label>
+
+        <button type="submit" style="width:100%;padding:.6rem;background:#0f2f24;color:#fff;border:0;border-radius:6px;cursor:pointer">
+            Увійти
+        </button>
+    </form>
+</div>
+</body>
+</html>

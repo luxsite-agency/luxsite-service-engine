@@ -1,0 +1,7 @@
+# CSRF: класичні СЕСІЙНІ токени замість stateless.
+# Stateless-варіант (дефолт скелетона) вимагає JS, який ставить куку і підміняє
+# плейсхолдер "csrf-token" — за Cloudflare це ламалось ("Invalid CSRF token"
+# на логіні, 2026-08-09). Сесійні токени працюють без JS і за будь-яким проксі.
+framework:
+    form:
+        csrf_protection: true

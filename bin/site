@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE.
+# bin/site — команди системи сервісних сайтів service-engine (порт bin/store із shop-engine, docs/site-ops.md).
+#
+#   bin/site <команда> [аргументи]      bin/site help      bin/site <команда> --help
+#
+# Диспетчер: кожна підкоманда — окремий файл bin/site.d/<команда>.sh (виконується bash-ем, не source),
+# спільні функції — bin/site.d/_lib.sh (підкоманда підключає їх сама: source "$SITE_LIB").
+# Рядок «# summary: …» у файлі підкоманди — опис для `bin/site help`. Файли з «_» на початку — не команди.
+#
+# Змінні: SITES_FILE (реєстр, типово <рушій>/sites.yaml), DRY_RUN=1 (лише показати дії), SITE_DEBUG=1 (set -x).
+set -euo pipefail
+
+SITE_ENGINE_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+SITE_CMD_DIR="$SITE_ENGINE_DIR/bin/site.d"
+export SITE_ENGINE_DIR SITE_CMD_DIR
+export SITE_LIB="$SITE_CMD_DIR/_lib.sh"
+export SITES_FILE="${SITES_FILE:-$SITE_ENGINE_DIR/sites.yaml}"
+
+usage() {
+    echo "Використання: bin/site <команда> [аргументи]   (DRY_RUN=1 — сухий прогін)"
+    echo
+    echo "Команди:"
+    local f name summary
+    for f in "$SITE_CMD_DIR"/*.sh; do
+        [ -e "$f" ] || continue
+        name="$(basename "$f" .sh)"
+        case "$name" in _*) continue ;; esac
+        summary="$(sed -n 's/^# summary: //p' "$f" | head -n1)"
+        printf '  %-10s %s\n' "$name" "$summary"
+    done
+}
+
+cmd="${1:-help}"
+case "$cmd" in
+    help | -h | --help) usage; exit 0 ;;
+    _* | */* | .*) echo "site: невідома команда '$cmd'" >&2; exit 2 ;;
+esac
+file="$SITE_CMD_DIR/$cmd.sh"
+if [ ! -f "$file" ]; then
+    echo "site: невідома команда '$cmd'" >&2
+    usage >&2
+    exit 2
+fi
+shift
+if [ "${SITE_DEBUG:-0}" = 1 ]; then exec bash -x "$file" "$@"; fi
+exec bash "$file" "$@"

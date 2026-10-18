@@ -1,0 +1,11 @@
+# Бренд-тексти сайту (ru), що перекривають дефолти рушія translations/servicesite.ru.yaml.
+brand:
+    tagline: ''
+hero:
+    person_name: ''
+    person_role: ''
+footer:
+    cities: ''
+about:
+    cities: ''
+    legal: ''

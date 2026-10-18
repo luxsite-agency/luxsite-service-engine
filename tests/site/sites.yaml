@@ -1,0 +1,114 @@
+# Реєстр-фікстура для tests/site/run.sh (сухі прогони): вигадані сайти й сервери на всі гілки bin/site —
+# стенд на цій машині (host: local, runtime docker за traefik), прод у Docker за edge, FastPanel по ssh і «стара схема».
+# Справжній реєстр живе поза рушієм і передається через SITES_FILE (приклад — sites.example.yaml, docs/site-ops.md).
+version: 1
+sites:
+    - key: alpha
+      name: 'Alpha — стенд на цій машині (оновлюється з main)'
+      repo: example-org/site-alpha
+      pack: /opt/packs/site-alpha
+      server:
+          host: local
+          runtime: docker
+          path: /opt/stand/site-alpha
+      domains:
+          site: alpha.stand.example.net
+          admin: alpha-admin.stand.example.net
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      auto_update: true
+      backup_target: /opt/backups/sites
+    - key: beta
+      name: 'Beta — стенд зі своїм compose-файлом (server.compose)'
+      repo: example-org/site-beta
+      pack: /opt/packs/site-beta
+      server:
+          host: local
+          runtime: docker
+          compose: /opt/stand/compose/beta.yml
+          path: /opt/stand/site-beta
+      domains:
+          site: beta.stand.example.net
+          admin: beta-admin.stand.example.net
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      auto_update: true
+      backup_target: /opt/backups/sites
+      notes: >-
+          Джерело — не дамп прода рушія, а Joomla: db-init/10-site.sql.gz = дамп БД локального стенда після
+          app:joomla:import (docs/site-ops.md, «Стенд із Joomla-джерела»); друге місто = south-beta.stand.example.net
+          (90-stand-hosts.sql з docker/traefik/90-stand-hosts.sql.tpl).
+    - key: demo
+      name: 'Демо-сайт на стенді (фікстура docker, host local)'
+      pack: tests/site/pack-demo
+      server:
+          host: local
+          runtime: docker
+          path: /opt/stand/site-demo
+      domains:
+          site: demo.example.com
+          admin: demo-admin.example.com
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      backup_target: null
+    - key: edgedemo
+      name: 'Прод у Docker за зовнішнім nginx (фікстура ssh, runtime docker + proxy edge)'
+      repo: example-org/site-edgedemo
+      pack: tests/site/pack-demo
+      server:
+          host: edge.example.com
+          user: www-data
+          runtime: docker
+          proxy: edge
+          path: /opt/sites/site-edgedemo
+      domains:
+          site: new.edgedemo.example.com
+          admin: admin-new.edgedemo.example.com
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      backup_target: null
+    - key: client
+      name: 'Сайт на FastPanel клієнта (фікстура ssh)'
+      repo: example-org/site-client
+      pack: tests/site/pack-client
+      server:
+          host: client.example.com
+          user: client_usr
+          runtime: fastpanel
+          path: /var/www/client_usr/data/www/site-client
+          php: /opt/php84/bin/php
+          fpm_reload: systemctl reload fp2-php84-fpm
+          docroot: /var/www/client_usr/data/www/client.example.com
+          docroot_extra: [/var/www/client_usr/data/www/admin.client.example.com]
+          check_ip: 203.0.113.10
+      domains:
+          site: client.example.com
+          admin: admin.client.example.com
+      locales: [uk, ru]
+      engine: main
+      status: active
+      support: true
+      backup_target: null
+    - key: old
+      name: 'Стара схема (робоча копія + post-receive) — bin/site не чіпає'
+      server:
+          host: myserver
+          user: old_usr
+          runtime: fastpanel
+          path: /var/www/old_usr/data/www/old-app
+      domains:
+          site: old.example.com
+          admin: admin.old.example.com
+      locales: [uk]
+      engine: main
+      status: active
+      support: true
+      backup_target: null

@@ -1,0 +1,12 @@
+# Бренд-тексти сайту (uk), що перекривають дефолти рушія translations/servicesite.uk.yaml.
+# Порожнє значення = елемент не показується. Повний перелік ключів — у файлі рушія.
+brand:
+    tagline: ''
+hero:
+    person_name: ''
+    person_role: ''
+footer:
+    cities: ''
+about:
+    cities: ''
+    legal: ''

@@ -1,0 +1,64 @@
+# Локальний стек рушія (порт 8113, щоб тримати поруч із стеками сайтів 8106/8107). Сайт у dev =
+# <slug>.localhost:8113, адмінка = service-sites.localhost:8113. Пак підключається копіюванням
+# config/parameters.yaml → config/site/parameters.local.yaml і themes/<key> → public/themes/<key>.
+name: service-engine
+
+services:
+  service-engine-php:
+    build: ./docker/php
+    container_name: service-engine-php
+    restart: "no"
+    volumes:
+      - ./:/app
+      - service-engine-vendor:/app/vendor
+      - service-engine-var:/app/var
+    environment:
+      PHP_IDE_CONFIG: serverName=service-engine
+    depends_on:
+      service-engine-mysql:
+        condition: service_healthy
+      service-engine-redis:
+        condition: service_started
+
+  service-engine-nginx:
+    image: nginx:1.27-alpine
+    container_name: service-engine-nginx
+    restart: "no"
+    ports:
+      - "8113:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+    depends_on:
+      - service-engine-php
+
+  service-engine-mysql:
+    image: mysql:8.0
+    container_name: service-engine-mysql
+    restart: "no"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: service_engine
+      MYSQL_USER: service_engine
+      MYSQL_PASSWORD: service_engine
+    ports:
+      - "33113:3306"
+    volumes:
+      - service-engine-mysql-data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+
+  service-engine-redis:
+    image: redis:7-alpine
+    container_name: service-engine-redis
+    restart: "no"
+
+volumes:
+  service-engine-vendor:
+  service-engine-var:
+  service-engine-mysql-data:

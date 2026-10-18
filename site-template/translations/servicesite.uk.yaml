@@ -1,0 +1,24 @@
+# Бренд-тексти сайту (uk), що перекривають дефолти рушія translations/servicesite.uk.yaml.
+# Порожнє значення = елемент не показується. Повний перелік ключів — у файлі рушія.
+brand:
+    tagline: ''
+hero:
+    person_name: ''
+    person_role: ''
+    stat1_value: ''
+    stat1_label: ''
+    stat2_value: ''
+    stat2_label: ''
+    stat3_value: ''
+    stat3_label: ''
+lead:
+    # лід-магніт на головній: абзац під «Залишити заявку» і підпис до месенджерів під формою (app.home_lead_position)
+    subtitle: ''
+    messengers_hint: ''
+footer:
+    cities: ''
+    # заголовок каталогу у футері (app.footer_catalog), напр. «Послуги сантехніка»; порожньо = без заголовка
+    catalog_title: ''
+about:
+    cities: ''
+    legal: ''

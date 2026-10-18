@@ -1,0 +1,73 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Сторінка категорії: схеми URL nested (/services/<кат>/) і root (/<кат>/), маршрут sv_category з config/routes/catalog/*.yaml #}
+{% extends 'services/base.html.twig' %}
+
+{# міський текст категорії (override = ServiceCategoryCity) має пріоритет; порожні поля падають на категорію #}
+{% block title %}{{ ov(override|default(null), category, 'metaTitle', locale) ?? (ov(override|default(null), category, 'title', locale) ~ ' - ' ~ site.name ~ ' ' ~ city.name(locale)) }}{% endblock %}
+
+{# meta description: своя → лід (desc без HTML) → загальний текст каталогу #}
+{% block metaDescription %}{{ ov(override|default(null), category, 'metaDesc', locale) ?? (ov(override|default(null), category, 'desc', locale) ? ov(override|default(null), category, 'desc', locale)|striptags|trim|slice(0, 300) : ('meta.catalog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale)}, 'servicesite'))) }}{% endblock %}
+{% block meta %}{% if not category.landing %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
+{% block ogImage %}{{ category.imageName ? '/media/service_category/' ~ category.imageName : (theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+    ]|merge(catalog_url_scheme != 'root' ? [{'name': 'catalog.title'|trans({}, 'servicesite'), 'url': url('sv_services', {_locale: locale})}] : [])|merge([
+        {'name': ov(override|default(null), category, 'title', locale)},
+    ])) }}
+    {{ schema.faqPage(category.loc('faq', locale) ?? []) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {% if catalog_url_scheme != 'root' %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
+        {{ ov(override|default(null), category, 'title', locale) }}
+    </nav>
+    {% set _cdesc = ov(override|default(null), category, 'desc', locale) %}
+    {# лід категорії (якщо є) іде під H1, а опис — повним HTML після карток; без ліду — як було: опис без HTML під H1 #}
+    {% set _clead = category.loc('lead', locale) %}
+    {# верх як на сторінці послуги (на всіх сайтах, рішення власника 11.10.2026): H1 + лід (desc без HTML) + кнопки; картинка справа #}
+    <div class="hero">
+        <div class="hero-content">
+            <h1>{{ ov(override|default(null), category, 'title', locale) }}</h1>
+            {% if _clead %}<p class="hero-sub">{{ _clead|striptags }}</p>{% elseif _cdesc %}<p class="hero-sub">{{ _cdesc|striptags }}</p>{% endif %}
+            <p class="hero-actions">
+                <button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button>
+                {% if city.phone %}
+                <a class="btn btn-ghost" href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ 'common.call'|trans({}, 'servicesite') }}: {{ city.phone }}</a>
+                {% endif %}
+            </p>
+        </div>
+        {% if category.imageName %}
+        <div class="hero-img">
+            <img src="/media/service_category/{{ category.imageName }}" alt="{{ category.imageAlt ?? ov(override|default(null), category, 'title', locale) }}"
+                 width="560" height="373" fetchpriority="high">
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid">
+        {% for item in items %}
+        <div class="card">
+            {# назва — з самої послуги (без міста: «у списку назва міста виглядає спамно», власник 11.10.2026); лід — з перевизначення міста #}
+            {# h2: на сторінці категорії після h1 одразу картки — h3 ламав порядок заголовків (Lighthouse heading-order) #}
+            {# коротка назва (name), якщо задана; інакше повна — як було #}
+            <h2 class="card-name"><a href="{{ service_path(item, locale) }}">{{ item.shortName(locale) }}</a></h2>
+            {% set _ispecs = custom_fields(item, locale)|filter(f => not f.filter) %}
+            {% if _ispecs is not empty %}
+            <dl class="card-specs">{% for spec in _ispecs %}<dt>{{ spec.label }}</dt><dd>{{ spec.value }}</dd>{% endfor %}</dl>
+            {% else %}
+            {% set _ilead = item_text(item, 'lead', locale) %}{% if _ilead %}<p>{{ _ilead|striptags|slice(0, 160) }}…</p>{% endif %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if _clead and _cdesc %}<section class="block">{{ _cdesc|raw }}</section>{% endif %}
+    {% set _cdesc2 = ov(override|default(null), category, 'desc2', locale) %}{% if _cdesc2 %}<section class="block">{{ _cdesc2|raw }}</section>{% endif %}
+    {% set _cdesc3 = ov(override|default(null), category, 'desc3', locale) %}{% if _cdesc3 %}<section class="block">{{ _cdesc3|raw }}</section>{% endif %}
+    {% include 'services/partials/_faq.html.twig' with {faq: category.loc('faq', locale) ?? []} %}
+{% endblock %}

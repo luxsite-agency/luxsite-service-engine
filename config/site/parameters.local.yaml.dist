@@ -1,0 +1,35 @@
+# Параметри конкретного сайту (пак). Деплой копіює config/parameters.yaml паку сюди:
+# config/site/parameters.local.yaml (файл поза git). Kernel імпортує його після services.yaml,
+# тож значення тут перекривають дефолти рушія. У тестах не вантажиться. Секретів тут нема:
+# БД, SMTP, OAuth, токени — лише .env.local на сервері сайту.
+parameters:
+    # Схема URL каталогу: flat (/services/<послуга>/) або nested (/services/<категорія>/<послуга>/)
+    app.catalog.url_scheme: flat
+    # google-site-verification (GSC, html-тег); порожньо = без тега
+    app.site_verification: ''
+    # Тема: лише відмінні від App\ServiceSite\SiteTheme::DEFAULTS ключі; шляхи — від public/
+    # app.theme:
+    #     key: 'example'
+    #     colors: { accent: '#0FA3B1', accent2: '#2FBFCD', accent_ink: '#0b7d88', dark: '#123a41', navy: '#10272C', footer_bg: '#e6f2f3', footer_line: '#c9e2e4' }
+    #     logo: 'themes/example/logo-example.png'
+    #     favicon_ico: 'themes/example/favicon.ico'
+    #     favicon_png: 'themes/example/favicon-192.png'
+    #     apple_touch_icon: 'themes/example/apple-touch-icon.png'
+    #     og_image: 'themes/example/og-example.png'
+    #     hero_srcset: '/themes/example/hero.webp 1x, /themes/example/hero@2x.webp 2x'
+    # JSON-LD бізнесу: юридична особа, засновник, графік у форматі schema.org
+    # app.schema: { legal_name: 'ФОП Прізвище І. Б.', founder: 'Імʼя Прізвище', opening_hours: 'Mo-Su 09:00-21:00' }
+    # 301 зі старого сайту: ключ — старий слаг першого рівня
+    # app.legacy_redirects:
+    #     uborka-kvartir-dnepr: { city: dnipro, item: apartment-cleaning, locale: ru }
+    #     contact: { route: sv_contacts, locale: ru }
+    #     shop: { locale: ru }        # на головну
+    # Pipedrive: порожні fields = кастомні поля не передаються
+    # app.pipedrive:
+    #     title_prefix: 'Бренд'
+    #     fields: { city: '<hash>', deal_type: '<hash>', source: '<hash>', utm_source: '<hash>', object: '<hash>' }
+    #     source_option: 42
+    #     city_options: { 'example.com': 32, 'kharkiv.example.com': 33 }
+    #     type_by_slug: { 'general-cleaning': 47 }
+    # Власник лідів у Pipedrive (не секрет; сам токен — лише в .env.local)
+    # env(PIPEDRIVE_OWNER_ID): '123456'

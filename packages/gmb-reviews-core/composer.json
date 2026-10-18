@@ -1,0 +1,27 @@
+{
+    "name": "luxsite/gmb-reviews-core",
+    "description": "Google reviews block for client websites, fed by GMB Manager (public widget API v1): fetch, cache, render HTML + JSON-LD, review form.",
+    "version": "1.1.0",
+    "type": "library",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "LuxSite",
+            "homepage": "https://luxsite.agency",
+            "role": "Platform developers"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-json": "*"
+    },
+    "suggest": {
+        "psr/simple-cache": "Pass a PSR-16 cache to Client to avoid fetching on every request"
+    },
+    "autoload": {
+        "psr-4": {
+            "Luxsite\\GmbReviews\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
