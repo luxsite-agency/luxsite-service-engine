@@ -164,6 +164,7 @@ title.reviews_city: 'Відгуки клієнтів про компанію %si
 title.district: '%district% - наші послуги, %cityNom%'
 reviews.rating: 'Середня оцінка %avg% з 5 за %count% відгуками'
 reviews.count: '%count% відгук|%count% відгуки|%count% відгуків'
+reviews.all: 'Усі відгуки'
 reviews.more: Читати повністю
 reviews.less: Згорнути
 reviews.prev: Попередні відгуки
