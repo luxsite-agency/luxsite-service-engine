@@ -185,7 +185,7 @@
     <section class="block muted center">
         <h2>{{ 'home.reviews_title'|trans({}, 'servicesite') }}</h2>
         {% if reviewsAggregate %}
-        {% include 'services/partials/_rating_line.html.twig' with {agg: reviewsAggregate} only %}
+        {% include 'services/partials/_rating_line.html.twig' with {agg: reviewsAggregate, all_url: path('sv_reviews')} only %}
         {% endif %}
         {% include 'services/partials/_reviews_row.html.twig' %}
     </section>

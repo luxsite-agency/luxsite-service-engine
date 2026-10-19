@@ -158,6 +158,7 @@ title.reviews_city: 'Отзывы клиентов о компании %site% %i
 title.district: '%district% - наши услуги, %cityNom%'
 reviews.rating: 'Средняя оценка %avg% из 5 по %count% отзывам'
 reviews.count: '%count% отзыв|%count% отзыва|%count% отзывов'
+reviews.all: 'Все отзывы'
 reviews.more: Читать полностью
 reviews.less: Свернуть
 reviews.prev: Предыдущие отзывы

@@ -43,12 +43,13 @@
     <p class="meta rating-line">{{ 'reviews.rating'|trans({'%avg%': reviewsAggregate.avg, '%count%': reviewsAggregate.count}, 'servicesite') }}</p>
     {% endif %}
 
-    {% if gbp_reviews.token|default('') %}
-    {# Віджет gbp-manager (app.gbp_reviews): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
+    {% set gbpToken = gbpToken|default(gbp_reviews.token|default('')) %}
+    {% if gbpToken %}
+    {# Віджет gbp-manager (app.gbp_reviews: token або cities[slug міста]): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
        власні форма, список і оцінка рушія не показуються, щоб на сторінці була одна оцінка. Мова — мова сторінки. #}
     <section class="block" id="add-review">
-        <div data-gmb-reviews="{{ gbp_reviews.token }}" data-layout="grid" data-theme="light" data-lang="{{ locale }}"></div>
-        <script src="{{ gbp_reviews.base|default('https://gbp-manager.app')|trim('/', 'right') }}/w/embed/v1" data-token="{{ gbp_reviews.token }}" async></script>
+        <div data-gmb-reviews="{{ gbpToken }}" data-layout="grid" data-theme="light" data-lang="{{ locale }}"></div>
+        <script src="{{ gbp_reviews.base|default('https://gbp-manager.app')|trim('/', 'right') }}/w/embed/v1" data-token="{{ gbpToken }}" async></script>
     </section>
     {% else %}
     {# Без кредів Google OAuth (.env.local) увійти неможливо: блок не показуємо зовсім, попередження — в адмінці #}

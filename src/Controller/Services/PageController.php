@@ -118,6 +118,8 @@ final class PageController extends AbstractController
             'reviews' => $this->reviews->findActiveByCity($city, 100),
             // загальна оцінка (рядок + aggregateRating): з віджета gbp-manager, якщо підключений, інакше власна (ReviewsRating)
             'reviewsAggregate' => $this->reviewsRating->aggregate($city, true),
+            // токен віджета gbp-manager для цього міста (app.gbp_reviews.cities[slug] або спільний); порожньо — форма й список рушія
+            'gbpToken' => $this->reviewsRating->gbpToken($city),
             'altUrls' => $this->altUrls('sv_reviews'),
         ]);
     }
