@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Controller\Services;
 
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadConsent;
 use App\Entity\ServiceCalcFactor;
 use App\Entity\ServiceCalcOption;
 use App\Entity\ServiceCity;
@@ -69,6 +70,7 @@ final class CalculatorController extends AbstractController
         private readonly ServiceLeadRepository $leads,
         private readonly CalculatorAvailability $availability,
         private readonly PricelistCalc $pricelist,
+        private readonly LeadConsent $consent,
     ) {
     }
 
@@ -199,6 +201,15 @@ final class CalculatorController extends AbstractController
             return $this->redirect($back);
         }
 
+        // згода на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не змінюється
+        if (!$this->consent->accepted($request->request->get('consent'))) {
+            $this->addFlash('lead_error', $locale === 'ru'
+                ? 'Подтвердите согласие на обработку персональных данных.'
+                : 'Підтвердьте згоду на обробку персональних даних.');
+
+            return $this->redirect($back);
+        }
+
         // подвійне натискання: заявка з цим номером у місті вже є - другу не створюємо
         // (та сама логіка, що в LeadController; src=dup не рахує конверсію вдруге)
         if ($this->leads->findRecentDuplicate($city, $phone, LeadController::DUPLICATE_WINDOW) !== null) {
@@ -270,6 +281,7 @@ final class CalculatorController extends AbstractController
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
             ->setMessage($message)
+            ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setPageUrl(mb_substr($sourceUrl, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);

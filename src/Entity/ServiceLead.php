@@ -85,6 +85,19 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(length: 512, nullable: true)]
     private ?string $landingUrl = null;
 
+    /**
+     * Додаткові поля форми (app.lead_fields паку — запис на прийом, запит на розрахунок): {ключ: значення}; select —
+     * підпис обраного варіанта українською, date — Y-m-d. Читабельна копія — у message. null = форма без додаткових полів.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $details = null;
+
+    /** Коли людина поставила галочку згоди на обробку персональних даних (app.lead_consent); null — згоду не питали. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $consentAt = null;
+
     // - CRM сайту (app.crm, конектор App\ServiceSite\Crm\LeadCrmConnector) -
 
     /** Ід запису в CRM (лід Pipedrive - uuid, угода Bitrix24 - число); null - ще не відправлено, черга app:crm:sync. */
@@ -343,6 +356,40 @@ class ServiceLead implements TimestampableInterface
     public function setCrmError(?string $crmError): self
     {
         $this->crmError = $crmError;
+
+        return $this;
+    }
+
+    /** @return array<string, string>|null */
+    public function getDetails(): ?array
+    {
+        return $this->details;
+    }
+
+    /** @param array<string, string>|null $details */
+    public function setDetails(?array $details): self
+    {
+        $this->details = $details === [] ? null : $details;
+
+        return $this;
+    }
+
+    /** Значення додаткових полів одним рядком для списку заявок в адмінці («Консультація · 25.10.2026»). */
+    public function getDetailsShort(): ?string
+    {
+        $values = array_filter(array_map('strval', $this->details ?? []), static fn (string $v): bool => $v !== '');
+
+        return $values !== [] ? implode(' · ', $values) : null;
+    }
+
+    public function getConsentAt(): ?\DateTimeImmutable
+    {
+        return $this->consentAt;
+    }
+
+    public function setConsentAt(?\DateTimeImmutable $consentAt): self
+    {
+        $this->consentAt = $consentAt;
 
         return $this;
     }

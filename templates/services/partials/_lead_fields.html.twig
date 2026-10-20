@@ -1,0 +1,43 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Додаткові поля форми заявки (app.lead_fields паку: запис на прийом, запит на розрахунок) групами (fieldset)
+   і чекбокс згоди на обробку персональних даних (app.lead_consent). Вставляється всередину <form action="{{ path('sv_lead') }}">;
+   без полів і згоди в паку — нічого не виводить.
+   Форма буває на сторінці двічі (інлайн і модалка), тому id у полів нема: підпис обгортає поле.
+   Параметри include: field_class (клас обгортки поля, тема паку може дати свій); lead_preset ({джерело: value} — обраний
+   варіант select; дефолт — послуга сторінки, якщо форма стоїть на сторінці послуги). #}
+{% set _loc = locale|default(app.request.locale) %}
+{% set _preset = lead_preset|default(item is defined and item is not null and item.slugUk is defined ? {services: item.slugUk} : {}) %}
+{% set _lf = lead_fields(_loc, _preset) %}
+{% if _lf is not empty %}
+{% set _cls = field_class|default('lead-field') %}
+<div class="lead-fields">
+    {% set _group = null %}
+    {% for f in _lf %}
+        {% if f.group != _group %}
+            {% if _group is not null %}</fieldset>{% endif %}
+            <fieldset class="lead-fields__group">{% if f.group %}<legend>{{ f.group }}</legend>{% endif %}
+            {% set _group = f.group %}
+        {% endif %}
+        <label class="{{ _cls }} lead-field--{{ f.type }}">
+            {# одиниця — у підписі через кому («Вага, кг»), окремого суфікса під полем нема #}
+            <span>{{ f.label_full }}{% if f.required %} <sup>*</sup>{% endif %}</span>
+            {% if f.type == 'select' %}
+            <select name="{{ f.name }}"{% if f.required %} required{% endif %}>
+                <option value="">{{ f.placeholder ?: 'lead.select_placeholder'|trans({}, 'servicesite') }}</option>
+                {% for o in f.options %}
+                <option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>
+                {% endfor %}
+            </select>
+            {% elseif f.type == 'date' %}
+            <input type="date" name="{{ f.name }}" min="{{ f.min }}" max="{{ f.max }}"{% if f.required %} required{% endif %}>
+            {% else %}
+            <input name="{{ f.name }}"
+                   type="{{ f.type == 'number' ? 'text' : f.type }}"{% if f.type == 'number' %} inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,3})?"{% endif %}
+                   maxlength="255"{% if f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}{% if f.required %} required{% endif %}{% if f.type == 'email' %} autocomplete="email"{% endif %}>
+            {% endif %}
+        </label>
+    {% endfor %}
+    </fieldset>
+</div>
+{% endif %}
+{% include 'services/partials/_lead_consent.html.twig' with {locale: _loc} %}
