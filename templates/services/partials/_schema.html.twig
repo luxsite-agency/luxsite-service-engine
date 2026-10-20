@@ -59,11 +59,21 @@
     {% if schema_business.founder %}{% set data = data|merge({'founder': {'@type': 'Person', 'name': schema_business.founder}}) %}{% endif %}
     {% if city.phone %}{% set data = data|merge({'telephone': city.phone}) %}{% endif %}
     {% if city.email %}{% set data = data|merge({'email': city.email}) %}{% endif %}
-    {# адрес може бути кілька, по рядку; у розмітку йде лише перший (адреса цього міста).
+    {# адрес може бути кілька, по рядку; у розмітку йде лише перший (адреса цього міста) — або всі, коли пак задав
+       app.schema.addresses: all (кілька філій в одному місті): тоді address — список PostalAddress, по одному на рядок.
        Вулиця - до другої коми: «вулиця Прикладна, 4» #}
     {% if city.address(locale) %}
-        {% set parts = (city.address(locale)|split("\n")|first)|split(', ') %}
-        {% set data = data|merge({'address': data.address|merge({'streetAddress': parts|slice(0, 2)|join(', ')})}) %}
+        {% set _lines = city.address(locale)|split("\n")|map(l => l|trim)|filter(l => l) %}
+        {% if schema_business.addresses|default('first') == 'all' and _lines|length > 1 %}
+            {% set _addrs = [] %}
+            {% for _line in _lines %}
+                {% set _addrs = _addrs|merge([data.address|merge({'streetAddress': (_line|split(', '))|slice(0, 2)|join(', ')})]) %}
+            {% endfor %}
+            {% set data = data|merge({'address': _addrs}) %}
+        {% else %}
+            {% set parts = (city.address(locale)|split("\n")|first)|split(', ') %}
+            {% set data = data|merge({'address': data.address|merge({'streetAddress': parts|slice(0, 2)|join(', ')})}) %}
+        {% endif %}
     {% endif %}
     {# зображення - og-картинка теми паку (або хіро бренду), лого - з теми #}
     {% set _img = theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath %}

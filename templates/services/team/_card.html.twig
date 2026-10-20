@@ -1,0 +1,21 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Картка людини команди: блок «Наша команда», список /<app.team_prefix>/, блок «Фахівці» на сторінці послуги.
+   Очікує member і locale. Посилання на сторінку людини — лише коли сторінки команди ввімкнено (app.team_prefix) і в людини
+   є слаг; тоді опис не повторюємо (він на її сторінці), лише роль і «Детальніше». Без сторінок — як було: роль і опис. #}
+{% set _href = team_prefix and member.slug(locale) ? path('sv_team_member', {slug: member.slug(locale)}) : null %}
+<div class="card team-card">
+    {% if member.imageName %}
+    {% if _href %}<a href="{{ _href }}" tabindex="-1" aria-hidden="true">{% endif %}
+    {# lazy — лише в довгих списках зі сторінками команди і не в першому ряду (перші фото — кандидати в LCP) #}
+    <img src="/media/service_team/{{ member.imageName }}" alt="{{ member.imageAlt ?? member.loc('name', locale) }}"{% if _href and loop is defined and loop.index > 4 %} loading="lazy"{% endif %}
+         style="width:100%;max-width:260px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;display:block;margin-bottom:.6rem">
+    {% if _href %}</a>{% endif %}
+    {% endif %}
+    <div class="card-name">{% if _href %}<a href="{{ _href }}">{{ member.loc('name', locale) }}</a>{% else %}{{ member.loc('name', locale) }}{% endif %}</div>
+    {% if member.loc('role', locale) %}<p class="meta">{{ member.loc('role', locale) }}</p>{% endif %}
+    {% if _href %}
+    <p><a href="{{ _href }}">{{ 'team.more'|trans({}, 'servicesite') }} →</a></p>
+    {% elseif member.loc('desc', locale) %}
+    <p>{{ member.loc('desc', locale) }}</p>
+    {% endif %}
+</div>

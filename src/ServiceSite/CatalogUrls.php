@@ -37,6 +37,8 @@ final class CatalogUrls
         private readonly string $scheme = 'flat',
         #[Autowire('%app.blog_prefix%')]
         private readonly string $blogPrefix = 'blog',
+        #[Autowire('%app.team_prefix%')]
+        private readonly string $teamPrefix = '',
     ) {
     }
 
@@ -46,7 +48,7 @@ final class CatalogUrls
     }
 
     /**
-     * Слаги, заборонені для категорії в цій схемі: у root — зарезервовані сегменти (разом із префіксом блогу);
+     * Слаги, заборонені для категорії в цій схемі: у root — зарезервовані сегменти (разом із префіксами блогу й команди);
      * у flat/nested категорії живуть під /services/ і ні з чим не стикаються.
      *
      * @return list<string>
@@ -57,7 +59,7 @@ final class CatalogUrls
             return [];
         }
 
-        return array_values(array_unique([...self::RESERVED_SEGMENTS, $this->blogPrefix]));
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, $this->teamPrefix], static fn (string $s) => $s !== '')));
     }
 
     /** Чи заборонений slug для категорії (reservedCategorySlugs); порівняння без регістру. */
