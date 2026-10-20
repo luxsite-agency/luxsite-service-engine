@@ -617,6 +617,7 @@
                         {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                         {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
+                        {% if city_has_team(city) %}<a href="{{ path('sv_team') }}">{{ 'nav.team'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>
                         <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
                         {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
@@ -663,6 +664,7 @@
                     {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                     {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
+                    {% if city_has_team(city) %}<a href="{{ path('sv_team') }}">{{ 'nav.team'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
                     {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>

@@ -94,6 +94,12 @@ jobs:
       - name: Відгуки — місто в заголовку
         run: php tests/reviews-title-city.php
 
+      # Сторінки команди (app.team_prefix) і медична розмітка: on — пак медичного сайту, off — типові параметри (наявні сайти)
+      - name: Сторінки команди й медична розмітка
+        run: |
+          php tests/team-pages.php off
+          php tests/team-pages.php on
+
       # Без кредів Google OAuth сторінка відгуків не показує відвідувачу кнопку входу й технічних повідомлень
       - name: Відгуки й Google OAuth
         run: |

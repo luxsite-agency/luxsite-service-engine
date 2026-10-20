@@ -45,14 +45,17 @@
     {% endfor %}
     {# рахуємо числами: sort по рядках ставив «1000.00» попереду «99.00» -#}
     {% set amounts = prices|filter(p => p.price)|map(p => p.price + 0)|sort %}
-    {# Тип залежить від того, чи є прайс. Є ціни - Product: тільки цьому типу
+    {# Тип — app.schema.item_type. auto (типово) залежить від того, чи є прайс. Є ціни - Product: тільки цьому типу
        Google показує зірочки й діапазон цін, для LocalBusiness і Organization
        відгуки з власного сайту вважаються self-serving і не рендеряться.
-       Немає цін - лишається Service, бо Product без offers беззмістовний. -#}
-    {% set isProduct = offers is not empty %}
+       Немає цін - лишається Service, бо Product без offers беззмістовний.
+       Service — завжди Service (ціни в offers, без зірок); MedicalProcedure — медичний сайт: послуга клініки не товар,
+       тож [MedicalProcedure, Service] з постачальником і цінами, без Product і aggregateRating. -#}
+    {% set _itemType = schema_business.item_type|default('auto') %}
+    {% set isProduct = _itemType == 'auto' and offers is not empty %}
     {% set svc = {
         '@context': 'https://schema.org',
-        '@type': isProduct ? 'Product' : 'Service',
+        '@type': isProduct ? 'Product' : (_itemType == 'MedicalProcedure' ? ['MedicalProcedure', 'Service'] : 'Service'),
         'name': ov(override|default(null), item, 'title', locale) ~ ' ' ~ city_in(city, locale) ~ ' ' ~ (city.loc('nameLoc', locale) ?? city.name(locale)),
         'url': altUrls[locale],
     } %}
@@ -203,6 +206,9 @@
         works: works|default([]),
         title: _wTitle != _wKey ? _wTitle : 'works.title'|trans({}, 'servicesite'),
     } %}
+
+    {# хто робить послугу в цьому місті (ServiceTeamMember.items): лікарі, майстри; нема зв'язків — блоку нема #}
+    {% include 'services/partials/_team.html.twig' with {team: itemTeam|default([]), team_title: 'team.item_title'|trans({}, 'servicesite')} %}
 
     {% if calcTypes|default([]) %}
         {% include 'services/partials/_calc_mini.html.twig' with {

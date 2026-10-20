@@ -1,0 +1,117 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Сторінка людини команди: /<app.team_prefix>/<слаг>/ (TeamController::show). На хості не основного міста canonical і
+   hreflang ведуть на основне (canonicalUrls), перемикач мов лишається на цьому хості (altUrls).
+   JSON-LD: app.team_schema_type — Person (типово) або IndividualPhysician / Physician → @type [Person, тип] з worksFor
+   і practicesAt = філії (branches), @id яких збігається з розміткою бізнесу на хостах міст (/#business). #}
+{% extends 'services/base.html.twig' %}
+
+{# locale задає base.html.twig, але set поза блоками виконується раніше за нього; імена _tm* — щоб base (_desc, _canon…) їх не перезаписав #}
+{% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{% set _tmName = member.loc('name', locale) %}
+{% set _tmRole = member.loc('role', locale) %}
+{% set _tmDesc = member.loc('desc', locale) %}
+{% block title %}{{ member.loc('metaTitle', locale) ?? (_tmName ~ (_tmRole ? ' - ' ~ _tmRole : '') ~ ' - ' ~ site.name) }}{% endblock %}
+
+{% block metaDescription %}{{ (member.loc('metaDesc', locale) ?? (_tmDesc ? _tmDesc|striptags|slice(0, 300) : _tmRole))|default('') }}{% endblock %}
+{% block ogType %}profile{% endblock %}
+{% block ogImage %}{{ member.imageName ? '/media/service_team/' ~ member.imageName : (theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.team'|trans({}, 'servicesite'), 'url': url('sv_team', {_locale: locale})},
+        {'name': _tmName},
+    ]) }}
+    {% set _tmCanon = (canonicalUrls|default(null) ?: altUrls)[locale] %}
+    {% set _tmType = team_schema_type|default('Person') %}
+    {% set _tmOrgs = [] %}
+    {% for b in branches %}
+        {% set _tmOrgs = _tmOrgs|merge([{
+            '@type': site.schemaType,
+            '@id': b.url ~ '#business',
+            'name': site.name ~ ' - ' ~ b.city.name(locale),
+            'url': b.url,
+            'address': {'@type': 'PostalAddress', 'addressLocality': b.city.name(locale), 'addressCountry': 'UA'},
+        }]) %}
+    {% endfor %}
+    {% set person = {
+        '@context': 'https://schema.org',
+        '@type': _tmType == 'Person' ? 'Person' : ['Person', _tmType],
+        '@id': _tmCanon ~ '#person',
+        'name': _tmName,
+        'url': _tmCanon,
+    } %}
+    {% if _tmRole %}{% set person = person|merge({'jobTitle': _tmRole}) %}{% endif %}
+    {% if _tmDesc %}{% set person = person|merge({'description': _tmDesc|striptags|slice(0, 500)}) %}{% endif %}
+    {% if member.imageName %}{% set person = person|merge({'image': app.request.schemeAndHttpHost ~ '/media/service_team/' ~ member.imageName}) %}{% endif %}
+    {% if _tmOrgs is not empty %}
+        {% set person = person|merge({'worksFor': _tmOrgs|length == 1 ? _tmOrgs|first : _tmOrgs}) %}
+        {% if _tmType in ['Physician', 'IndividualPhysician'] %}
+            {% set person = person|merge({'practicesAt': _tmOrgs|length == 1 ? _tmOrgs|first : _tmOrgs}) %}
+        {% endif %}
+    {% endif %}
+    {% if services is not empty %}{% set person = person|merge({'knowsAbout': services|map(s => s.loc('title', locale))}) %}{% endif %}
+    {{ schema.ld(person) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        <a href="{{ path('sv_team') }}">{{ 'nav.team'|trans({}, 'servicesite') }}</a> →
+        {{ _tmName }}
+    </nav>
+    <div class="hero team-member">
+        {% if member.imageName %}
+        <img src="/media/service_team/{{ member.imageName }}" alt="{{ member.imageAlt ?? _tmName }}"
+             style="width:100%;max-width:320px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;display:block;margin-bottom:1rem">
+        {% endif %}
+        <div class="hero-content">
+            <h1>{{ _tmName }}</h1>
+            {% if _tmRole %}<p class="lead">{{ _tmRole }}</p>{% endif %}
+        </div>
+    </div>
+
+    {# додаткові поля з паку (app.custom_fields.team: стаж, освіта, спеціалізація, графік…); нема = блоку нема #}
+    {% set _specs = custom_fields(member, locale) %}
+    {% if _specs is not empty %}
+    <section class="block">
+        <table class="specs">
+            {% for spec in _specs %}
+            <tr><th scope="row">{{ spec.label }}</th><td>{{ spec.value|nl2br }}</td></tr>
+            {% endfor %}
+        </table>
+    </section>
+    {% endif %}
+
+    {% if _tmDesc %}
+    <section class="block">
+        <p>{{ _tmDesc|nl2br }}</p>
+    </section>
+    {% endif %}
+
+    {# філії (міста сайту), де людина працює: основне першим; посилання — на головну міста #}
+    {% if branches|length > 1 or (branches|length == 1 and (branches|first).city.id != city.id) %}
+    <section class="block">
+        <p class="block-title">{{ 'team.branches_title'|trans({}, 'servicesite') }}</p>
+        <ul>
+            {% for b in branches %}
+            <li>{% if b.city.id == city.id %}{{ b.city.name(locale) }}{% else %}<a href="{{ b.url }}{{ locale == 'ru' ? 'ru/' : '' }}">{{ b.city.name(locale) }}</a>{% endif %}{% if b.city.address(locale) %}: {{ b.city.address(locale)|split("\n")|join('; ') }}{% endif %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if services is not empty %}
+    <section class="block">
+        <h2>{{ 'team.services_title'|trans({}, 'servicesite') }}</h2>
+        <div class="chips">
+            {% for s in services %}
+            <a href="{{ service_path(s, locale) }}">{{ s.loc('title', locale) }}</a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% include 'services/partials/_lead_form.html.twig' %}
+{% endblock %}
