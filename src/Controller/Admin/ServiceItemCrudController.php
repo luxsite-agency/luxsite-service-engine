@@ -11,6 +11,7 @@ use App\Entity\ServiceItem;
 use App\Form\ServiceFaqItemType;
 use App\Form\ExtraFieldsType;
 use App\ServiceSite\CustomFields;
+use App\ServiceSite\RootSlugs;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -35,10 +36,13 @@ class ServiceItemCrudController extends AbstractCrudController
     use CancelActionTrait;
     use FieldHintTrait;
     use ImageFieldsTrait;
+    use RootSlugConstraintsTrait;
 
-    /** Додаткові поля запису з паку (app.custom_fields) */
-    public function __construct(private readonly CustomFields $customFields)
-    {
+    /** Додаткові поля запису з паку (app.custom_fields); RootSlugs — збіг слага в корені (схема slug: /<послуга>/) */
+    public function __construct(
+        private readonly CustomFields $customFields,
+        private readonly RootSlugs $rootSlugs,
+    ) {
     }
 
     /** У списку виноситься наперед: назва послуги, а не категорія */
@@ -93,8 +97,10 @@ class ServiceItemCrudController extends AbstractCrudController
         yield TextField::new('titleUk', 'Назва uk')->setColumns(6)
             ->setHelp('Назва послуги, як її бачить відвідувач і як вона стоїть у заголовку сторінки.');
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6);
-        yield TextField::new('slugUk', 'Слаг uk')->setColumns(6);
+        yield TextField::new('slugUk', 'Слаг uk')->setColumns(6)
+            ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'));
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
+            ->setFormTypeOption('constraints', $this->rootSlugConstraints('ru'))
             ->setHelp('Порожньо = використовується український слаг');
         yield TextField::new('nameUk', 'Коротка назва uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Для карток і меню («Самоскиди»). Порожньо = повна назва.');

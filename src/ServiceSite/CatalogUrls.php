@@ -16,14 +16,17 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *  - flat:   /services/<послуга>/            → {slug}
  *  - nested: /services/<категорія>/<послуга>/ → {category, slug}
  *  - root:   /<категорія>/<послуга>/          → {category, slug} (як nested, без /services/)
+ *  - slug:   /<послуга>/ і /<категорія>/      → {slug} (як flat, від кореня; категорія — окрема сторінка /<категорія>/)
  * Єдине місце, де код знає про схему: шаблони беруть service_path(), контролери — itemParams().
+ * Хто ще живе в корені сайту і чи не збігаються слаги — App\ServiceSite\RootSlugs.
  */
 final class CatalogUrls
 {
     /**
      * Перші сегменти фіксованих маршрутів сайту (src/Controller/Services, priority 10) і службових префіксів.
-     * У схемі root категорія живе на /<slug>/, тому такий slug зробив би сторінку недосяжною (фіксований маршрут
-     * виграє) або навпаки; «ru» зловив би /ru/… uk-маршрутом. Сюди ж — префікс блогу (app.blog_prefix).
+     * У схемах root і slug категорія (а в slug і послуга, з app.pages — і сторінка) живе на /<slug>/, тому такий slug
+     * зробив би сторінку недосяжною (фіксований маршрут виграє) або навпаки; «ru» зловив би /ru/… uk-маршрутом.
+     * Сюди ж — префікс блогу (app.blog_prefix, reservedSegments()).
      * Юніт-тест CatalogUrlsTest звіряє список з маршрутами контролерів.
      */
     public const RESERVED_SEGMENTS = [
@@ -48,18 +51,26 @@ final class CatalogUrls
     }
 
     /**
-     * Слаги, заборонені для категорії в цій схемі: у root — зарезервовані сегменти (разом із префіксом блогу);
+     * Перші сегменти, зайняті фіксованими розділами сайту: RESERVED_SEGMENTS разом із префіксом блогу паку і першим
+     * сегментом адреси калькулятора з паку (app.calculator.path). Їх не може мати ніщо, що живе в корені: категорія
+     * (root, slug), послуга (slug), сторінка (app.pages).
+     *
+     * @return list<string>
+     */
+    public function reservedSegments(): array
+    {
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
+    }
+
+    /**
+     * Слаги, заборонені для категорії в цій схемі: у root і slug — зарезервовані сегменти (разом із префіксом блогу);
      * у flat/nested категорії живуть під /services/ і ні з чим не стикаються.
      *
      * @return list<string>
      */
     public function reservedCategorySlugs(): array
     {
-        if (!$this->isRoot()) {
-            return [];
-        }
-
-        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
+        return $this->categoriesAtRoot() ? $this->reservedSegments() : [];
     }
 
     /** Чи заборонений slug для категорії (reservedCategorySlugs); порівняння без регістру. */
@@ -74,10 +85,34 @@ final class CatalogUrls
         return $this->scheme === 'nested' || $this->scheme === 'root';
     }
 
-    /** Категорії від кореня сайту (/<категорія>/), без /services/. */
+    /** Схема root: /<категорія>/<послуга>/ від кореня сайту (сайт з Joomla). */
     public function isRoot(): bool
     {
         return $this->scheme === 'root';
+    }
+
+    /** Схема slug: послуга /<послуга>/ і категорія /<категорія>/ від кореня, одним сегментом. */
+    public function isSlug(): bool
+    {
+        return $this->scheme === 'slug';
+    }
+
+    /** Чи є в сайту сторінки категорій (nested, root, slug); у flat їх нема. */
+    public function hasCategoryPages(): bool
+    {
+        return $this->scheme !== 'flat';
+    }
+
+    /** Категорії від кореня сайту (/<категорія>/), без /services/: root і slug. */
+    public function categoriesAtRoot(): bool
+    {
+        return $this->isRoot() || $this->isSlug();
+    }
+
+    /** Послуги від кореня сайту одним сегментом (/<послуга>/): лише slug. */
+    public function itemsAtRoot(): bool
+    {
+        return $this->isSlug();
     }
 
     /** @return array<string, string> параметри для generateUrl('sv_service', …) у заданій мові */

@@ -10,7 +10,9 @@
  * Нічого не друкується до кінця: вивід до старту сесії = «headers already sent» на сторінках із сесією (/login).
  * Автовідкриття: із sitemap.xml беруться перша послуга, перша категорія (nested/root), перший район і перший пост
  * блогу (різні шаблони), а зі сторінки послуги — перша картинка Liip (/media/cache/resolve/…): v0.9.12 зламав фото
- * послуг, а smoke цього не бачив. Адреси залежать від паку: app.catalog.url_scheme (flat/nested/root) і app.blog_prefix.
+ * послуг, а smoke цього не бачив. Адреси залежать від паку: app.catalog.url_scheme (flat/nested/root/slug),
+ * app.blog_prefix і app.pages. У slug адреси /<x>/ однакові для послуги, категорії й сторінки: smoke бере першу, середню
+ * й останню з карти, а що відкрилося — пише за маршрутом (у звіті «авто: item|category|page»).
  */
 
 declare(strict_types=1);
@@ -38,13 +40,16 @@ $kernel = new Kernel($env, $debug);
 $kernel->boot();
 // шаблони адрес під схему URL паку (CatalogUrls): якою виглядає послуга, категорія, пост
 $scheme = (string) $kernel->getContainer()->getParameter('app.catalog.url_scheme');
+$pages = (bool) $kernel->getContainer()->getParameter('app.pages');
 $blog = preg_quote((string) $kernel->getContainer()->getParameter('app.blog_prefix'), '~');
 $reserved = implode('|', array_map(static fn (string $x) => preg_quote($x, '~'), \App\ServiceSite\CatalogUrls::RESERVED_SEGMENTS));
-$seg = $scheme === 'root' ? '(?!(?:'.$reserved.'|'.$blog.')/)[^/]+' : null;
+// перший сегмент, що не є фіксованим розділом: категорія (root, slug), послуга (slug), сторінка (app.pages)
+$seg = '(?!(?:'.$reserved.'|'.$blog.')/)[^/]+';
 $patterns = [
     'item' => match ($scheme) {
         'nested' => '~^https?://[^/]+/services/[^/]+/[^/]+/$~',
         'root' => '~^https?://[^/]+/'.$seg.'/[^/]+/$~',
+        'slug' => null, // /<послуга>/ за адресою не відрізнити від категорії й сторінки — див. $rootPicks
         default => '~^https?://[^/]+/services/[^/]+/$~',
     },
     'category' => match ($scheme) {
@@ -54,7 +59,19 @@ $patterns = [
     },
     'district' => '~^https?://[^/]+/districts/[^/]+/$~',
     'post' => '~^https?://[^/]+/'.$blog.'/(?!page/)[^/]+/$~',
+    // дочірня сторінка app.pages /<батько>/<слаг>/ (у root два сегменти — це послуга)
+    'page' => $pages && $scheme !== 'root' ? '~^https?://[^/]+/'.$seg.'/[^/]+/$~' : null,
 ];
+// адреси одним сегментом від кореня: у slug — перша, середня й остання з карти (категорії, послуги, сторінки йдуть
+// у карті блоками, тож так потрапляють різні шаблони); у flat/nested з app.pages — перша (це сторінка)
+$rootRe = '~^https?://[^/]+/'.$seg.'/$~';
+$rootPicks = match (true) {
+    $scheme === 'slug' => 'first-middle-last',
+    $pages && $scheme !== 'root' => 'first',
+    default => null,
+};
+// що насправді відкрилося за адресою з кореня — за маршрутом (у звіті й для перевірки картинки послуги)
+$routeKinds = ['sv_service' => 'item', 'sv_category' => 'category', 'sv_page' => 'page'];
 $lines = [];
 $errors = [];
 $fail = 0;
@@ -73,6 +90,10 @@ while (($url = array_shift($queue)) !== null) {
         $kernel->terminate($request, $response);
         $code = $response->getStatusCode();
         $body = (string) $response->getContent();
+        if (($auto[$url] ?? null) === 'root') {
+            $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
+            $auto[$url] = $routeKinds[$route] ?? 'root';
+        }
     } catch (\Throwable $e) {
         $code = 500;
         $errors[] = sprintf('  %s: %s %s', $url, $e::class, $e->getMessage());
@@ -105,6 +126,17 @@ while (($url = array_shift($queue)) !== null) {
             if ($extra !== null && !isset($seen[$extra]) && !isset($auto[$extra])) {
                 $auto[$extra] = $kind;
                 $queue[] = $extra;
+            }
+        }
+        if ($rootPicks !== null) {
+            $roots = array_values(array_filter(array_map('html_entity_decode', $m[1]), static fn (string $loc) => (bool) preg_match($rootRe, $loc)));
+            $idx = $roots === [] ? [] : ($rootPicks === 'first' ? [0] : array_unique([0, intdiv(\count($roots), 2), \count($roots) - 1]));
+            foreach ($idx as $i) {
+                $extra = $roots[$i];
+                if (!isset($seen[$extra]) && !isset($auto[$extra])) {
+                    $auto[$extra] = 'root';
+                    $queue[] = $extra;
+                }
             }
         }
     }
