@@ -98,6 +98,8 @@ live (токен) > пак > рушій.
 | `app.catalog.url_scheme` | `flat` | `flat` = `/services/<послуга>/`; `nested` = `/services/<категорія>/<послуга>/` + сторінки категорій; `root` = `/<категорія>/<послуга>/` від кореня (як у сайтів з Joomla; фіксовані сторінки мають пріоритет, невідомий `/<x>/` — legacy-редирект або 404). Послуга під чужою категорією — 301 на справжню адресу (nested/root). Маршрути — `config/routes/catalog/<scheme>.yaml`, вибір у `Kernel::configureRoutes`. У коді посилання на послугу — лише `service_path(item, locale)` (Twig) / `CatalogUrls::itemParams()` (PHP). |
 | `app.site_verification` | `''` | `<meta name="google-site-verification">` у `<head>`. |
 | `app.lead_events` | `[generate_lead]` | події dataLayer на `/thanks` після заявки (усі з `lead_type`, `city`, `site_host`); чужий GTM з ціллю на `form_submit` — `[generate_lead, form_submit]`. |
+| `app.lead_fields` | `[]` | Додаткові поля форми заявки: запис на прийом (послуга, лікар, дата), запит на розрахунок (маршрут, вага). Див. «Поля форми заявки й згода» нижче. Порожньо = форма як була. |
+| `app.lead_consent` | `{enabled: false}` | Обов'язковий чекбокс згоди на обробку персональних даних у формах заявки й калькулятора; текст і посилання на політику — з паку. Див. нижче. |
 | `app.analytics_defer` | `false` | `true` = GTM/gtag і Clarity стартують після `window.load` + 800 мс або на першу взаємодію (прапорець проти подвійного старту; пасивні візити рахуються таймером). Знімає ~310 КБ з ланцюжка LCP (PSI mobile 69–75 → 89–94). Для нових паків `site-template` ставить `true`. Після вмикання на проді — `/analytics-healthcheck` (page_view без взаємодії через 10 с). |
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
 | `app.clarity_id` | `''` | id проєкту Microsoft Clarity — тег у `<head>` поруч із GTM на всіх хостах сайту (коли Clarity не в GTM). |
@@ -143,8 +145,9 @@ live (токен) > пак > рушій.
 `category_id` (воронка), `stage_id`, `title` (дефолт `'Lead from: {host}'`), `source_id` (`website`), `utm_medium_default`
 (`'_organic'` — коли в заявці нема utm_medium), `register_sonet_event` (`true`), `contact_fields` і `deal_fields` —
 мапи «поле Bitrix → значення». Значення: назва джерела (`page_url` — повна адреса сторінки форми, `site_url` —
-`https://<хост>/`, `host`, `city`, `service` — назва послуги зі сторінки форми, `name`, `phone`, `email` (у формі нема),
-`message`, `comments` (зведення для менеджера), `utm_source|medium|campaign|content|term`, `click_id`, `referrer`,
+`https://<хост>/`, `host`, `city`, `service` — послуга, обрана в полі форми з `source: services`, інакше назва послуги зі
+сторінки форми, `name`, `phone`, `email` (перше поле `type: email` з `app.lead_fields`), `details` (усі додаткові поля
+блоком «Поле: значення»), `detail.<key>` (значення одного поля: `detail.doctor`, `detail.date` у форматі Y-m-d), `message`, `comments` (зведення для менеджера), `utm_source|medium|campaign|content|term`, `click_id`, `referrer`,
 `landing_url`, `locale`, `lead_id`); шаблон з `{джерело}` (`'Замовлення дзвінка: {service}'`, висячий `: ` без
 значення прибирається); `'=текст'` — константа дослівно (навіть якщо збігається з назвою джерела); інший рядок чи
 число — константа. Порожні значення не передаються. Стандартні поля угоди (`TITLE`, `SOURCE_ID`, `CATEGORY_ID`,
@@ -165,6 +168,65 @@ parameters:
             deal_fields:
                 UF_CRM_BBBB: page_url
                 UF_CRM_DDDD: site_url
+```
+
+### Поля форми заявки й згода (`app.lead_fields`, `app.lead_consent`, 20.10.2026)
+
+Для сайтів, де форма — це запис на прийом (послуга, лікар, дата) чи запит на розрахунок (маршрут, вага, габарити), а не
+лише «телефон, ім'я, повідомлення». За замовчуванням обидва параметри вимкнені — форми як були.
+
+Поля з'являються в типовій формі рушія (`_lead_form.html.twig`: інлайн-форма й модалка) і в будь-якій формі паку з
+`action="{{ path('sv_lead') }}"`, де вставлено `{% include 'services/partials/_lead_fields.html.twig' %}` (поля + згода),
+або цикл по `lead_fields(locale)` зі своєю розміткою (ім'я поля — `details[<key>]`, елемент: `name`, `label`,
+`label_full`, `type`, `required`, `group`, `placeholder`, `options[{value, label, selected}]`, `min`/`max` для дати).
+
+| Ключ поля | Що це |
+|---|---|
+| `key` | `[a-z0-9_]`, унікальний; не `phone`, `name`, `message`, `website`, `lead_type`, `consent` |
+| `label`, `group`, `placeholder`, `unit` | `{uk, ru}` (порожнє ru = uk); `group` — підзаголовок групи (fieldset), `unit` — у підписі через кому («Вага, кг») |
+| `type` | `text` · `number` (`1200`, `12,5`) · `email` · `tel` · `select` · `date` |
+| `required` | `true` — без значення заявка не приймається (у браузері й на сервері) |
+| `source` (select) | `services` — послуги, що надаються в місті запиту (на сторінці послуги вона обрана сама); `team` — блок «Команда» міста («Ім'я (посада)»); `list` — свій список `options` |
+| `options` (list) | рядки або `{ value, label: {uk, ru} }` |
+| `min_days`, `max_days` (date) | найраніша й найпізніша дата від сьогодні (дефолт 0 і 366) |
+
+Помилка в описі полів (ключ, тип, `list` без `options`) — сайт не стартує з текстом помилки, тож smoke `bin/site deploy`
+зупинить викладку; перевіряйте на стенді.
+
+Філія = місто запиту (`ServiceLead.city`, хост), окремого вибору філії нема: варіанти `services`/`team` — лише цього міста.
+Джерело, якого рушій не знає (розділ ще не злитий), або порожній список у місті — поле не показується й не перевіряється,
+форма не ламається (у лозі попередження). Новий розділ (лікарі, майстри) додає своє джерело класом з
+`App\ServiceSite\LeadOptionSource` (`name()` + `options(city)`), реєструвати нічого не треба.
+
+Що бачить менеджер: значення лягають у `ServiceLead.details` (select — підпис обраного варіанта українською, дата — Y-m-d)
+і рядками «Поле: значення» в кінець `message` (дата — 25.10.2026). Тож лист, «Повідомлення» в адмінці, примітка
+Pipedrive і COMMENTS Bitrix24 показують їх без налаштувань; у списку заявок адмінки — колонка «Поля форми». У мапі
+`app.crm.bitrix24` — джерела `detail.<key>`, `details`, `email`, `service` (див. «CRM сайту»). Події аналітики не
+змінюються: `/thank-you/` і `app.lead_events` як були.
+
+Згода (`app.lead_consent.enabled: true`): чекбокс у формі заявки й обох формах калькулятора; без галочки сервер заявку не
+приймає, час згоди — `ServiceLead.consentAt` (адмінка, рядок у листі). Тексти: `text` з `{policy}` на місці посилання,
+`policy_text`, `policy_url` — `{uk, ru}`; порожні — переклади рушія `lead.consent` / `lead.consent_policy` і сторінка
+`/privacy-policy/` (`sv_privacy`; текст політики — адмінка, Сайти-бренди). **Перед увімкненням** перевірте свої шаблони
+паку з формами `sv_lead`/`sv_calc_lead`: у кожній має бути `_lead_fields.html.twig` або `_lead_consent.html.twig`, інакше
+заявки з такої форми сервер відхилить.
+
+```yaml
+parameters:
+    app.lead_fields:
+        - { key: service, label: { uk: Послуга, ru: Услуга }, type: select, source: services, required: true, placeholder: { uk: Оберіть послугу, ru: Выберите услугу } }
+        - { key: doctor, label: { uk: Лікар, ru: Врач }, type: select, source: team, placeholder: { uk: Будь-який лікар, ru: Любой врач } }
+        - { key: date, label: { uk: Бажана дата, ru: Желаемая дата }, type: date, min_days: 0, max_days: 60 }
+        - { key: time, label: { uk: Зручний час, ru: Удобное время }, type: select, options: [ { value: am, label: { uk: Зранку, ru: Утром } }, { value: pm, label: { uk: Після обіду, ru: После обеда } } ] }
+    app.lead_consent:
+        enabled: true
+        text: { uk: 'Погоджуюсь на обробку персональних даних відповідно до {policy}', ru: 'Соглашаюсь на обработку персональных данных в соответствии с {policy}' }
+        policy_text: { uk: політики конфіденційності, ru: политикой конфиденциальности }
+        policy_url: { uk: /privacy-policy/, ru: /ru/privacy-policy/ }
+    app.crm:
+        system: bitrix24
+        bitrix24:
+            deal_fields: { UF_CRM_DOCTOR: detail.doctor, UF_CRM_DATE: detail.date, TITLE: 'Запис: {service}' }
 ```
 
 Категорія в nested-схемі має прапорець «Посадкова сторінка» (адмінка, `ServiceCategory.landing`, типово так): ні — сторінка
