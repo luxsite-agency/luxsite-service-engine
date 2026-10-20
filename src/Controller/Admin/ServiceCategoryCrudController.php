@@ -10,8 +10,8 @@ namespace App\Controller\Admin;
 use App\Entity\ServiceCategory;
 use App\Form\ServiceFaqItemType;
 use App\Form\ExtraFieldsType;
-use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
+use App\ServiceSite\RootSlugs;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -29,8 +29,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Validator\Constraints\Callback;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[IsGranted('ROLE_MODERATOR')]
 class ServiceCategoryCrudController extends AbstractCrudController
@@ -38,33 +36,17 @@ class ServiceCategoryCrudController extends AbstractCrudController
     use CancelActionTrait;
     use FieldHintTrait;
     use ImageFieldsTrait;
-
-    /** Додаткові поля запису з паку (app.custom_fields); схема URL — для заборонених слагів у root */
-    public function __construct(
-        private readonly CustomFields $customFields,
-        private readonly CatalogUrls $catalogUrls,
-    ) {
-    }
+    use RootSlugConstraintsTrait;
 
     /**
-     * У схемі root категорія живе на /<slug>/: слаг фіксованого розділу (services, districts, about, faq, префікс
-     * блогу…) або «ru» зробив би сторінку недосяжною — фіксований маршрут має пріоритет. Повний список —
-     * CatalogUrls::RESERVED_SEGMENTS; у flat/nested обмеження нема (категорії під /services/).
-     *
-     * @return list<Callback>
+     * Додаткові поля запису з паку (app.custom_fields); RootSlugs — заборонені слаги, коли категорія живе в корені
+     * (схеми root і slug): слаг фіксованого розділу (services, districts, about, faq, префікс блогу…), «ru», слаг
+     * сторінки app.pages чи (у slug) послуги зробив би одну з адрес недосяжною. У flat/nested обмеження нема.
      */
-    private function slugConstraints(): array
-    {
-        if (!$this->catalogUrls->isRoot()) {
-            return [];
-        }
-
-        return [new Callback(function (mixed $value, ExecutionContextInterface $context): void {
-            if ($this->catalogUrls->isReservedCategorySlug(\is_string($value) ? $value : null)) {
-                $context->buildViolation(sprintf('Слаг «%s» зарезервований за іншим розділом сайту (%s) — у схемі root категорія з ним недосяжна.', (string) $value, implode(', ', $this->catalogUrls->reservedCategorySlugs())))
-                    ->addViolation();
-            }
-        })];
+    public function __construct(
+        private readonly CustomFields $customFields,
+        private readonly RootSlugs $rootSlugs,
+    ) {
     }
 
     /** У списку виноситься наперед: назва категорії, а не сайт */
@@ -117,13 +99,13 @@ class ServiceCategoryCrudController extends AbstractCrudController
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - показується українська назва.');
         yield TextField::new('slugUk', 'Слаг uk')->setColumns(6)
-            ->setFormTypeOption('constraints', $this->slugConstraints())
+            ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'))
             ->setHelp(
                 'Частина адреси латиницею. ⚠️ Зміна ламає всі посилання на категорію, які вже є в '
                 . 'Google.'
             );
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
-            ->setFormTypeOption('constraints', $this->slugConstraints())
+            ->setFormTypeOption('constraints', $this->rootSlugConstraints('ru'))
             ->setHelp('Порожньо = використовується український слаг');
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('position', 'Порядок')->setColumns(6)
@@ -132,7 +114,7 @@ class ServiceCategoryCrudController extends AbstractCrudController
             ->setHelp('Вимкнена категорія зникає з каталогу разом зі своїми послугами.');
         yield BooleanField::new('landing', 'Посадкова сторінка')->setColumns(6)
             ->setHelp('Так: повна сторінка категорії (верх як у послуги, лід, сітка послуг, SEO-блоки), у sitemap, з крихт і каталогу на неї є посилання. '
-                . 'Ні: адреси послуг не змінюються, але сторінка категорії noindex, без sitemap і без посилань на неї. Діє лише в nested-схемі URL.');
+                . 'Ні: адреси послуг не змінюються, але сторінка категорії noindex, без sitemap і без посилань на неї. Діє в схемах URL зі сторінками категорій (nested, root, slug).');
         yield FormField::addFieldset('Зображення');
         yield from $this->imageFields('/media/service_category');
 

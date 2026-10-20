@@ -261,6 +261,10 @@
             .work-card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
             .work-card figcaption { padding: .6rem .8rem .75rem; font-size: .93rem; color: var(--dark); }
             .work-card figcaption .meta { display: block; margin-top: .15rem; font-size: .84rem; color: var(--muted-text); }
+            /* сторінки app.pages: галерея сканів (А4 книжкою, без обрізання), додаткові поля */
+            .page-gallery .work-card img { aspect-ratio: 210 / 297; object-fit: contain; background: #fff; }
+            .page-fields { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.2rem; margin: 1.2rem 0; }
+            .page-fields dt { font-weight: 600; } .page-fields dd { margin: 0; }
             /* «до/після» - дві половини одного кадру, підпис поверх знімка */
             .work-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
             .work-shot { position: relative; display: block; }
@@ -619,7 +623,7 @@
                     <div class="footer-catalog-cols">
                     {% for g in _fc %}
                         <details class="footer-cat">
-                            <summary>{% if catalog_url_scheme == 'nested' and g.category.landing %}<a href="{{ path('sv_category', {category: g.category.slug(locale)}) }}">{{ g.category.loc('title', locale) }}</a>{% else %}{{ g.category.loc('title', locale) }}{% endif %}</summary>
+                            <summary>{% if catalog_url_scheme in ['nested', 'slug'] and g.category.landing %}<a href="{{ path('sv_category', {category: g.category.slug(locale)}) }}">{{ g.category.loc('title', locale) }}</a>{% else %}{{ g.category.loc('title', locale) }}{% endif %}</summary>
                             <ul>{% for item in g.items %}<li><a href="{{ service_path(item, locale) }}">{{ item.loc('title', locale) }}</a></li>{% endfor %}</ul>
                         </details>
                     {% endfor %}
@@ -635,6 +639,8 @@
                     <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
                     {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                    {# сторінки app.pages з позначкою «У футері» (вакансії, ліцензії); вимкнено — нічого #}
+                    {% for _fp in footer_pages(site) %}<a href="{{ path('sv_page', {path: _fp.path(locale)}) }}">{{ _fp.loc('title', locale) }}</a>{% endfor %}
                 </nav>
                 <p>© {{ 'now'|date('Y') }} {{ site.name }} - {{ city.name(locale) }}.
                 {% if city.hours %}{{ city.hours }}.{% endif %}

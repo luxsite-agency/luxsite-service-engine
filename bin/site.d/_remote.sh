@@ -24,7 +24,8 @@
 #   releases/<tag>/ — рушій + пак (+ vendor), current → поточний; release.env — SITE_TAG, SITE_PREV_TAG
 #   backups/ — архіви; db-init/ (docker) — дампи для першого підйому MySQL; ARCHIVED — маркер; docroot.prev — ціль
 #   docroot панелі до cutover (fastpanel)
-# Змінні: DRY_RUN=1, UNARCHIVE=1, SITE_CRON=0, SITE_SKIP_BACKUP=1, SITE_BACKUP_KEEP_DAYS (14), SITE_COMPOSER (бінарник).
+# Змінні: DRY_RUN=1, UNARCHIVE=1, SITE_CRON=0, SITE_SKIP_BACKUP=1, SITE_BACKUP_KEEP_DAYS (14), SITE_COMPOSER (бінарник),
+#   SITE_EXTRA — інші хости міст на окремих доменах (domains.extra через пробіл): smoke і http-перевірка їх теж.
 set -euo pipefail
 
 ACTION="${1:?дія}"; KEY="${2:?key}"; ROOT="${3:?root}"; shift 3
@@ -134,35 +135,47 @@ smoke() {
     # головна, каталог, райони, FAQ, sitemap, robots (+ smoke.php сам додає з sitemap першу послугу/район/пост і першу
     # картинку Liip зі сторінки послуги) — сторінки з різними шаблонами, щоб зламаний twig не доїхав до перемикання
     urls+=("https://$site/" "https://$site/services/" "https://$site/districts/" "https://$site/faq/" "https://$site/sitemap.xml" "https://$site/robots.txt")
+    # другий домен міста (domains.extra): головна, карта (smoke.php відкриває з неї сторінки саме цього хоста) і robots
+    local h
+    for h in ${SITE_EXTRA:-}; do urls+=("https://$h/" "https://$h/sitemap.xml" "https://$h/robots.txt"); done
     [ -n "$admin" ] && urls+=("https://$admin/login")
     if [ "$DRY_RUN" = 1 ]; then log "[dry-run] smoke $rel: ${urls[*]}"; return 0; fi
     if [ "$RUNTIME" = docker ]; then php_in "$rel" bin/smoke.php "${urls[@]}"; else php_in "$rel" "$rel/bin/smoke.php" "${urls[@]}"; fi
 }
 
 # http_check: через справжній веб-сервер після перемикання. fastpanel — nginx на SITE_CHECK_IP (порожньо = пропуск);
-# docker — wget усередині контейнера nginx з Host.
+# docker — wget усередині контейнера nginx з Host. Головна апекса і кожного хоста SITE_EXTRA (другий домен міста).
 http_check() {
-    local site="${SITE_HOST:-}" admin="${SITE_ADMIN:-}" code
+    local site="${SITE_HOST:-}" admin="${SITE_ADMIN:-}" code h
     [ -n "$site" ] || return 0
-    [ "$DRY_RUN" = 1 ] && { log "[dry-run] http_check $site"; return 0; }
+    [ "$DRY_RUN" = 1 ] && { log "[dry-run] http_check $site${SITE_EXTRA:+ $SITE_EXTRA}"; return 0; }
     if [ "$RUNTIME" = docker ]; then
+        local ok
         for _ in $(seq 1 15); do
-            if compose exec -T nginx wget -q -O /dev/null -T 20 --header "Host: $site" --header "X-Forwarded-Proto: https" http://127.0.0.1/ >/dev/null 2>&1 \
+            ok=1
+            for h in "$site" ${SITE_EXTRA:-}; do
+                compose exec -T nginx wget -q -O /dev/null -T 20 --header "Host: $h" --header "X-Forwarded-Proto: https" http://127.0.0.1/ >/dev/null 2>&1 || { ok=0; break; }
+            done
+            if [ "$ok" = 1 ] \
                && { [ -z "$admin" ] || compose exec -T nginx wget -q -O /dev/null -T 20 --header "Host: $admin" --header "X-Forwarded-Proto: https" http://127.0.0.1/login >/dev/null 2>&1; }; then
-                log "http: $site/ ${admin:+і $admin/login }→ 2xx"; return 0
+                log "http: $site/${SITE_EXTRA:+ $SITE_EXTRA} ${admin:+і $admin/login }→ 2xx"; return 0
             fi
             sleep 3
         done
-        warn "http: $site/ або $admin/login не відповідає 2xx"; return 1
+        warn "http: $site/${SITE_EXTRA:+, $SITE_EXTRA} або $admin/login не відповідає 2xx"; return 1
     fi
     [ -n "${SITE_CHECK_IP:-}" ] || { log "http: SITE_CHECK_IP не задано — перевірка через nginx пропущена"; return 0; }
     command -v curl >/dev/null || return 0
-    for _ in $(seq 1 5); do
-        code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 --resolve "$site:443:$SITE_CHECK_IP" "https://$site/" </dev/null || true)"
-        [ "$code" = 200 ] && { log "http: https://$site/ через nginx → 200"; return 0; }
-        sleep 2
+    for h in "$site" ${SITE_EXTRA:-}; do
+        code=""
+        for _ in $(seq 1 5); do
+            code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 --resolve "$h:443:$SITE_CHECK_IP" "https://$h/" </dev/null || true)"
+            [ "$code" = 200 ] && break
+            sleep 2
+        done
+        if [ "$code" != 200 ]; then warn "http: https://$h/ через nginx → $code"; return 1; fi
+        log "http: https://$h/ через nginx → 200"
     done
-    warn "http: https://$site/ через nginx → $code"; return 1
 }
 
 fpm_reload() {
@@ -614,6 +627,13 @@ do_doctor() {
     fi
     if [ -n "$(cur_tag)" ] && [ -d "$ROOT/current" ]; then
         if console "$ROOT/current" doctrine:migrations:up-to-date -n >/dev/null 2>&1; then echo "migrations=up-to-date"; else echo "migrations=pending-or-error"; fi
+        # збіги слагів у корені сайту (послуга/категорія/сторінка на одній адресі); рушій без app:site:slugs — пропуск
+        local slugs
+        # grep без -q: дочитує вивід, інакше console отримає SIGPIPE і pipefail зробить збіг провалом
+        if console "$ROOT/current" list --raw 2>/dev/null | grep '^app:site:slugs ' >/dev/null; then
+            if slugs="$(console "$ROOT/current" app:site:slugs -n 2>&1)"; then echo "slugs=ok"
+            else echo "slugs=conflicts"; printf '%s\n' "$slugs" | grep '^- ' | head -n 10 | sed 's/^- /slugs.line=/'; fi
+        fi
     fi
     local last="" f
     for f in "$ROOT/backups/"*.tar; do

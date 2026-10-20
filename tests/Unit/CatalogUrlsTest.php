@@ -30,6 +30,39 @@ final class CatalogUrlsTest extends TestCase
         self::assertFalse($nested->isReservedCategorySlug('services'));
     }
 
+    /** Схема slug: послуга й категорія від кореня одним сегментом; заборонені ті самі слаги, що в root */
+    public function testSlugScheme(): void
+    {
+        $slug = new CatalogUrls('slug', 'novosti');
+        self::assertTrue($slug->isSlug());
+        self::assertFalse($slug->isRoot());
+        self::assertFalse($slug->isNested(), 'у адресі послуги категорії нема');
+        self::assertTrue($slug->hasCategoryPages());
+        self::assertTrue($slug->categoriesAtRoot());
+        self::assertTrue($slug->itemsAtRoot());
+        self::assertTrue($slug->isReservedCategorySlug('novosti'), 'префікс блогу паку');
+        self::assertTrue($slug->isReservedCategorySlug('contacts'));
+        self::assertContains('novosti', $slug->reservedSegments());
+
+        foreach (['flat' => [false, false, false], 'nested' => [true, false, false], 'root' => [true, true, false]] as $scheme => [$pages, $catsRoot, $itemsRoot]) {
+            $u = new CatalogUrls($scheme);
+            self::assertSame($pages, $u->hasCategoryPages(), $scheme . ': сторінки категорій');
+            self::assertSame($catsRoot, $u->categoriesAtRoot(), $scheme . ': категорії в корені');
+            self::assertSame($itemsRoot, $u->itemsAtRoot(), $scheme . ': послуги в корені');
+        }
+        // фіксовані сегменти зайняті за будь-якої схеми (сторінки app.pages живуть у корені завжди)
+        self::assertContains('about', (new CatalogUrls('flat'))->reservedSegments());
+    }
+
+    /** Схема slug: маршрути послуги й категорії мають один шаблон і розводяться умовою root_slugs */
+    public function testSlugRoutesUseRootSlugsCondition(): void
+    {
+        $yaml = (string) file_get_contents(\dirname(__DIR__, 2) . '/config/routes/catalog/slug.yaml');
+        self::assertStringContainsString("service('root_slugs').matches('item', request, params)", $yaml);
+        self::assertStringContainsString("service('root_slugs').matches('category', request, params)", $yaml);
+        self::assertSame(1, preg_match("~sv_service:.*?sv_category:~s", $yaml), 'послуга перевіряється раніше за категорію');
+    }
+
     /**
      * Список RESERVED_SEGMENTS має покривати перші сегменти всіх фіксованих uk-маршрутів сайту
      * (src/Controller/Services): новий фіксований розділ без запису тут у схемі root перекриє категорію.

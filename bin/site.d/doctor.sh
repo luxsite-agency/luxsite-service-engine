@@ -5,7 +5,8 @@
 # bin/site doctor <key>     bin/site doctor --all
 #   Лише читає. Перевіряє: доступ, маркер ARCHIVED проти status, версію рушія (реліз на сервері проти engine у реєстрі),
 #   docroot панелі (fastpanel) / контейнери (docker), міграції (up-to-date), останній звичайний бекап (без pre-*;
-#   старший за 36 год або менший за 50K — WARN), cron, диск, php і date.timezone (fastpanel), TLS сайту й адмінки.
+#   старший за 36 год або менший за 50K — WARN), cron, диск, php і date.timezone (fastpanel), збіги слагів у корені
+#   (app:site:slugs), TLS сайту, адмінки й доменів domains.extra.
 #   Код виходу: 0 — усе OK/WARN, 1 — є FAIL. --all — усі записи реєстру (handed-over і стара схема — пропуск).
 set -euo pipefail
 # shellcheck source=bin/site.d/_lib.sh
@@ -78,6 +79,13 @@ doctor_one() {
         "") wrn "міграції: стан невідомий" ;;
         *) bad "міграції: є невиконані або помилка (bin/console doctrine:migrations:status)" ;;
     esac
+    # збіги слагів у корені (app:site:slugs; рушій без команди — рядка нема)
+    case "$(val slugs)" in
+        ok) ok "слаги в корені: збігів нема" ;;
+        conflicts)
+            bad "слаги в корені: одна адреса на кілька записів (bin/console app:site:slugs)"
+            echo "$out" | sed -n 's/^slugs\.line=/         /p' ;;
+    esac
 
     local age bytes; age="$(val backup.age_h)"; bytes="$(val backup.bytes)"
     if [ -z "$age" ]; then bad "звичайних бекапів на сервері нема (страхові pre-* не рахуються)"
@@ -99,6 +107,9 @@ doctor_one() {
     if [ "${SITE_NO_TLS:-0}" != 1 ]; then
         [ -n "$S_SITE" ] && cert_check "$S_SITE"
         [ -n "$S_ADMIN" ] && [ "$S_ADMIN" != "$S_SITE" ] && cert_check "$S_ADMIN"
+        # інші домени міст (domains.extra): у кожного свій сертифікат, wildcard апекса їх не покриває
+        local h
+        for h in $S_EXTRA; do cert_check "$h"; done
     fi
     return 0
 }
@@ -109,7 +120,7 @@ set -- "${args[@]+"${args[@]}"}"
 # звіт збираємо у змінну (підоболонка), щоб --notify міг надіслати його; лічильник FAIL повертаємо службовим рядком
 report="$( {
 case "${1-}" in
-    -h | --help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     --all) for k in $(reg_keys ''); do doctor_one "$k"; done ;;
     *) doctor_one "${1-}" ;;
 esac

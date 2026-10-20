@@ -60,6 +60,10 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(ServiceReviewCrudController::class, 'Відгуки клієнтів', 'fa fa-star-half-stroke');
         yield MenuItem::linkTo(ServiceTeamMemberCrudController::class, 'Команда', 'fa fa-people-group');
         yield MenuItem::linkTo(ServicePostCrudController::class, 'Блог', 'fa fa-pen');
+        // сторінки від кореня (вакансії, ліцензії) — лише на сайтах, де пак увімкнув app.pages
+        if ($this->getParameter('app.pages')) {
+            yield MenuItem::linkTo(ServicePageCrudController::class, 'Сторінки', 'fa fa-file-lines');
+        }
         yield MenuItem::linkTo(ServiceWorkCrudController::class, 'Наші роботи', 'fa fa-camera');
 
         yield MenuItem::section('Калькулятор');

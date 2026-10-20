@@ -17,7 +17,9 @@
 #                  робоча копія — перший деплой бере звідти .env.local і public/media), check_ip (IP nginx для перевірки
 #                  через веб-сервер), docroot_extra — інші docroot-симлінки того ж сайту в панелі (піддомени міст, адмінка):
 #                  cutover перемикає всі
-#   domains        site (апекс; міста — піддомени або окремі домени з БД ServiceCity), admin — хост адмінки (ADMIN_HOST)
+#   domains        site (апекс; міста — піддомени або окремі домени з БД ServiceCity), admin — хост адмінки (ADMIN_HOST),
+#                  extra — інші хости міст на окремих доменах (список): smoke і http-перевірка деплою, TLS у doctor
+#                  (wildcard апекса окремий домен не покриває); піддомени апекса сюди не обов'язкові
 #   locales        мови сайту, перша — за замовчуванням
 #   engine         тег рушія vX.Y.Z (або sha коміту / гілка) — що зараз має бути на сервері
 #   status         active | archived | handed-over
@@ -38,11 +40,12 @@ sites:
           php: /opt/php84/bin/php
           fpm_reload: systemctl reload fp2-php84-fpm
           docroot: /var/www/example_usr/data/www/example.com
-          docroot_extra: [/var/www/example_usr/data/www/admin.example.com, /var/www/example_usr/data/www/north.example.com]
+          docroot_extra: [/var/www/example_usr/data/www/admin.example.com, /var/www/example_usr/data/www/north.example.com, /var/www/example_usr/data/www/example-south.com]
           check_ip: 203.0.113.10
       domains:
           site: example.com
           admin: admin.example.com
+          extra: [example-south.com]
       locales: [uk, ru]
       engine: v1.0.0
       status: active
@@ -51,7 +54,8 @@ sites:
       backup_target: backups:/srv/backups/sites
       notes: >-
           Схема URL каталогу nested (/services/<категорія>/<послуга>/), міста на піддоменах (north.example.com —
-          окремий docroot-симлінк панелі, cutover перемикає разом з головним).
+          окремий docroot-симлінк панелі, cutover перемикає разом з головним); місто на окремому домені
+          example-south.com — у domains.extra (свій сертифікат) і своїм docroot у docroot_extra.
     - key: example-edge
       name: 'Example Services — прод у Docker за зовнішнім nginx'
       repo: example-org/site-example-edge
