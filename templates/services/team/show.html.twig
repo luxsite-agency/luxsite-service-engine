@@ -113,5 +113,6 @@
     </section>
     {% endif %}
 
-    {% include 'services/partials/_lead_form.html.twig' %}
+    {# lead_preset: поле форми з джерелом team (app.lead_fields) одразу з цією людиною; без такого поля — ігнорується #}
+    {% include 'services/partials/_lead_form.html.twig' with {lead_preset: {team: member.id}} %}
 {% endblock %}
