@@ -54,6 +54,29 @@ final class CatalogUrlsTest extends TestCase
         self::assertContains('about', (new CatalogUrls('flat'))->reservedSegments());
     }
 
+    /** Слаг послуги зі шляху сторінки заявки (назва послуги в CRM) — під кожну схему */
+    public function testItemSlugFromPath(): void
+    {
+        $flat = new CatalogUrls('flat');
+        self::assertSame('x', $flat->itemSlugFromPath('/services/x/'));
+        self::assertSame('x', $flat->itemSlugFromPath('/ru/services/x/'));
+        self::assertNull($flat->itemSlugFromPath('/services/'));
+        self::assertNull($flat->itemSlugFromPath('/x/'));
+        self::assertSame('x', (new CatalogUrls('nested'))->itemSlugFromPath('/services/cat/x/'));
+        $root = new CatalogUrls('root');
+        self::assertSame('x', $root->itemSlugFromPath('/cat/x/'));
+        self::assertSame('x', $root->itemSlugFromPath('/ru/cat/x/'));
+        self::assertNull($root->itemSlugFromPath('/cat/'));
+        self::assertNull($root->itemSlugFromPath('/districts/obolon/'));
+        $slug = new CatalogUrls('slug', 'novosti');
+        self::assertSame('x', $slug->itemSlugFromPath('/x/'));
+        self::assertSame('x', $slug->itemSlugFromPath('/ru/x/'));
+        self::assertNull($slug->itemSlugFromPath('/contacts/'));
+        self::assertNull($slug->itemSlugFromPath('/novosti/'));
+        self::assertNull($slug->itemSlugFromPath('/vakansii/likar/'));
+        self::assertNull($slug->itemSlugFromPath('/'));
+    }
+
     /** Схема slug: маршрути послуги й категорії мають один шаблон і розводяться умовою root_slugs */
     public function testSlugRoutesUseRootSlugsCondition(): void
     {
