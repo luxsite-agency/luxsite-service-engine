@@ -9,6 +9,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\ServiceReview;
 use App\Security\GoogleOAuthConfig;
+use App\Settings\AdminBranding;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
@@ -19,8 +20,10 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[IsGranted('ROLE_MODERATOR')]
 class ServiceReviewCrudController extends AbstractCrudController
@@ -34,6 +37,9 @@ class ServiceReviewCrudController extends AbstractCrudController
 
     public function __construct(
         private readonly GoogleOAuthConfig $googleOAuth,
+        private readonly AdminBranding $branding,
+        private readonly AdminUrlGeneratorInterface $adminUrls,
+        private readonly TranslatorInterface $translator,
         #[Autowire('%app.reviews.require_location%')]
         private readonly bool $requireLocation = false,
     ) {
@@ -46,9 +52,12 @@ class ServiceReviewCrudController extends AbstractCrudController
 
     public function configureCrud(Crud $crud): Crud
     {
-        // без кредів Google відвідувачі не можуть залишити відгук — кажемо тут, а не на сайті
-        if (!$this->googleOAuth->isConfigured()) {
-            $crud->setHelp(Crud::PAGE_INDEX, '⚠ '.$this->googleOAuth->warning());
+        // без ключів Google відвідувачі не можуть залишити відгук — кажемо тут, а не на сайті; сайт — той, якому належить
+        // адмінка (AdminBranding), ключі вводяться в «Налаштування сайту» → «Вхід через Google»
+        $site = $this->branding->site();
+        if (!$this->googleOAuth->isConfigured($site)) {
+            $crud->setHelp(Crud::PAGE_INDEX, '⚠ ' . htmlspecialchars($this->translator->trans('dashboard.google_warning', ['%site%' => ''], 'admin'), \ENT_QUOTES)
+                . ($this->isGranted('ROLE_ADMIN') ? ' <a href="' . htmlspecialchars($this->adminUrls->unsetAll()->setController(SiteSettingCrudController::class)->setAction('index')->generateUrl(), \ENT_QUOTES) . '#google-sign-in">' . htmlspecialchars($this->translator->trans('dashboard.google_link', [], 'admin'), \ENT_QUOTES) . '</a>' : ''));
         }
 
         return $crud

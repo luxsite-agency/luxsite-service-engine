@@ -89,6 +89,12 @@ doctor_one() {
     fi
     if [ "$(val cron)" = yes ]; then ok "cron бекапу є"; else wrn "cron бекапу на сервері нема"; fi
     [ -n "$S_BACKUP_TARGET" ] || wrn "backup_target не задано — копій поза сервером нема"
+    # ключ шифрування секретів «Налаштування сайту» (Client Secret Google); рушій без налаштувань рядка не дає
+    case "$(val secret_key)" in
+        yes) ok "SETTINGS_SECRET_KEY є (секрети налаштувань сайту)" ;;
+        invalid) wrn "SETTINGS_SECRET_KEY у .env.local некоректний (32 байти base64, 44 символи одним рядком) — секретні налаштування вимкнені" ;;
+        no) wrn "SETTINGS_SECRET_KEY у .env.local нема — секретні налаштування вимкнені (deploy додає сам)" ;;
+    esac
 
     local disk use; disk="$(val disk.root)"; use="${disk%%%*}"
     if [ -z "$use" ]; then wrn "диск: невідомо"

@@ -253,6 +253,51 @@ server: { host: <ssh-аліас>, user: www-data, runtime: docker, proxy: edge, 
   — у crontab root на сервері. Перемикання релізу перестворює контейнери (інший `./` → `/app`), тому сайт оновлюється в
   момент `compose up` нового релізу, ще до smoke; провал smoke/міграцій повертає контейнери на попередній реліз.
 
+## Налаштування в адмінці (21.10.2026)
+
+Адмінка → «Налаштування» → **«Налаштування сайту»** (лише `ROLE_ADMIN`; модель — розділ налаштувань shop-engine). Ключі й
+коди, які клієнт вводить сам, без пака й деплою. Вмикається саме: міграція `Version20261021100000` (адитивна, таблиця
+`service_site_setting`) і порожні рядки; сайт без налаштувань рендериться як раніше, `.env.local` і параметри паку лишаються
+запасним джерелом.
+
+| Група | Поле (`код`) | Що робить на сайті | Пріоритет |
+|---|---|---|---|
+| Вхід через Google | Увімкнено, Client ID, Client Secret (`google.*`) | кнопка «Увійти через Google» і форма «Залишити відгук» на `/reviews/` | адмінка (перемикач увімкнено) > `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` у `.env.local`; увімкнено, а ключі неповні — вимкнено, без тихого відкату на env |
+| Аналітика | GTM сайту (`analytics.gtm_container_id`) | контейнер у містах без власного лічильника | **лічильник міста** («Міста сервісів» → «Лічильник аналітики») > GTM сайту; два контейнери на сторінці не ставимо |
+| | GA4, Google Ads, мітка конверсії «Заявка» | `gtag.js` лише на сторінках без GTM; на `/thank-you/` — події `app.lead_events` у GA4 сайту (`send_to`) і одна конверсія Ads | з GTM — налаштовувати в контейнері |
+| | Microsoft Clarity (`analytics.clarity_id`) | тег Clarity | адмінка > `app.clarity_id` паку |
+| | Meta Pixel (`analytics.fb_pixel_id`) | PageView, Lead на `/thank-you/` | якщо піксель у GTM — поле порожнє |
+| | Банер згоди на cookie (`analytics.consent_banner`) | Consent Mode v2 (`denied` до згоди), Clarity/Pixel лише після «Прийняти», cookie `sv_consent` 180 днів | вимкнено = як раніше |
+| Верифікація | Google Search Console, Bing (`seo.*`) | `<meta>` у `<head>` усіх хостів | GSC: адмінка > `app.site_verification` паку |
+| HTML-коди | `<head>`, початок і кінець `<body>` (`html.*`) | сирий HTML на всіх сторінках | лише адміністратор |
+| Адмінка | Назва адмінки (`site.admin_title`) | бічне меню, дашборд, сторінка входу | адмінка > назва сайту хоста адмінки > «Сервісні сайти» |
+
+- **Формат** кожного id перевіряється при збереженні (помилка біля поля); можна вставити цілий код від Google, Meta чи Microsoft —
+  ідентифікатор дістанеться сам. Під списком — таблиця «Що виводиться на сайті по містах» (джерело кожного тегу й посилання на
+  поле міста) та стан інтеграцій, які лишаються в паку/на сервері (CRM `app.crm`, віджет `app.gbp_reviews`, `STUDIO_API_TOKEN`).
+- **Секрети** (Client Secret) — у БД лише конверт `enc:v1:…` (sodium secretbox), ключ — `SETTINGS_SECRET_KEY` у `shared/.env.local`
+  (не `APP_SECRET`). `bin/site deploy` дописує ключ сам, якщо його нема; `bin/site doctor` показує його стан; вручну —
+  `bin/console app:secrets:keygen`. У формі секрет не показується (маска «…abcd»), порожнє поле = лишити чинний. Ключ змінено
+  чи БД відновлено на іншому сервері — в адмінці «введіть знову», сайт не падає.
+- **Аудит** — `var/log/security_audit.log` (на сервері `shared/log/`): `settings.changed` / `settings.secret_set` /
+  `settings.secret_cleared` з кодом ключа, id сайту, id користувача, HMAC email і анонімізованим IP; **без значень** (для секрету — маска).
+- **Доступ:** лише `ROLE_ADMIN`; персональні токени менеджерів (`content:*`, `prices:write`, `studio:write`, `theme:write`) налаштувань
+  не бачать і не змінюють — REST/MCP живуть в окремому firewall і такого ресурсу не мають. Шаблонам (і живому дизайну під токеном)
+  доступні лише публічні значення (`site_tags(city)`), секретів там нема.
+- **Кілька сайтів в одній БД** (локальний стек): налаштування — на сайт, перемикач сайту над списком (`?site=<id>`).
+
+### Вхід через Google: підключення (інструкція є й в адмінці під списком)
+
+1. Google Cloud Console → проєкт компанії → APIs & Services → OAuth consent screen: External, назва, email підтримки, домени сайту,
+   статус In production; scopes — `openid`, `email`, `profile`.
+2. Credentials → Create credentials → OAuth client ID → Web application.
+3. Authorized JavaScript origins і Authorized redirect URIs — **по рядку на кожне активне місто сайту**: адмінка показує готові
+   значення (`https://<хост міста>` і `https://<хост міста>/connect/google/check`) з кнопками «Копіювати». Нове місто чи домен —
+   додати його рядок і в Google.
+4. Client ID і Client Secret — у рядки групи «Вхід через Google», перемикач «Увімкнено» → зберегти.
+5. «Перевірити налаштування» (формат Client ID, стан секрету, перемикач, кількість адрес, discovery/JWKS Google з сервера) →
+   «Спробувати на сайті» (сторінка відгуків першого міста; повний вхід — своїм акаунтом Google).
+
 ## Вимоги до сервера (fastpanel)
 
 PHP 8.4 (`/opt/php84/bin/php`) з intl/pdo_mysql/gd/zip/opcache, `composer` у `/usr/local/bin`, `mysqldump`/`mysql`,

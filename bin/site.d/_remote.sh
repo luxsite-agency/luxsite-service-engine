@@ -251,7 +251,28 @@ first_run() {
     if [ "$DRY_RUN" != 1 ] && [ "$RUNTIME" = fastpanel ] && grep -q '^DATABASE_URL=mysql://USER:PASSWORD@' "$env"; then
         die "у $env ще заготовка DATABASE_URL — заповніть і повторіть deploy"
     fi
+    settings_secret_key_env
     return 0
+}
+
+# settings_secret_key_env — SETTINGS_SECRET_KEY (шифрування секретів «Налаштування сайту» в адмінці, 21.10.2026) у наявному
+# shared/.env.local: дописується один раз (як у shop-engine); значення не друкується. Без ключа секретні поля неактивні.
+settings_secret_key_env() {
+    local f="$ROOT/shared/.env.local"
+    [ -f "$f" ] || return 0
+    grep -q '^SETTINGS_SECRET_KEY=.\+' "$f" && return 0
+    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] shared/.env.local: додати SETTINGS_SECRET_KEY"; return 0; fi
+    (umask 077; { grep -v '^SETTINGS_SECRET_KEY=' "$f"; echo "SETTINGS_SECRET_KEY=$(openssl rand -base64 32 | tr -d '\n')"; } > "$f.tmp.$$")
+    chmod 600 "$f.tmp.$$" && mv "$f.tmp.$$" "$f" && own "$f"
+    log "SETTINGS_SECRET_KEY додано в shared/.env.local"
+}
+
+# settings_key_state — yes / no / invalid (не 32 байти base64, 44 символи одним рядком). Значення не друкується.
+settings_key_state() {
+    local v
+    v="$(grep -m1 '^SETTINGS_SECRET_KEY=' "$ROOT/shared/.env.local" 2>/dev/null | cut -d= -f2- | tr -d "\"' \r")"
+    if [ -z "$v" ]; then echo no; return 0; fi
+    if [ "${#v}" -eq 44 ] && printf '%s' "$v" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then echo yes; else echo invalid; fi
 }
 
 # link_release <реліз>: .env.local, public/media, var/log → shared
@@ -629,6 +650,7 @@ do_doctor() {
     fi
     echo "cron=$(crontab -l 2>/dev/null | grep -qF "$CRON_MARK" && echo yes || echo no)"
     echo "disk.root=$(df -P "$ROOT" | awk 'NR==2 {print $5" used, "int($4/1024)"M free"}')"
+    echo "secret_key=$(settings_key_state)"
 }
 
 if [ "${SITE_LIB_ONLY:-0}" = 1 ]; then return 0; fi

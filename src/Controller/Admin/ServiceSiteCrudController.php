@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServiceSite;
+use App\Settings\AdminBranding;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
@@ -24,6 +25,10 @@ class ServiceSiteCrudController extends AbstractCrudController
     use CancelActionTrait;
     use FieldHintTrait;
 
+    public function __construct(private readonly AdminBranding $branding)
+    {
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServiceSite::class;
@@ -31,9 +36,12 @@ class ServiceSiteCrudController extends AbstractCrudController
 
     public function configureCrud(Crud $crud): Crud
     {
+        // сайт у БД один (звичайний прод: БД на сайт) — «Сайт», а не «Сервісні сайти» (власник 21.10.2026)
+        $single = $this->branding->singleSite();
+
         return $crud
-            ->setEntityLabelInSingular('Сервісний сайт')
-            ->setEntityLabelInPlural('Сервісні сайти')
+            ->setEntityLabelInSingular($single ? 'Сайт' : 'Сервісний сайт')
+            ->setEntityLabelInPlural($single ? 'Сайт' : 'Сервісні сайти')
             // Сайти-бренди = конфігурація платформи: тільки адмін
             ->setEntityPermission('ROLE_ADMIN');
     }

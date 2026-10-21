@@ -10,7 +10,6 @@ namespace App\Security;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use KnpU\OAuth2ClientBundle\Security\Authenticator\OAuth2Authenticator;
 use League\OAuth2\Client\Provider\GoogleUser;
 use Psr\Log\LoggerInterface;
@@ -31,7 +30,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 class GoogleAuthenticator extends OAuth2Authenticator
 {
     public function __construct(
-        private readonly ClientRegistry $clients,
+        private readonly GoogleOAuthClientFactory $clients,
         private readonly EntityManagerInterface $em,
         private readonly UserRepository $users,
         private readonly LoggerInterface $logger,
@@ -45,7 +44,8 @@ class GoogleAuthenticator extends OAuth2Authenticator
 
     public function authenticate(Request $request): Passport
     {
-        $client = $this->clients->getClient('google');
+        // ключі сайту поточного хоста (адмінка → Налаштування або .env.local); вимкнено — без звернення до Google
+        $client = $this->clients->forRequest($request) ?? throw new AuthenticationException('Вхід через Google для цього сайту вимкнено.');
         $accessToken = $this->fetchAccessToken($client);
 
         return new SelfValidatingPassport(

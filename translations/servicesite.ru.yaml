@@ -26,6 +26,12 @@ contacts.map_title: Мы на карте
 contacts.map_hint: Нажмите, чтобы показать карту Google
 contacts.map_open: Открыть на Google Картах
 contacts.coverage: 'Выезд мастера: %city% и пригород.'
+# баннер согласия на cookie (админка → Налаштування → «Банер згоди на cookie»); пак может перекрыть тексты
+consent.title: Согласие на cookie
+consent.text: 'Мы используем cookie для аналитики и рекламы, чтобы сайт работал лучше.'
+consent.more: Подробнее
+consent.accept: Принять
+consent.decline: Отклонить
 
 home.services_title: 'Наши услуги'
 home.districts_title: 'Районы обслуживания'

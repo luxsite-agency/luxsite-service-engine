@@ -1,10 +1,17 @@
 monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
+        # журнал змін налаштувань сайту (адмінка → Налаштування): хто, коли, який ключ, без значень — var/log/security_audit.log
+        - security_audit
 
 when@dev:
     monolog:
         handlers:
+            security_audit:
+                type: stream
+                path: "%kernel.logs_dir%/security_audit.log"
+                level: info
+                channels: [security_audit]
             main:
                 type: stream
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
@@ -18,6 +25,11 @@ when@dev:
 when@test:
     monolog:
         handlers:
+            security_audit:
+                type: stream
+                path: "%kernel.logs_dir%/security_audit.log"
+                level: info
+                channels: [security_audit]
             main:
                 type: fingers_crossed
                 action_level: error
@@ -32,6 +44,13 @@ when@test:
 when@prod:
     monolog:
         handlers:
+            # окремий файл, не fingers_crossed: записи info мають лишитися й без помилки в тому ж запиті (var/log → shared/log)
+            security_audit:
+                type: stream
+                path: "%kernel.logs_dir%/security_audit.log"
+                level: info
+                channels: [security_audit]
+                formatter: monolog.formatter.json
             main:
                 type: fingers_crossed
                 action_level: error

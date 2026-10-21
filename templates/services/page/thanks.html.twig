@@ -23,6 +23,14 @@
         });
         {% endfor %}
     </script>
+    {#~ Налаштування сайту без GTM (gtag напряму): конверсія Google Ads, події заявки в GA4 сайту, Lead для Meta Pixel —
+        у черзі svTags до старту тегів (site_lead_js; без цих налаштувань — порожньо). #}
+    {%~ set _svLeadJs = site_lead_js(city, ({calc: 'calculator', magnet: 'magnet'})[app.request.query.get('src')] ?? 'form', lead_events, app.request.host) %}
+    {%~ if _svLeadJs %}
+    <script>
+{{ _svLeadJs|raw }}
+    </script>
+    {%~ endif %}
     {% endif %}
 
     <section class="block" style="text-align:center;padding:3rem 0">

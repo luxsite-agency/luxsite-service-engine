@@ -7,26 +7,53 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Repository\ServiceSiteRepository;
+use App\Security\GoogleOAuthConfig;
+use App\Settings\AdminBranding;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use Symfony\Component\HttpFoundation\Response;
+
+use function Symfony\Component\Translation\t;
 
 #[AdminDashboard(routePath: '/admin', routeName: 'admin')]
 class DashboardController extends AbstractDashboardController
 {
+    public function __construct(
+        private readonly AdminBranding $branding,
+        private readonly GoogleOAuthConfig $googleOAuth,
+        private readonly ServiceSiteRepository $sites,
+        private readonly AdminUrlGeneratorInterface $adminUrls,
+    ) {
+    }
+
     public function index(): Response
     {
-        return $this->render('admin/dashboard.html.twig');
+        // «Вхід через Google не налаштовано» — по кожному активному сайту, з посиланням на його налаштування (лише адміну)
+        $sites = $this->sites->findAllActive();
+        $google = [];
+        foreach ($sites as $site) {
+            if (!$this->googleOAuth->isConfigured($site)) {
+                $google[] = [
+                    'site' => \count($sites) > 1 ? $site->getName() : null,
+                    'url' => $this->adminUrls->unsetAll()->setController(SiteSettingCrudController::class)->setAction('index')->set('site', $site->getId())->generateUrl() . '#google-sign-in',
+                ];
+            }
+        }
+
+        return $this->render('admin/dashboard.html.twig', ['google_warnings' => $google, 'admin_title' => $this->branding->title()]);
     }
 
     public function configureDashboard(): Dashboard
     {
         return Dashboard::new()
-            ->setTitle('Сервісні сайти')
+            // назва сайту адмінки (AdminBranding; налаштування «Назва адмінки»), кілька сайтів — «Сервісні сайти». Title EasyAdmin — HTML
+            ->setTitle(htmlspecialchars($this->branding->title(), \ENT_QUOTES))
             ->setLocales(['uk']);
     }
 
@@ -80,12 +107,14 @@ class DashboardController extends AbstractDashboardController
             ->setPermission('ROLE_MODERATOR');
 
         yield MenuItem::section('Мережа')->setPermission('ROLE_ADMIN');
-        yield MenuItem::linkTo(ServiceSiteCrudController::class, 'Сайти-бренди', 'fa fa-briefcase')
+        yield MenuItem::linkTo(ServiceSiteCrudController::class, $this->branding->singleSite() ? 'Сайт' : 'Сайти-бренди', 'fa fa-briefcase')
             ->setPermission('ROLE_ADMIN');
         yield MenuItem::linkTo(ServiceCityCrudController::class, 'Міста сервісів', 'fa fa-location-dot')
             ->setPermission('ROLE_ADMIN');
 
         yield MenuItem::section('Налаштування')->setPermission('ROLE_ADMIN');
+        yield MenuItem::linkTo(SiteSettingCrudController::class, t('menu.settings', [], 'admin'), 'fa fa-sliders')
+            ->setPermission('ROLE_ADMIN');
         yield MenuItem::linkTo(UserCrudController::class, 'Користувачі', 'fa fa-users')
             ->setPermission('ROLE_ADMIN');
 
