@@ -1,13 +1,15 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends '@EasyAdmin/page/content.html.twig' %}
 
-{% block content_title %}Service Sites{% endblock %}
+{% block content_title %}{{ admin_title|default(admin_title()) }}{% endblock %}
 
 {% block main %}
-    {% if not google_oauth.configured %}
-    <div class="alert alert-warning">{{ google_oauth.warning }}</div>
-    {% endif %}
+    {# вхід через Google (відгуки): попередження по кожному сайту без ключів — посилання на «Налаштування сайту» (лише адміну) #}
+    {% for g in google_warnings|default([]) %}
+    <div class="alert alert-warning" data-google-warning>{{ 'dashboard.google_warning'|trans({'%site%': g.site ? ' (' ~ g.site ~ ')' : ''}, 'admin') }}
+        {% if is_granted('ROLE_ADMIN') %} <a href="{{ g.url }}" class="alert-link">{{ 'dashboard.google_link'|trans({}, 'admin') }}</a>{% endif %}</div>
+    {% endfor %}
     <p>Платформа сервісних сайтів: {{ 'now'|date('d.m.Y') }}.</p>
-    <p>Розділи - у меню ліворуч. Новий бренд = «Сайти-бренди», нове місто бренду  - 
-        «Міста сервісів» (хост + контакти + тексти головної).</p>
+    <p>Розділи - у меню ліворуч. Новий бренд = «Сайти-бренди», нове місто бренду  -
+        «Міста сервісів» (хост + контакти + тексти головної), ключі й коди сайту — «Налаштування сайту».</p>
 {% endblock %}

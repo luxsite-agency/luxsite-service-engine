@@ -7,8 +7,8 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Security\GoogleOAuthClientFactory;
 use App\Security\GoogleOAuthConfig;
-use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,13 +19,14 @@ class GoogleController extends AbstractController
 {
     public function __construct(
         private readonly GoogleOAuthConfig $googleOAuth,
+        private readonly GoogleOAuthClientFactory $clients,
         private readonly LoggerInterface $logger,
     ) {
     }
 
     /** Старт: запам'ятовуємо, куди повернутись, і йдемо до Google */
     #[Route('/connect/google', name: 'connect_google_start')]
-    public function connect(Request $request, ClientRegistry $clients): Response
+    public function connect(Request $request): Response
     {
         $return = (string) $request->query->get('return', '/');
         if ($return === '' || $return[0] !== '/' || str_starts_with($return, '//')) {
@@ -33,16 +34,18 @@ class GoogleController extends AbstractController
         }
 
         // без клієнта Google віддасть «Missing required parameter: client_id». Кнопки на сайті тоді нема
-        // (google_oauth.configured), сюди веде хіба стара закладка чи entry point: тихо назад, технічне — лише в лог
-        if (!$this->googleOAuth->isConfigured()) {
-            $this->logger->warning($this->googleOAuth->warning(), ['host' => $request->getHost()]);
+        // (google_oauth.configured), сюди веде хіба стара закладка чи entry point: тихо назад, технічне — лише в лог.
+        // Ключі — адмінка → Налаштування сайту (пріоритет) або .env.local (GoogleOAuthCredentials)
+        $client = $this->clients->forRequest($request);
+        if ($client === null) {
+            $this->logger->warning($this->googleOAuth->warning(), ['host' => $request->getHost(), 'problem' => $this->googleOAuth->problem()]);
 
             return $this->redirect($return);
         }
 
         $request->getSession()->set('oauth_return', $return);
 
-        return $clients->getClient('google')->redirect(['openid', 'email', 'profile'], []);
+        return $client->redirect(['openid', 'email', 'profile'], []);
     }
 
     /** Callback: перехоплюється GoogleAuthenticator, тіло не виконується */

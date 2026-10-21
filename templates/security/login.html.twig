@@ -5,11 +5,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Вхід - Service Sites</title>
+    <title>Вхід - {{ admin_title() }}</title>
 </head>
 <body>
 <div style="max-width:360px;margin:10vh auto;font-family:system-ui,sans-serif">
-    <h1 style="font-size:1.4rem">Service Sites</h1>
+    {# назва адмінки: назва сайту хоста адмінки (AdminBranding), кілька сайтів — «Сервісні сайти» #}
+    <h1 style="font-size:1.4rem">{{ admin_title() }}</h1>
 
     {% if error %}
         <div style="color:#b00020;margin-bottom:1rem">{{ error.messageKey|trans(error.messageData, 'security') }}</div>

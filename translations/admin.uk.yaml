@@ -1,0 +1,196 @@
+# Тексти адмінки для розділу «Налаштування сайту» (домен admin, 21.10.2026). Решта адмінки рушія поки пише підписи
+# українською в коді; новий розділ — через переклади uk/ru, щоб ru запрацювала разом із перемикачем мови адмінки.
+menu:
+  settings: Налаштування сайту
+
+dashboard:
+  google_warning: 'Вхід через Google не налаштовано%site%: відвідувачі не бачать форму «Залишити відгук», нові відгуки — лише через адмінку.'
+  google_link: Налаштувати вхід через Google
+
+setting:
+  label:
+    singular: Налаштування
+    plural: Налаштування сайту
+  title:
+    index: 'Налаштування сайту «%site%»'
+  sites: Сайт
+  help:
+    index: 'Ключі й коди, які клієнт вводить сам: вхід через Google, аналітика, верифікація, свої HTML-коди. Діють на сайті одразу після збереження. Лічильник окремого міста — у «Міста сервісів» (має пріоритет над GTM сайту, див. таблицю нижче).'
+    html_raw: '%help% Зберігається й виводиться як є, без екранування.'
+    secret_disabled_missing: 'На сервері нема ключа шифрування SETTINGS_SECRET_KEY — секрет зберегти не можна. Ключ дописує bin/site deploy (або bin/console app:secrets:keygen → shared/.env.local).'
+    secret_disabled_invalid: 'SETTINGS_SECRET_KEY на сервері некоректний (має бути 32 байти base64, 44 символи одним рядком) — секрет зберегти не можна.'
+    secret_unreadable: 'Збережений секрет не розшифрувати: ключ шифрування на сервері змінено (наприклад, БД відновлено на іншому сервері). Введіть секрет знову.'
+    clear_secret: Увімкніть і збережіть, щоб прибрати збережений секрет.
+  action:
+    open_site: Відкрити сайт
+    edit: Змінити
+  field:
+    label: Налаштування
+    value: Значення
+    status: Стан
+    updated_at: Змінено
+    clear_secret: Видалити збережений секрет
+  value:
+    'on': так
+    'off': ні
+  status:
+    not_set: не задано
+    set: задано
+    invalid: 'не виводиться: невірний формат'
+    invalid_title: Очікується значення у форматі, як у підказці поля
+  invalid_format: 'Невірний формат — див. підказку під полем. Можна вставити цілий код від Google, Meta чи Microsoft: ідентифікатор дістанеться сам.'
+  secret_state:
+    missing: не задано
+    no_key: нема ключа шифрування
+    unreadable: введіть знову
+    ready: задано
+    hint:
+      missing: ''
+      no_key: На сервері нема SETTINGS_SECRET_KEY — секрет не зберегти й не прочитати.
+      unreadable: Ключ шифрування на сервері змінено — збережений секрет не розшифрувати, введіть його знову.
+      ready: Зберігається шифровано, показується лише маскою.
+  group:
+    google: Вхід через Google
+    analytics: Аналітика
+    seo: Верифікація
+    html: HTML-коди
+    site: Адмінка
+  key:
+    google:
+      sign_in_enabled:
+        label: Увімкнено
+        help: 'Кнопка «Увійти через Google» і форма «Залишити відгук» на сторінці відгуків. Працює лише разом із Client ID і Client Secret; інструкція й адреси для Google Cloud Console — під списком налаштувань. Вимкнено — діють ключі зі змінних сервера (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET у .env.local), якщо вони є.'
+      client_id:
+        label: Client ID
+        help: 'З Google Cloud Console → Credentials → OAuth client ID (Web application): рядок виду 123456789012-abc…xyz.apps.googleusercontent.com.'
+      client_secret:
+        label: Client Secret
+        help: 'Звідти ж (GOCSPX-…). Зберігається шифровано, показується лише маскою; порожнє поле при збереженні — лишити чинний. Ротація: у Cloud Console створіть новий secret у тому ж клієнті, вставте сюди, потім вимкніть старий.'
+    analytics:
+      gtm_container_id:
+        label: GTM сайту (Google Tag Manager)
+        help: 'GTM-XXXXXXX (Tag Manager → Admin → Container ID; можна вставити цілий код контейнера). Виводиться в усіх містах, де поле «Лічильник аналітики» міста порожнє: лічильник міста має пріоритет, два контейнери на сторінці не ставимо. GA4, Ads, Pixel, Clarity краще підключати всередині GTM.'
+      ga4_measurement_id:
+        label: Google Analytics 4 (без GTM)
+        help: 'G-XXXXXXXXXX (Analytics → Адміністратор → Потоки даних → Ідентифікатор вимірювання). Виводиться gtag.js лише на сторінках без GTM; на «Дякуємо» йдуть події заявки (app.lead_events). Якщо в місті чи сайті є GTM — налаштуйте GA4 у контейнері, тут залиште порожнім.'
+      google_ads_id:
+        label: Google Ads (без GTM)
+        help: 'AW-XXXXXXXXX (Google Ads → Цілі → Конверсії → тег Google → ідентифікатор). Як і GA4 — лише на сторінках без GTM, тим самим gtag.js.'
+      google_ads_lead_label:
+        label: Мітка конверсії Google Ads «Заявка»
+        help: 'Частина send_to після «/» (AW-123456789/<мітка>; можна вставити цілий фрагмент коду події). На сторінці «Дякуємо» — одна конверсія на заявку, лише разом з ідентифікатором Google Ads і без GTM.'
+      clarity_id:
+        label: Microsoft Clarity
+        help: 'ID проєкту (clarity.microsoft.com → Settings → Overview → Project ID, 10 символів; можна вставити цілий код). Має пріоритет над параметром паку app.clarity_id. Якщо Clarity вже в GTM — залиште порожнім.'
+      fb_pixel_id:
+        label: Meta Pixel (Facebook)
+        help: 'Числовий ID пікселя (Events Manager → Джерела даних → піксель → ID; можна вставити цілий код). PageView на всіх сторінках, Lead — на «Дякуємо». Якщо піксель налаштовано в GTM — залиште порожнім, інакше події задвояться.'
+      consent_banner:
+        label: Банер згоди на cookie
+        help: 'Увімкнено — Consent Mode v2: до згоди Google-теги працюють без cookie (denied), Clarity й Meta Pixel не вантажаться; банер «Прийняти / Відхилити» внизу сторінки, вибір — на 180 днів. Потрібно для відвідувачів з ЄС. Вимкнено — як раніше, без банера.'
+    seo:
+      google_site_verification:
+        label: Google Search Console — код верифікації
+        help: 'Значення content мета-тегу google-site-verification (можна вставити тег цілком). Має пріоритет над параметром паку app.site_verification. Мета-тег виводиться на всіх хостах сайту.'
+      bing_site_verification:
+        label: Bing Webmaster — код верифікації
+        help: Значення content мета-тегу msvalidate.01 (можна вставити тег цілком).
+    html:
+      head:
+        label: Свій код у <head>
+        help: 'Довільний HTML/JS, виводиться сирим у <head> кожної сторінки сайту (усі міста). Лише для адміністратора; помилка в коді може зламати сторінку.'
+      body_start:
+        label: Свій код на початку <body>
+        help: Виводиться сирим одразу після <body>.
+      body_end:
+        label: Свій код у кінці <body>
+        help: Виводиться сирим перед </body>.
+    site:
+      admin_title:
+        label: Назва адмінки
+        help: 'Заголовок у бічному меню, на дашборді й на сторінці входу. Порожньо — назва сайту («Сайти-бренди» → Назва).'
+  tags:
+    title: Що виводиться на сайті по містах
+    help: 'Лічильник міста («Міста сервісів» → «Лічильник аналітики») має пріоритет: у такому місті GTM сайту не виводиться. GA4 і Google Ads сайту — лише на сторінках без GTM. Clarity і верифікація: налаштування сайту > параметр паку.'
+    city: Місто
+    city_tag: Лічильник міста
+    output: Виводиться
+    inactive: неактивне
+    edit_city: змінити в місті
+    kind:
+      gtm: GTM
+      gtag: gtag.js
+      none: нічого
+    source:
+      city: з поля міста
+      site: з налаштувань сайту
+    ads_conversion: 'конверсія на «Дякуємо»:'
+    clarity_source:
+      settings: налаштування сайту
+      pack: параметр паку
+    consent: після згоди на cookie
+  integrations:
+    title: Інші інтеграції (налаштовуються в паку й на сервері)
+    crm: 'CRM заявок: %system%'
+    'on': увімкнено
+    'off': вимкнено
+    gbp: Віджет відгуків gbp-manager (app.gbp_reviews)
+    studio: Приймач статей content-studio (STUDIO_API_TOKEN)
+    secret_key: Ключ шифрування секретів SETTINGS_SECRET_KEY
+    key_ok: є
+    key_empty: нема (секрети зберегти не можна)
+    key_invalid: некоректний
+    help: 'CRM (app.crm, токени в .env.local), віджет відгуків і тема — у паку сайту; доступи — лише на сервері. Їх змінює розробник з деплоєм: помилка там ламає прийом заявок.'
+
+settings:
+  google:
+    title: Вхід через Google
+    csrf_invalid: Недійсний CSRF-токен, спробуйте ще раз
+    state:
+      settings: 'Увімкнено: відвідувачі бачать «Увійти через Google» і форму відгуку, ключі — з налаштувань сайту.'
+      env: 'Перемикач вимкнено; працюють ключі зі змінних сервера (.env.local). Щоб керувати ключами тут — введіть їх нижче й увімкніть.'
+      disabled: 'Вимкнено: кнопки «Увійти через Google» і форми «Залишити відгук» на сайті нема, нові відгуки — лише через адмінку.'
+      client_id_missing: 'Увімкнено, але Client ID не задано — кнопки на сайті нема.'
+      client_id_invalid: 'Увімкнено, але Client ID не схожий на …apps.googleusercontent.com — кнопки на сайті нема.'
+      secret_missing: 'Увімкнено, але Client Secret не задано — кнопки на сайті нема.'
+      secret_no_key: 'Увімкнено, але на сервері нема ключа шифрування SETTINGS_SECRET_KEY — секрет зберегти не можна, кнопки на сайті нема.'
+      secret_unreadable: 'Увімкнено, але збережений Client Secret не розшифрувати (ключ шифрування на сервері змінено) — введіть його знову.'
+    edit_enabled: Перемикач «Увімкнено»
+    edit_client_id: Ввести Client ID
+    edit_client_secret: Ввести Client Secret
+    hosts_help: 'Адреси для Google Cloud Console — по одній на кожне активне місто сайту (%count%): у кожного свій домен, Google пускає лише на точно вписані адреси.'
+    city: Місто
+    origin: Authorized JavaScript origin
+    redirect_uri: Authorized redirect URI
+    copy: Копіювати
+    copied: Скопійовано
+    no_hosts: Активних міст нема — додайте місто в «Міста сервісів».
+    steps:
+      title: Як отримати Client ID і Client Secret (разово, 10–15 хвилин)
+      console: 'Відкрийте Google Cloud Console (console.cloud.google.com), оберіть проєкт компанії або створіть новий.'
+      consent: 'APIs & Services → OAuth consent screen (Google Auth Platform → Branding): тип External, назва компанії, email підтримки, домени сайту; статус In production (у Testing входять лише тестові адреси). Доступи (scopes) — лише openid, email, profile.'
+      client: 'APIs & Services → Credentials → Create credentials → OAuth client ID, тип Web application, назва — домен сайту.'
+      uris: 'У Authorized JavaScript origins вставте всі origin із таблиці вище, в Authorized redirect URIs — усі redirect URI (точний збіг, з https, без зайвого слеша). Нове місто чи домен — додайте його рядок і тут.'
+      keys: 'Скопіюйте Client ID і Client Secret у рядки «Client ID» і «Client Secret» групи «Вхід через Google» у списку вище (секрет зберігається шифровано й показується маскою).'
+      enable: 'Увімкніть перемикач «Увімкнено» в тій самій групі й збережіть.'
+      verify: 'Натисніть «Перевірити налаштування», потім «Спробувати на сайті»: на сторінці відгуків є кнопка «Увійти через Google» — увійдіть своїм акаунтом Google (відгук публікується після модерації).'
+    console: Відкрити Google Cloud Console
+    check: Перевірити налаштування
+    try: Спробувати на сайті
+    check_result:
+      client_id_ok: Client ID задано, формат правильний.
+      client_id_missing: Client ID не задано.
+      client_id_invalid: Client ID не схожий на …apps.googleusercontent.com — перевірте, чи не вставлено secret або API-ключ.
+      secret_ready: Client Secret задано.
+      secret_missing: Client Secret не задано.
+      secret_no_key: 'На сервері нема ключа шифрування SETTINGS_SECRET_KEY (%problem%) — Client Secret зберегти не можна. Зверніться до розробника.'
+      secret_unreadable: 'Збережений Client Secret не розшифрувати: ключ шифрування на сервері змінено — введіть секрет знову.'
+      enabled_settings: Увімкнено, працюють ключі з налаштувань сайту.
+      enabled_env: 'Перемикач вимкнено: працюють ключі зі змінних сервера (.env.local). Увімкніть, щоб діяли ключі з налаштувань.'
+      enabled_incomplete: Перемикач увімкнено, але ключі неповні — кнопки на сайті нема.
+      enabled_off: Перемикач вимкнено, ключів на сервері теж нема — кнопки на сайті нема.
+      hosts: 'Адрес для Google Cloud Console: %count% (по одній на активне місто) — усі мають бути в OAuth-клієнті.'
+      hosts_none: Активних міст нема — redirect URI немає куди вести.
+      google_ok: 'Google відповідає: issuer %issuer%, ключів підпису %keys%.'
+      google_endpoints_changed: Google оголошує інші адреси кінцевих точок, ніж використовує рушій, — повідомте розробника.
+      google_failed: 'Google недоступний з сервера (%reason%). Перевірте доступ сервера в інтернет і спробуйте пізніше.'

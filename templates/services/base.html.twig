@@ -6,16 +6,19 @@
    бордери #d5dce3. Контролери передають altUrls = {uk, ru} — з нього
    будуються hreflang, canonical і перемикач мов. #}
 {% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{#~ Аналітика й коди сайту (site_tags: лічильник міста > GTM/GA4/Ads з адмінки → Налаштування; Clarity і верифікація —
+   адмінка > пак). Без налаштувань значення ті самі, що давали city.gtmId, app.clarity_id і app.site_verification. #}
+{%~ set _svTags = site_tags(city) %}
 <!DOCTYPE html>
 <html lang="{{ locale }}">
     <head>
         <meta charset="UTF-8">
         {% block meta_generator %}<meta name="generator" content="LuxSite Service Engine">{% endblock %}
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        {# Підтвердження прав у Search Console (app.site_verification з паку). Саме тут,
+        {# Підтвердження прав у Search Console (адмінка → Налаштування > app.site_verification паку; Bing — лише адмінка). Саме тут,
            а не через GTM: перевірник Google не виконує JavaScript, тому тег, вставлений
            менеджером тегів, він просто не побачить. Покриває всі хости бренду, бо шаблон спільний. #}
-        {% if site_verification %}<meta name="google-site-verification" content="{{ site_verification }}">{% endif %}
+        {% if _svTags.googleVerification %}<meta name="google-site-verification" content="{{ _svTags.googleVerification }}">{% endif %}{% if _svTags.bingVerification %}<meta name="msvalidate.01" content="{{ _svTags.bingVerification }}">{% endif %}
         {# app.page_meta паку перекриває title/description фіксованих сторінок (паритет після міграції) #}
         {% set _pmTitle = page_meta('title') %}
         <title>{% if _pmTitle %}{{ _pmTitle }}{% else %}{% block title %}{{ site.name }}{% endblock %}{% endif %}</title>
@@ -470,11 +473,16 @@
             });
         </script>
         {% block javascripts %}{% endblock %}
+        {#~ Черга svTags і Consent Mode (адмінка → Налаштування: Meta Pixel, конверсія Ads, GA4 сайту, банер згоди) — поза
+            block analytics, щоб пак, який перекриває аналітику, не загубив згоду. Без цих налаштувань нічого не виводиться. #}
+        {%~ if _svTags.runtime %}
+        <script>{{ _svTags.runtimeJs|raw }}</script>
+        {%~ endif %}
         {% block analytics %}
-        {# Який саме код вставляти, вирішує тип ідентифікатора з адмінки:
-           GTM-… - контейнер Tag Manager, G-…/AW-… - лічильник напряму.
-           У поле можна вставити цілий сніпет Google, сутність дістане з нього id. #}
-        {% if analytics_defer and (city.tagKind or clarity_id) %}
+        {# Який саме код вставляти, вирішує site_tags(city): лічильник міста (GTM-… - контейнер Tag Manager, G-…/AW-… -
+           лічильник напряму; у поле можна вставити цілий сніпет Google) > GTM сайту з адмінки → Налаштування; GA4 і Ads
+           сайту — gtag.js на сторінках без GTM. Clarity: адмінка > app.clarity_id паку. #}
+        {% if analytics_defer and (_svTags.kind or _svTags.clarityId or _svTags.pixelId) %}
         {# app.analytics_defer: GTM/gtag і Clarity стартують після window.load + 800 мс (таймер — пасивні візити рахуються,
            вимога /analytics-healthcheck) або раніше на першу взаємодію; прапорець проти подвійного старту. dataLayer.push
            до старту лягає в чергу, яку контейнер підхопить, тож phone_click/generate_lead не губляться. PSI сайту
@@ -482,43 +490,65 @@
         <script>
         (function () {
             window.dataLayer = window.dataLayer || [];
-            {% if city.tagKind == 'gtag' %}window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };{% endif %}
+            {% if _svTags.kind == 'gtag' %}window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };{% endif %}
             var started = false;
             function start() {
                 if (started) { return; }
                 started = true;
-                {% if city.tagKind == 'gtm' %}
-                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ city.gtmId }}');
-                {% elseif city.tagKind == 'gtag' %}
-                var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id={{ city.gtmId }}'; document.head.appendChild(s);
-                gtag('js', new Date()); gtag('config', '{{ city.gtmId }}');
+                {% if _svTags.kind == 'gtm' %}
+                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ _svTags.gtmId }}');
+                {% elseif _svTags.kind == 'gtag' %}
+                var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id={{ _svTags.gtagLoaderId }}'; document.head.appendChild(s);
+                gtag('js', new Date());{% for _svId in _svTags.gtagIds %} gtag('config', '{{ _svId }}');{% endfor %}{{ (_svTags.runtime ? " svTags.go('gtag');" : '')|raw }}
                 {% endif %}
-                {% if clarity_id %}
-                (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ clarity_id }}");
+                {% if _svTags.clarityId %}
+                {%~ if _svTags.consentBanner %}
+                svTags.run('consent', function () {
+                {%~ endif %}
+                (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ _svTags.clarityId }}");
+                {%~ if _svTags.consentBanner %}
+                });
+                {%~ endif %}
                 {% endif %}
+                {%~ if _svTags.pixelId %}
+                {{ _svTags.pixelJs|raw }}
+                {%~ endif %}
             }
             ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, start, {once: true, passive: true}); });
             if (document.readyState === 'complete') { setTimeout(start, 800); } else { window.addEventListener('load', function () { setTimeout(start, 800); }); }
         })();
         </script>
         {% else %}
-        {% if city.tagKind == 'gtm' %}
-        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ city.gtmId }}');</script>
-        {% elseif city.tagKind == 'gtag' %}
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ city.gtmId }}"></script>
-        <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ city.gtmId }}');</script>
+        {% if _svTags.kind == 'gtm' %}
+        <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ _svTags.gtmId }}');</script>
+        {% elseif _svTags.kind == 'gtag' %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ _svTags.gtagLoaderId }}"></script>
+        <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());{% for _svId in _svTags.gtagIds %}gtag('config','{{ _svId }}');{% endfor %}{{ (_svTags.runtime ? "svTags.go('gtag');" : '')|raw }}</script>
         {% endif %}
-        {# Microsoft Clarity (app.clarity_id з паку) — окремо від GTM, бо до чужого контейнера доступу може не бути #}
-        {% if clarity_id %}
-        <script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ clarity_id }}");</script>
+        {# Microsoft Clarity (адмінка > app.clarity_id паку) — окремо від GTM, бо до чужого контейнера доступу може не бути #}
+        {% if _svTags.clarityId %}
+        <script>{% if _svTags.consentBanner %}svTags.run('consent',function(){ {% endif %}(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ _svTags.clarityId }}");{% if _svTags.consentBanner %}});{% endif %}</script>
         {% endif %}
+        {%~ if _svTags.pixelId %}
+        <script>{{ _svTags.pixelJs|raw }}</script>
+        {%~ endif %}
         {% endif %}
         {% endblock %}
+        {#~ Свій код у <head> (адмінка → Налаштування → HTML-коди; лише адміністратор): сирим, як збережено. #}
+        {%~ if _svTags.htmlHead %}
+        {{ _svTags.htmlHead|raw }}
+        {%~ endif %}
     </head>
     <body{% if theme.get('key') %} class="theme-{{ theme.get('key') }}"{% endif %}>
-        {% if city.tagKind == 'gtm' %}
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ city.gtmId }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        {% if _svTags.kind == 'gtm' %}
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ _svTags.gtmId }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         {% endif %}
+        {%~ if _svTags.pixelId and not _svTags.consentBanner %}
+        <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id={{ _svTags.pixelId }}&amp;ev=PageView&amp;noscript=1"></noscript>
+        {%~ endif %}
+        {%~ if _svTags.htmlBodyStart %}
+        {{ _svTags.htmlBodyStart|raw }}
+        {%~ endif %}
         {# шапка (топбар, бренд, меню, перемикач мов): пак перекриває весь блок через
            {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається #}
         {% block header %}
@@ -837,5 +867,36 @@
                 update();
             })();
         </script>
+        {#~ Банер згоди на cookie (адмінка → Налаштування → «Банер згоди на cookie»): показується, поки нема cookie sv_consent;
+            «Прийняти» — consent update granted і старт Clarity/Pixel (svTags 'consent'), «Відхилити» — denied. 180 днів. #}
+        {%~ if _svTags.consentBanner %}
+        <div id="sv-consent" role="dialog" aria-live="polite" aria-label="{{ 'consent.title'|trans({}, 'servicesite') }}" hidden style="position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;max-width:760px;margin:0 auto;background:#fff;color:#1a1f24;border:1px solid var(--border, #d5dce3);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;font-size:.95rem">
+            <span style="flex:1 1 280px">{{ 'consent.text'|trans({}, 'servicesite') }} <a href="{{ path('sv_privacy') }}">{{ 'consent.more'|trans({}, 'servicesite') }}</a></span>
+            <button type="button" class="btn" data-consent="granted">{{ 'consent.accept'|trans({}, 'servicesite') }}</button>
+            <button type="button" class="btn btn-ghost" data-consent="denied">{{ 'consent.decline'|trans({}, 'servicesite') }}</button>
+        </div>
+        <script>
+            (function () {
+                var b = document.getElementById('sv-consent');
+                if (!b || /(?:^|;\s*)sv_consent=/.test(document.cookie)) { return; }
+                b.hidden = false;
+                b.addEventListener('click', function (e) {
+                    var t = e.target.closest('[data-consent]');
+                    if (!t) { return; }
+                    var v = t.getAttribute('data-consent') === 'granted' ? 'granted' : 'denied';
+                    document.cookie = 'sv_consent=' + v + ';path=/;max-age=15552000;SameSite=Lax' + (location.protocol === 'https:' ? ';Secure' : '');
+                    window.dataLayer = window.dataLayer || [];
+                    if (window.gtag) { gtag('consent', 'update', {ad_storage: v, ad_user_data: v, ad_personalization: v, analytics_storage: v}); }
+                    window.dataLayer.push({event: 'consent_update', consent: v});
+                    if (v === 'granted' && window.svTags) { svTags.go('consent'); }
+                    b.remove();
+                });
+            })();
+        </script>
+        {%~ endif %}
+        {#~ Свій код перед </body> (адмінка → Налаштування → HTML-коди; лише адміністратор): сирим, як збережено. #}
+        {%~ if _svTags.htmlBodyEnd %}
+        {{ _svTags.htmlBodyEnd|raw }}
+        {%~ endif %}
     </body>
 </html>

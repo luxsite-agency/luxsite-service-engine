@@ -1,0 +1,21 @@
+# Налаштування сайту в адмінці (21.10.2026, App\Settings, docs/site-ops.md «Налаштування в адмінці»). Окремий файл, а не
+# services.yaml: так паралельні гілки рушія не конфліктують.
+parameters:
+    # Ключ шифрування секретів налаштувань (Client Secret Google): 32 байти base64, лише shared/.env.local (600) на сервері.
+    # bin/site deploy дописує його сам, якщо нема; вручну — bin/console app:secrets:keygen. Порожньо = секретні поля неактивні.
+    env(SETTINGS_SECRET_KEY): ''
+
+services:
+    # HTTP-клієнт кнопки «Перевірити налаштування» (discovery/JWKS Google): короткий таймаут, без редиректів
+    app.google_probe_http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments: [{ timeout: 5, max_redirects: 0 }]
+
+when@test:
+    services:
+        # тести не ходять в інтернет: фейкові discovery/JWKS Google (tests/Support/GoogleProbeMock.php)
+        App\Tests\Support\GoogleProbeMock: ~
+        app.google_probe_http_client:
+            class: Symfony\Component\HttpClient\MockHttpClient
+            arguments: ['@App\Tests\Support\GoogleProbeMock']

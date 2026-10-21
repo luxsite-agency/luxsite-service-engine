@@ -8,6 +8,7 @@
          failOnNotice="true"
          failOnWarning="true"
          bootstrap="tests/bootstrap.php"
+         defaultTestSuite="unit"
          cacheDirectory=".phpunit.cache"
 >
     <php>
@@ -19,8 +20,13 @@
     </php>
 
     <testsuites>
-        <testsuite name="Project Test Suite">
+        <!-- без БД; bin/phpunit без аргументів запускає лише його -->
+        <testsuite name="unit">
             <directory>tests/Unit</directory>
+        </testsuite>
+        <!-- ядро Symfony + БД після міграцій (CI: після кроку «Міграції → схема»): bin/phpunit --testsuite functional -->
+        <testsuite name="functional">
+            <directory>tests/Functional</directory>
         </testsuite>
     </testsuites>
 

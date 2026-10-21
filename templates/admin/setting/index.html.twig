@@ -1,0 +1,127 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/crud/index.html.twig' %}
+{% trans_default_domain 'admin' %}
+{# Налаштування сайту (SiteSettingCrudController): вибір сайту (якщо їх кілька) + список ключів + «Вхід через Google»
+   (стан, адреси для Google Cloud Console по кожному місту, інструкція, перевірка) + що виводиться на сайті по містах +
+   інтеграції, які налаштовуються в паку чи на сервері. #}
+{% block main %}
+    {% if settings_sites is defined and settings_sites|length > 1 %}
+        <nav class="mb-3 small" id="settings-site-switch" aria-label="{{ 'setting.sites'|trans }}">
+            {{ 'setting.sites'|trans }}:
+            {% for s in settings_sites %}
+                {% if s.id == settings_site.id %}<strong class="ms-2">{{ s.name }}</strong>
+                {% else %}<a class="ms-2" href="{{ ea_url().set('site', s.id) }}">{{ s.name }}</a>{% endif %}
+            {% endfor %}
+        </nav>
+    {% endif %}
+
+    {{ parent() }}
+
+    {% if google is defined %}
+        {% set gt = 'settings.google.' %}
+        <section class="mt-4" id="google-sign-in" data-google-source="{{ google.source }}"{% if google.problem %} data-google-problem="{{ google.problem }}"{% endif %}>
+            <h3 class="h5">{{ (gt ~ 'title')|trans }}</h3>
+            {% set state_class = google.source == 'settings' ? 'text-success' : (google.source == 'env' ? 'text-muted' : 'text-danger') %}
+            <p class="small mb-2 {{ state_class }}" id="google-state">{{ (gt ~ 'state.' ~ (google.problem ?? google.source))|trans }}</p>
+            {% if google.keyProblem %}
+                <p class="small text-danger mb-2" id="google-key-problem">{{ ('setting.help.secret_disabled_' ~ (google.keyProblem == 'invalid' ? 'invalid' : 'missing'))|trans }}</p>
+            {% endif %}
+            <p class="small mb-2">
+                {% for code, label in {'google.sign_in_enabled': 'edit_enabled', 'google.client_id': 'edit_client_id', 'google.client_secret': 'edit_client_secret'} %}
+                    {% if google_edit[code] is defined %}<a href="{{ google_edit[code] }}" class="me-3" data-setting-edit="{{ code }}">{{ (gt ~ label)|trans }}</a>{% endif %}
+                {% endfor %}
+            </p>
+
+            <p class="small text-muted mb-1">{{ (gt ~ 'hosts_help')|trans({'%count%': google.hosts|length}) }}</p>
+            <table class="table table-sm datagrid mb-3" id="google-hosts" style="max-width: 64rem">
+                <thead><tr><th>{{ (gt ~ 'city')|trans }}</th><th>{{ (gt ~ 'origin')|trans }}</th><th>{{ (gt ~ 'redirect_uri')|trans }}</th></tr></thead>
+                <tbody>
+                {% for h in google.hosts %}
+                    <tr data-google-host="{{ h.host }}">
+                        <td>{{ h.city }}</td>
+                        {% for key, value in {origin: h.origin, redirect: h.redirectUri} %}
+                            <td><div class="input-group input-group-sm"><input type="text" class="form-control" id="google-{{ key }}-{{ loop.parent.loop.index }}" readonly value="{{ value }}" onclick="this.select()" aria-label="{{ (gt ~ (key == 'origin' ? 'origin' : 'redirect_uri'))|trans }} {{ h.host }}"><button type="button" class="btn btn-secondary" data-copy="#google-{{ key }}-{{ loop.parent.loop.index }}" data-copied="{{ (gt ~ 'copied')|trans }}">{{ (gt ~ 'copy')|trans }}</button></div></td>
+                        {% endfor %}
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3" class="text-muted">{{ (gt ~ 'no_hosts')|trans }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <details class="mb-3" id="google-steps">
+                <summary class="small">{{ (gt ~ 'steps.title')|trans }}</summary>
+                <ol class="small mt-2 mb-2">
+                    {% for step in ['console', 'consent', 'client', 'uris', 'keys', 'enable', 'verify'] %}
+                        <li>{{ (gt ~ 'steps.' ~ step)|trans }}</li>
+                    {% endfor %}
+                </ol>
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">{{ (gt ~ 'console')|trans }}</a>
+            </details>
+            <form method="post" action="{{ ea_url().unsetAll().setController('App\\Controller\\Admin\\SiteSettingCrudController').setAction('googleCheck').generateUrl() }}" class="d-inline" id="google-check">
+                <input type="hidden" name="token" value="{{ csrf_token(google.csrf) }}">
+                <button type="submit" class="btn btn-secondary btn-sm">{{ (gt ~ 'check')|trans }}</button>
+            </form>
+            {% if google.tryUrl %}
+                <a href="{{ google.tryUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary ms-1" id="google-try">{{ (gt ~ 'try')|trans }}</a>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    {% if city_tags is defined %}
+        <section class="mt-4" id="site-tags">
+            <h3 class="h5">{{ 'setting.tags.title'|trans }}</h3>
+            <p class="small text-muted mb-2">{{ 'setting.tags.help'|trans }}</p>
+            <table class="table table-sm datagrid" style="max-width: 72rem">
+                <thead><tr>
+                    <th>{{ 'setting.tags.city'|trans }}</th>
+                    <th>{{ 'setting.tags.city_tag'|trans }}</th>
+                    <th>{{ 'setting.tags.output'|trans }}</th>
+                    <th>Clarity</th>
+                    <th>Meta Pixel</th>
+                </tr></thead>
+                <tbody>
+                {% for row in city_tags %}
+                    <tr data-city-host="{{ row.host }}">
+                        <td>{{ row.city }}<div class="small text-muted">{{ row.host }}{% if not row.active %} · {{ 'setting.tags.inactive'|trans }}{% endif %}</div></td>
+                        <td>{% if row.cityTag %}<code>{{ row.cityTag }}</code>{% else %}<span class="text-muted">—</span>{% endif %} <a href="{{ row.edit }}" class="small ms-1" data-city-edit="{{ row.host }}">{{ 'setting.tags.edit_city'|trans }}</a></td>
+                        <td data-output="{{ row.kind ?? 'none' }}">
+                            {% if row.kind %}{{ ('setting.tags.kind.' ~ row.kind)|trans }}: {% for id in row.ids %}<code>{{ id }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                                <div class="small text-muted">{{ ('setting.tags.source.' ~ row.source)|trans }}{% if row.ads %} · {{ 'setting.tags.ads_conversion'|trans }} <code>{{ row.ads }}</code>{% endif %}</div>
+                            {% else %}<span class="text-muted">{{ 'setting.tags.kind.none'|trans }}</span>{% endif %}
+                        </td>
+                        <td>{% if row.clarity %}<code>{{ row.clarity }}</code><div class="small text-muted">{{ ('setting.tags.clarity_source.' ~ row.claritySource)|trans }}</div>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td>{% if row.pixel %}<code>{{ row.pixel }}</code>{% else %}<span class="text-muted">—</span>{% endif %}{% if row.consent %}<div class="small text-muted">{{ 'setting.tags.consent'|trans }}</div>{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+
+    {% if integrations is defined %}
+        <section class="mt-4" id="integrations">
+            <h3 class="h5">{{ 'setting.integrations.title'|trans }}</h3>
+            <ul class="small mb-2">
+                <li>{{ 'setting.integrations.crm'|trans({'%system%': integrations.crm}) }} — {{ (integrations.crm_enabled ? 'setting.integrations.on' : 'setting.integrations.off')|trans }}</li>
+                <li>{{ 'setting.integrations.gbp'|trans }} — {{ (integrations.gbp ? 'setting.integrations.on' : 'setting.integrations.off')|trans }}</li>
+                <li>{{ 'setting.integrations.studio'|trans }} — {{ (integrations.studio ? 'setting.integrations.on' : 'setting.integrations.off')|trans }}</li>
+                <li>{{ 'setting.integrations.secret_key'|trans }} — {{ (integrations.key_problem is null ? 'setting.integrations.key_ok' : ('setting.integrations.key_' ~ integrations.key_problem))|trans }}</li>
+            </ul>
+            <p class="small text-muted mb-0">{{ 'setting.integrations.help'|trans }}</p>
+        </section>
+    {% endif %}
+
+    <script>
+        // «Копіювати» біля адрес для Google Cloud Console
+        document.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-copy]');
+            if (!b) { return; }
+            var input = document.querySelector(b.getAttribute('data-copy'));
+            if (!input) { return; }
+            input.select();
+            var done = function () { var t = b.textContent; b.textContent = b.getAttribute('data-copied'); setTimeout(function () { b.textContent = t; }, 1500); };
+            if (navigator.clipboard) { navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand('copy'); done(); }); } else { document.execCommand('copy'); done(); }
+        });
+    </script>
+{% endblock %}

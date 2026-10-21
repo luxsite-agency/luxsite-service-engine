@@ -1,0 +1,6 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# @var field \EasyCorp\Bundle\EasyAdminBundle\Dto\FieldDto #}
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+{# Назва налаштування в списку — посилання на редагування рядка (formattedValue — «група → поле» мовою адмінки); технічний ключ — дрібно під ним. #}
+<a href="{{ ea_url().setAction('edit').setEntityId(entity.primaryKeyValue) }}" data-setting-edit="{{ entity.instance.code }}" title="{{ 'setting.action.edit'|trans({}, 'admin') }}">{{ field.formattedValue }}</a>
+<div class="small text-muted"><code class="text-muted">{{ entity.instance.code }}</code></div>
