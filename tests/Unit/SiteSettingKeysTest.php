@@ -69,6 +69,10 @@ final class SiteSettingKeysTest extends TestCase
     {
         foreach (['uk', 'ru'] as $locale) {
             $flat = self::flatten(Yaml::parseFile(\dirname(__DIR__, 2) . '/translations/admin.' . $locale . '.yaml'));
+            foreach ($flat as $key => $text) {
+                // EasyAdmin виводить підказки полів як HTML, а підписи в списку — через strip_tags: «<head>» зник би
+                self::assertStringNotContainsString('<', (string) $text, $locale . ': ' . $key);
+            }
             foreach (K::all() as $code) {
                 self::assertArrayHasKey(K::labelKey($code), $flat, $locale . ': ' . $code);
                 self::assertArrayHasKey(K::helpKey($code), $flat, $locale . ': ' . $code);

@@ -26,12 +26,19 @@ final class SiteTagResolver implements ResetInterface
 {
     /** @var array<int, SiteTags> memo на запит: id міста → теги */
     private array $memo = [];
+    private readonly string $packClarityId;
+    private readonly string $packVerification;
 
+    /**
+     * Параметри паку — як їх бачив шаблон до 21.10.2026 (Twig-глобали без типу): null чи число з YAML не мають ламати сайт.
+     */
     public function __construct(
         private readonly SiteSettings $settings,
-        #[Autowire('%app.clarity_id%')] private readonly string $packClarityId = '',
-        #[Autowire('%app.site_verification%')] private readonly string $packVerification = '',
+        #[Autowire('%app.clarity_id%')] mixed $packClarityId = '',
+        #[Autowire('%app.site_verification%')] mixed $packVerification = '',
     ) {
+        $this->packClarityId = \is_scalar($packClarityId) ? (string) $packClarityId : '';
+        $this->packVerification = \is_scalar($packVerification) ? (string) $packVerification : '';
     }
 
     public function forCity(?ServiceCity $city): SiteTags
