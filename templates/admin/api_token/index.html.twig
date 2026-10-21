@@ -8,7 +8,7 @@
             <input type="text" class="form-control font-monospace" readonly value="{{ token_plain }}" onclick="this.select()" aria-label="Значення токена" autocomplete="off">
             <p class="text-muted small mt-2 mb-0">
                 content-studio: движок <code>service_sites</code>, адреса <code>https://&lt;сайт&gt;/api/studio</code>, токен — це значення (потрібен дозвіл studio:write).<br>
-                Claude Code / скрипт: <code>curl -H "Authorization: Bearer …" {{ app.request.schemeAndHttpHost }}/api/admin/v1/me</code> — опис у docs/admin-api.md рушія.
+                Claude Code / скрипт: <code>curl -H "Authorization: Bearer …" {{ app.request.schemeAndHttpHost }}/api/admin/v1/me</code> — опис: <a href="https://github.com/luxsite-agency/luxsite-service-engine/blob/main/docs/admin-api.md" target="_blank" rel="noopener">документація API (docs/admin-api.md)</a>.
             </p>
         </div>
     {% endif %}
