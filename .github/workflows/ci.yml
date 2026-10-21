@@ -44,7 +44,7 @@ jobs:
           set -e
           if git ls-files | grep -E '^\.env\.local|\.env\.prod(\.local)?$|\.sql(\.gz)?$|\.secrets|id_rsa|id_ed25519|\.pem$|\.p12$'; then
             echo "::error::у репо відстежуються файли з секретами/дампами"; exit 1; fi
-          hits=$(git grep -nE 'mysql://[^:/ ]+:[^@/ ]{6,}@|PIPEDRIVE_API_TOKEN=[A-Za-z0-9]{12,}|APP_SECRET=[0-9a-f]{20,}|STUDIO_API_TOKEN=[A-Za-z0-9_-]{16,}|GOOGLE_[A-Z_]*(SECRET|KEY)=[A-Za-z0-9_-]{16,}|BITRIX24_WEBHOOK_URL=https?://[^ ]+|/rest/[0-9]+/[A-Za-z0-9]{10,}'             -- ':!*.md' ':!.github/**' ':!.env' ':!.env.dev' ':!.env.test'             | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|//|\*|/\*)'             | grep -vE 'mysql://(engine:engine|USER:PASSWORD|u:secretpass|root:root|shop:shop)@' || true)
+          hits=$(git grep -nE 'mysql://[^:/ ]+:[^@/ ]{6,}@|PIPEDRIVE_API_TOKEN=[A-Za-z0-9]{12,}|APP_SECRET=[0-9a-f]{20,}|STUDIO_API_TOKEN=[A-Za-z0-9_-]{16,}|GOOGLE_[A-Z_]*(SECRET|KEY)=[A-Za-z0-9_-]{16,}|SETTINGS_SECRET_KEY=[A-Za-z0-9+/]{40,}={0,2}|GOCSPX-[A-Za-z0-9_-]{20,}|enc:v1:[^:]{0,4}:[A-Za-z0-9+/]{40,}|BITRIX24_WEBHOOK_URL=https?://[^ ]+|/rest/[0-9]+/[A-Za-z0-9]{10,}'             -- ':!*.md' ':!.github/**' ':!.env' ':!.env.dev' ':!.env.test'             | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|//|\*|/\*)'             | grep -vE 'mysql://(engine:engine|USER:PASSWORD|u:secretpass|root:root|shop:shop)@' || true)
           if [ -n "$hits" ]; then
             echo "$hits"; echo "::error::схоже на реальні креди в коді"; exit 1; fi
           echo "guard OK"

@@ -9,6 +9,7 @@ namespace App\Settings;
 
 use App\Entity\ServiceSite;
 use App\Entity\ServiceSiteSetting;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use SensitiveParameter;
@@ -30,6 +31,8 @@ final class SiteSettings implements ResetInterface
     private array $secrets = [];
     /** @var array<string, true> */
     private array $unreadableReported = [];
+
+    private bool $tableMissingLogged = false;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -141,7 +144,18 @@ final class SiteSettings implements ResetInterface
         }
         if (!isset($this->loaded[$id])) {
             $this->loaded[$id] = [];
-            foreach ($this->em->getRepository(ServiceSiteSetting::class)->findBy(['site' => $site]) as $row) {
+            try {
+                $rows = $this->em->getRepository(ServiceSiteSetting::class)->findBy(['site' => $site]);
+            } catch (TableNotFoundException) {
+                // реліз уже віддає сторінки, а міграція ще не пройшла (docker-деплой: compose up раніше за migrate) -
+                // сайт поводиться «як без налаштувань», а не 500 на кожній сторінці
+                if (!$this->tableMissingLogged) {
+                    $this->tableMissingLogged = true;
+                    $this->audit->warning('settings.table_missing: таблиці service_site_setting ще нема (міграції не виконано)');
+                }
+                $rows = [];
+            }
+            foreach ($rows as $row) {
                 $this->loaded[$id][$row->getCode()] = $row;
             }
         }
