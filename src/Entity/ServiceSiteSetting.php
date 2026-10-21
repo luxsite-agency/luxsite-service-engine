@@ -92,6 +92,12 @@ class ServiceSiteSetting
         return SiteSettingKeys::isSecret($this->code) ? SecretBox::mask($this->value) : $this->value;
     }
 
+    /** Для колонки «Стан» у списку адмінки (EasyAdmin TextField потребує рядка; сам бейдж — formatValue контролера). */
+    public function getStatusKey(): string
+    {
+        return $this->code;
+    }
+
     /** Формат id перевіряється при збереженні: невалідне значення не зберігається (помилка біля поля). */
     #[Assert\Callback]
     public function validateFormat(ExecutionContextInterface $context): void

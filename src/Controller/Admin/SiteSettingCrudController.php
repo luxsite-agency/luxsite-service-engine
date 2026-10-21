@@ -141,7 +141,7 @@ final class SiteSettingCrudController extends AbstractCrudController
                 return '' === trim((string) $v) ? '—' : mb_strimwidth((string) $v, 0, 100, '…');
             });
         $settings = $this->settings;
-        yield TextField::new('id', t('setting.field.status', [], 'admin'))->onlyOnIndex()->setSortable(false)->renderAsHtml()
+        yield TextField::new('statusKey', t('setting.field.status', [], 'admin'))->onlyOnIndex()->setSortable(false)->renderAsHtml()
             ->setTemplatePath('@EasyAdmin/crud/field/text.html.twig')
             ->formatValue(static function ($v, ?ServiceSiteSetting $s) use ($settings, $tr): string {
                 $badge = static fn (string $class, string $key, string $title = ''): string => \sprintf('<span class="badge %s"%s>%s</span>', $class, '' === $title ? '' : ' title="' . htmlspecialchars($title, \ENT_QUOTES) . '"', htmlspecialchars($tr->trans($key, [], 'admin'), \ENT_QUOTES));

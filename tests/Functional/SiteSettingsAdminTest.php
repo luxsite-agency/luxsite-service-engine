@@ -260,7 +260,7 @@ final class SiteSettingsAdminTest extends HttpKernelTestCase
         $index = (string) $this->http('GET', 'https://' . $this->adminHost . '/admin/site-setting?site=' . $this->siteId)->getContent();
         self::assertStringContainsString('data-google-source="settings"', $index);
         self::assertSame(1, preg_match('/<form method="post" action="([^"]+)" class="d-inline" id="google-check">\s*<input type="hidden" name="token" value="([^"]+)"/', $index, $m));
-        $check = $this->http('POST', 'https://' . $this->adminHost . html_entity_decode($m[1]), ['token' => html_entity_decode($m[2])]);
+        $check = $this->http('POST', $this->absolute(html_entity_decode($m[1])), ['token' => html_entity_decode($m[2])]);
         self::assertTrue($check->isRedirect());
         $after = (string) $this->http('GET', 'https://' . $this->adminHost . '/admin/site-setting?site=' . $this->siteId)->getContent();
         self::assertStringContainsString('id="google-check-result"', $after);
@@ -327,7 +327,13 @@ final class SiteSettingsAdminTest extends HttpKernelTestCase
         $html = (string) $this->http('GET', 'https://' . $this->adminHost . '/admin/site-setting?site=' . $this->siteId)->getContent();
         self::assertSame(1, preg_match('/<a href="([^"]+)" data-setting-edit="' . preg_quote($code, '/') . '"/', $html, $m), 'посилання на редагування ' . $code);
 
-        return 'https://' . $this->adminHost . html_entity_decode($m[1]);
+        return $this->absolute(html_entity_decode($m[1]));
+    }
+
+    /** EasyAdmin генерує абсолютні адреси; відносні — від хоста адмінки. */
+    private function absolute(string $url): string
+    {
+        return str_starts_with($url, 'http') ? $url : 'https://' . $this->adminHost . $url;
     }
 
     /** @param array<string, string> $values */
