@@ -61,8 +61,17 @@ final class LiveThemePolicy
         'flashes', 'user', 'current_route', 'current_route_parameters', 'locale',
     ];
 
-    /** Змінні контексту, яких живому шаблону не дати: _context — увесь контекст разом з app; _self — лише в {% import _self %}. */
-    public const array DENIED_VARIABLES = ['_context', '_self'];
+    /**
+     * Змінні контексту, яких живому шаблону не дати: _context і _parent (його ставлять for/with) — увесь контекст разом з app;
+     * _self — лише в {% import _self %}.
+     */
+    public const array DENIED_VARIABLES = ['_context', '_parent', '_self'];
+
+    /**
+     * Що можна брати з loop — лише точний ключ (loop.index, loop['first']); саме loop як значення і loop.parent (увесь
+     * контекст разом з app) — відмова.
+     */
+    public const array LOOP_KEYS = ['index', 'index0', 'revindex', 'revindex0', 'first', 'last', 'length'];
 
     /**
      * Імена властивостей і методів (x.name, x.name()) — те, що рушій і паки вживають у шаблонах сайту. Навмисно нема:

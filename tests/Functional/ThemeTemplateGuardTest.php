@@ -54,7 +54,18 @@ final class ThemeTemplateGuardTest extends KernelTestCase
         yield 'loop.parent.app' => ['{% for x in [1] %}{{ loop.parent.app.request.server.all|json_encode }}{% endfor %}'];
         yield "loop.parent['app']" => ["{% for x in [1] %}{{ loop.parent['app'].request.server.all|json_encode }}{% endfor %}"];
         yield "loop['parent']['app'].request" => ["{% for x in [1] %}{% set a = loop['parent']['app'] %}{{ a.request.server.all|json_encode }}{% endfor %}"];
-        yield 'for in _context' => ['{% for k, v in _context %}{{ k }}{% endfor %}'];
+        // рев'ю PR #8: деструктуризація (getAttribute ANY_CALL з неперевіреним ключем) і весь контекст через loop/_parent
+        yield 'деструктуризація app' => ["{% for i in [1] %}{% do {request: r} = loop['parent']['app'] %}{% do {server: s} = r %}{{ s.get('APP_SECRET') }}{% endfor %}"];
+        yield 'деструктуризація token' => ["{% for i in [1] %}{% do {token: t} = loop['parent']['app'] %}{% endfor %}"];
+        yield 'деструктуризація в set' => ["{% set x = ({request: r} = site) %}"];
+        yield 'деструктуризація в друці' => ['{{ {name: n} = site }}'];
+        yield 'деструктуризація послідовності' => ['{% do [a, b] = [1, 2] %}'];
+        yield 'присвоєння у виразі' => ['{% set x = (y = 5) %}'];
+        yield "loop['parent']" => ["{% for i in [1] %}{% set c = loop['parent'] %}{% endfor %}"];
+        yield 'loop[вираз]' => ["{% for i in [1] %}{% set c = loop['par' ~ 'ent'] %}{% endfor %}"];
+        yield 'loop як значення' => ["{% for i in [1] %}{% set l = loop %}{{ l['parent']['app'] }}{% endfor %}"];
+        yield '_parent' => ["{% for i in [1] %}{{ _parent['app'] is defined }}{% endfor %}"];
+        yield 'for in _context' =>['{% for k, v in _context %}{{ k }}{% endfor %}'];
         yield '_self' => ['{{ _self }}'];
         yield 'include with {a: app}' => ["{% include 'services/partials/_faq.html.twig' with {a: app} %}"];
         // M2: sub-request без firewall і читання будь-якого шаблону
@@ -115,7 +126,7 @@ final class ThemeTemplateGuardTest extends KernelTestCase
         yield 'стрілочні' => ['{{ [1, 2]|map(v => v * 2)|filter(v => v > 2)|sort((a, b) => a <=> b)|join(",") }}'];
         yield 'constant(JSON_*)' => ["{{ {a: 1}|json_encode(constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES'))|raw }}"];
         yield 'функції рушія' => ["{{ path('sv_home') }}{{ csrf_token('lead') }}{{ asset('x.css') }}{{ theme.get('logo') }}{{ site_brand(site, locale) }}"];
-        yield 'loop' => ['{% for x in [1] %}{{ loop.index }}{{ loop.first ? "a" }}{{ loop.length }}{% endfor %}'];
+        yield 'loop' => ["{% for x in [1] %}{{ loop.index }}{{ loop.first ? 'a' }}{{ loop.length }}{{ loop['last'] ? 'z' }}{% endfor %}"];
     }
 
     #[DataProvider('allowed')]

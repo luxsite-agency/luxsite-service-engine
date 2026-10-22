@@ -89,6 +89,7 @@ final class ThemeApiTest extends HttpKernelTestCase
             "{% include app.request.query.get('t') %}" => 'не виразом',
             "{{ include('admin/dashboard.html.twig') }}" => 'admin/dashboard',
             "{{ ['id']|map('system')|join }}" => 'стрілочна',
+            "{% for i in [1] %}{% do {request: r} = loop['parent']['app'] %}{% do {server: s} = r %}{{ s.get('APP_SECRET') }}{% endfor %}" => 'присвоєння у виразі',
         ];
         foreach ($vectors as $template => $why) {
             $response = $this->api('PUT', self::HOME, "{% extends '@engine/services/home.html.twig' %}{% block meta_generator %}" . $template . '{% endblock %}');

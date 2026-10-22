@@ -96,7 +96,9 @@ request), тож будь-який контролер ішов би без вх�
   `app.request.query.get|has|all`, `app.user` (далі — властивості зі списку, напр. `email`, `displayName`), `app.flashes`,
   `app.current_route`, `app.locale`; саме `app.request` — лише як умова (`{% if app.request %}`, `is null`, `not`, `and/or`).
   `app` чи `app.request` у `set`, аргументі, `with`, `app.session`, `app.token`, `app.request.server|headers|cookies|attributes`
-  — відмова; `_context` і `_self` (крім `{% import _self %}`) — відмова;
+  — відмова; `_context`, `_parent` і `_self` (крім `{% import _self %}`) — відмова; `loop` — лише `loop.index|index0|revindex|
+  revindex0|first|last|length` (`loop.parent` — весь контекст); присвоєння у виразі (`x = …`, деструктуризація `{key: v} = obj`,
+  `[a, b] = …`) — відмова: вона читає властивість об'єкта за ключем повз список (`{request: r} = loop['parent']['app']`);
 - властивості й методи `x.name` — лише імена зі списку (немає `parent`, `token`, `request`, `session`, `password`, `roles`,
   `settings`, сетерів); ключ масиву — `x['token']` (на об'єкті Twig так методу не викличе);
 - `extends`/`include`/`embed`/`import`/`use`/`block(name, template)` — лише літерал `services/**`, `partials/**` або те саме

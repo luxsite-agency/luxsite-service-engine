@@ -12,7 +12,10 @@ use Twig\Error\SyntaxError;
 use Twig\Node\EmbedNode;
 use Twig\Node\Expression\ArrowFunctionExpression;
 use Twig\Node\Expression\Binary\AndBinary;
+use Twig\Node\Expression\Binary\ObjectDestructuringSetBinary;
 use Twig\Node\Expression\Binary\OrBinary;
+use Twig\Node\Expression\Binary\SequenceDestructuringSetBinary;
+use Twig\Node\Expression\Binary\SetBinary;
 use Twig\Node\Expression\BlockReferenceExpression;
 use Twig\Node\Expression\ConditionalExpression;
 use Twig\Node\Expression\ConstantExpression;
@@ -45,7 +48,11 @@ use Twig\Template;
  *   - extends / include / embed / import / use / block(name, template) — лише літерал services/**, partials/** або
  *     @engine/services/**, @engine/partials/** (*.twig) — не адмінка, не листи, не шаблони бандлів;
  *   - constant — лише літерал JSON_*; filter / map / reduce / sort / find — лише зі стрілочною функцією (рядок-callable
- *     'system' Twig 3 ще приймає).
+ *     'system' Twig 3 ще приймає);
+ *   - присвоєння у виразі (x = …, {key: v} = obj, [a, b] = …, Twig 3.27+) — відмова: деструктуризація об'єкта компілюється в
+ *     getAttribute(obj, key, ANY_CALL) без GetAttrExpression, тож ключ оминав би список властивостей (рев'ю PR #8:
+ *     {% do {request: r} = loop['parent']['app'] %}{% do {server: s} = r %}{{ s.get('APP_SECRET') }});
+ *   - loop — лише loop.<ключ зі списку>; loop.parent / loop['parent'] і _parent (увесь контекст разом з app) — відмова.
  * Імена, які шаблон має право ПЕРЕКРИВАТИ, перевіряє ThemeService::normalize; тут — що він може вживати і на що посилатися.
  */
 final class ThemeTemplateGuard
@@ -107,6 +114,8 @@ final class ThemeTemplateGuard
                 return;
             }
             $this->reference($expr, 'import', $problems);
+        } elseif ($node instanceof SetBinary || $node instanceof ObjectDestructuringSetBinary || $node instanceof SequenceDestructuringSetBinary) {
+            $problems[] = sprintf('присвоєння у виразі (рядок %d): у живій темі лише {%% set x = … %%}, без = і деструктуризації {key: v} = …', $node->getTemplateLine());
         } elseif ($node instanceof BlockReferenceExpression && $node->hasNode('template')) {
             $this->reference($node->getNode('template'), 'block()', $problems);
         } elseif ($node instanceof GetAttrExpression) {
@@ -161,8 +170,16 @@ final class ThemeTemplateGuard
             if (\in_array((string) $key, $boolean, true) && self::isBareAppRequest($child)) {
                 continue;
             }
+            if ($node instanceof GetAttrExpression && (string) $key === 'node' && self::isVariable($child, 'loop')) {
+                continue; // loop як корінь loop.<ключ> — ключ уже перевірив attribute()
+            }
             $this->walk($child, $problems);
         }
+    }
+
+    private static function isVariable(Node $node, string $name): bool
+    {
+        return $node instanceof ContextVariable && $node->getAttribute('name') === $name;
     }
 
     private static function isBareAppRequest(Node $node): bool
@@ -207,6 +224,12 @@ final class ThemeTemplateGuard
         }
         [$own, $ownType] = $chain[\count($chain) - 1];
         $isApp = $root instanceof ContextVariable && $root->getAttribute('name') === 'app';
+        if ($node->getNode('node') === $root && self::isVariable($root, 'loop') && !\in_array($own, LiveThemePolicy::LOOP_KEYS, true)) {
+            // найближча до кореня ланка: loop.parent / loop['parent'] / loop[вираз] — увесь контекст разом з app
+            $problems[] = sprintf('loop.%s (рядок %d): з loop у живій темі лише %s', $own, $line, implode(', ', LiveThemePolicy::LOOP_KEYS));
+
+            return false;
+        }
         if (!$isApp) {
             if ($ownType === Template::ARRAY_CALL) {
                 return false; // x[key] — масив будь-яким ключем, і динамічним теж: метод чи властивість так не дістати
@@ -249,6 +272,8 @@ final class ThemeTemplateGuard
         $name = (string) $node->getAttribute('name');
         if ($name === 'app') {
             $problems[] = sprintf('app (рядок %d): лише як app.request.locale, app.request.query.get(…), app.user, app.flashes… — не сама змінна (set, аргумент, with)', $node->getTemplateLine());
+        } elseif ($name === 'loop') {
+            $problems[] = sprintf('loop (рядок %d): лише loop.index, loop.first… — не сама змінна (set, аргумент, with)', $node->getTemplateLine());
         } elseif (\in_array($name, LiveThemePolicy::DENIED_VARIABLES, true)) {
             $problems[] = sprintf('%s (рядок %d): змінна у живій темі не дозволена', $name, $node->getTemplateLine());
         }
