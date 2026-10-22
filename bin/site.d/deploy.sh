@@ -5,8 +5,8 @@
 # bin/site deploy <key> [ref] [--pack <тека паку>]
 #   ref  — тег/коміт рушія (типово engine з реєстру, далі HEAD); деплоїться закомічене, не робоча копія.
 #   пак  — --pack, або SITE_PACK, або pack (локальний шлях) з реєстру, або клон repo (owner/name на GitHub).
-# Локально: git archive рушія + з паку config/parameters.yaml → config/site/parameters.local.yaml, themes/<key>/ →
-# public/themes/<key>/, translations/*.yaml → translations/site/, templates/ (свій дизайн) → templates/site/; файл SITE_RELEASE (версії) → на сервер у
+# Локально: git archive рушія + з паку config/parameters.yaml → config/site/parameters.local.yaml, themes/<key>/ і
+# themes/<slug>/ брендів app.brands → public/themes/, translations/*.yaml → translations/site/, templates/ (свій дизайн) → templates/site/; файл SITE_RELEASE (версії) → на сервер у
 # <path>/releases/<тег>, тег = <sha рушія 12>-<хеш паку 8>. На сервері (bin/site.d/_remote.sh deploy): shared
 # (.env.local, media, log) → composer install у релізі → бекап БД → міграції → cache:warmup → smoke (ядро Symfony) →
 # перемикання current (+ скидання php-fpm) → перевірка через nginx; провал після перемикання — відкат на попередній тег.
@@ -58,9 +58,16 @@ fi
 pack="$(cd "$pack" && pwd)"
 [ -f "$pack/config/parameters.yaml" ] || die "у паку нема config/parameters.yaml ($pack)"
 [ -d "$pack/themes/$key" ] || warn "у паку нема themes/$key/ — тема лише з параметрів"
+# теми брендів (app.brands, 22.10.2026): themes/<slug>/ кожного бренду → public/themes/<slug>/ і в хеш паку
+brand_themes=()
+while IFS= read -r b; do
+    if [ -z "$b" ] || [ "$b" = "$key" ]; then continue; fi
+    if [ -d "$pack/themes/$b" ]; then brand_themes+=("themes/$b"); else warn "у паку нема themes/$b/ — бренд $b без файлів теми"; fi
+done < <(pack_brand_themes "$pack/config/parameters.yaml")
+[ "${#brand_themes[@]}" = 0 ] || log "теми брендів: ${brand_themes[*]#themes/}"
 pack_git="$(git -C "$pack" rev-parse --short=12 HEAD 2>/dev/null || echo -)"
 [ "$pack_git" != - ] && [ -n "$(git -C "$pack" status --porcelain 2>/dev/null)" ] && pack_git="$pack_git+dirty"
-pack_hash="$(cd "$pack" && { find config/parameters.yaml "themes/$key" translations templates -type f 2>/dev/null || true; } | LC_ALL=C sort | xargs -r sha256sum | sha256sum | cut -c1-8)"
+pack_hash="$(pack_hash "$pack" "$key")"
 tag="$sha-$pack_hash"
 log "сайт $key: рушій $sha ($ref), пак $pack ($pack_git) → тег $tag, сервер $(ssh_dest):$S_PATH ($S_RUNTIME)"
 
@@ -81,6 +88,10 @@ if [ -d "$pack/themes/$key" ]; then
     rm -rf "$ctx/public/themes/$key"
     cp -a "$pack/themes/$key" "$ctx/public/themes/$key"
 fi
+for d in "${brand_themes[@]}"; do
+    rm -rf "${ctx:?}/public/$d"
+    cp -a "$pack/$d" "$ctx/public/$d"
+done
 if ls "$pack"/translations/*.yaml >/dev/null 2>&1; then cp -a "$pack"/translations/*.yaml "$ctx/translations/site/"; fi
 # свій дизайн: templates/ паку → templates/site/ рушія (Twig шукає там першим; на сервері lint:twig перед smoke)
 if [ -d "$pack/templates" ]; then cp -a "$pack/templates/." "$ctx/templates/site/"; fi

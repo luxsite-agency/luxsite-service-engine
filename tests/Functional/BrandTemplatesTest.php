@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\ServiceCity;
+use App\Entity\ServicePostCategory;
 use App\Entity\ServiceSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -38,6 +39,15 @@ final class BrandTemplatesTest extends HttpKernelTestCase
             $em->persist((new ServiceCity())->setSite($site)->setHost($slug . '.example')->setSlug('main')->setIsApex(true)->setNameNomUk('Київ'));
             $em->flush();
             $this->siteIds[] = (int) $site->getId();
+            // рубрики: у alpha — активна й вимкнена, у beta — своя (sv_categories бере лише активні рубрики поточного бренду)
+            if ($name !== 'plain') {
+                $em->persist((new ServicePostCategory())->setSite($site)->setSlugUk($name . '-on')->setTitleUk('Рубрика ' . $name)->setPosition(10));
+                $em->persist((new ServicePostCategory())->setSite($site)->setSlugUk($name . '-off')->setTitleUk('Вимкнена ' . $name)->setActive(false));
+                $em->flush();
+                $fs->dumpFile($root . $slug . '/services/content/contact.html.twig',
+                    "{% extends '@engine/services/base.html.twig' %}"
+                    . "{% block page %}<nav class=\"sections\">{% for c in sv_categories() %}[{{ c.loc('title', sv_locale()) }}]{% endfor %}</nav>{% endblock %}");
+            }
             if ($name !== 'plain') {
                 $fs->dumpFile($root . $slug . '/services/content/home.html.twig',
                     "{% extends '@engine/services/base.html.twig' %}{% block meta_generator %}{% endblock %}"
@@ -55,6 +65,7 @@ final class BrandTemplatesTest extends HttpKernelTestCase
         }
         $conn = $this->em()->getConnection();
         foreach ($this->siteIds as $id) {
+            $conn->executeStatement('DELETE FROM service_post_category WHERE site_id = ?', [$id]);
             $conn->executeStatement('DELETE FROM service_site WHERE id = ?', [$id]);
         }
         parent::tearDown();
@@ -75,6 +86,17 @@ final class BrandTemplatesTest extends HttpKernelTestCase
         self::assertStringNotContainsString('name="generator"', $a, 'бренд прибрав generator');
         self::assertStringContainsString('class="c-head"', $p, 'бренд без шаблонів — шаблон рушія');
         self::assertStringContainsString('name="generator"', $p);
+    }
+
+    public function testBrandCategoriesOnAnyPage(): void
+    {
+        [$alpha, $beta, $plain] = $this->slugs;
+        $a = (string) $this->http('GET', 'https://' . $alpha . '.example/contacts/')->getContent();
+        $b = (string) $this->http('GET', 'https://' . $beta . '.example/contacts/')->getContent();
+
+        self::assertStringContainsString('<nav class="sections">[Рубрика alpha]</nav>', $a, 'лише активні рубрики свого бренду');
+        self::assertStringContainsString('<nav class="sections">[Рубрика beta]</nav>', $b);
+        self::assertSame(200, $this->http('GET', 'https://' . $plain . '.example/contacts/')->getStatusCode());
     }
 
     private function em(): EntityManagerInterface
