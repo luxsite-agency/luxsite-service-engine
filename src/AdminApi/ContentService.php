@@ -46,7 +46,10 @@ final class ContentService
             'meta_desc_ru' => 'metaDescRu', 'sub_areas_uk' => 'subAreasUk', 'sub_areas_ru' => 'subAreasRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'active' => 'active'],
         'posts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
             'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu',
-            'image_alt' => 'imageAlt', 'image_alt_ru' => 'imageAltRu', 'active' => 'active'],
+            'image_alt' => 'imageAlt', 'image_alt_ru' => 'imageAltRu', 'active' => 'active',
+            // англійська (22.10.2026): без фолбеку на uk; слаг — як і uk/ru, лише в адмінці
+            'title_en' => 'titleEn', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'meta_title_en' => 'metaTitleEn',
+            'meta_desc_en' => 'metaDescEn', 'image_alt_en' => 'imageAltEn'],
         'prices' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'price' => 'price', 'price_prefix' => 'pricePrefix',
             'price_text_uk' => 'priceTextUk', 'price_text_ru' => 'priceTextRu', 'unit_uk' => 'unitUk', 'unit_ru' => 'unitRu', 'position' => 'position', 'active' => 'active', 'in_calculator' => 'inCalculator'],
         'item-texts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
@@ -228,7 +231,9 @@ final class ContentService
             case 'posts':
                 $qb->where('e.site = :site')->setParameter('site', $site)->orderBy('e.id', 'ASC');
                 if ($q !== '') {
-                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere($kind === 'posts'
+                        ? 'e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q OR e.titleEn LIKE :q OR e.slugEn LIKE :q'
+                        : 'e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
             case 'districts':
@@ -346,6 +351,9 @@ final class ContentService
                 break;
             case 'posts':
                 $row += ['slug' => $e->getSlugUk(), 'title_uk' => $e->getTitleUk(), 'title_ru' => $e->getTitleRu(), 'active' => $e->isActive(), 'published_at' => $e->getPublishedAt()?->format(\DATE_ATOM)];
+                if ($e->getSlugEn() !== null) {
+                    $row += ['slug_en' => $e->getSlugEn(), 'title_en' => $e->getTitleEn()];
+                }
                 break;
             case 'prices':
                 $row += ['item_id' => $e->getItem()?->getId(), 'city' => $e->getCity()?->getSlug(), 'name_uk' => $e->getNameUk(), 'price' => $e->getPrice(), 'price_prefix' => $e->getPricePrefix(), 'price_text_uk' => $e->getPriceTextUk(), 'active' => $e->isActive()];

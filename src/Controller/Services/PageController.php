@@ -40,8 +40,8 @@ final class PageController extends AbstractController
     {
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
-        // сторінка прихована, поки нема тексту «Про нас» — ні спільного (site.aboutUk), ні міського (city.aboutUk)
-        if ($site->getAboutUk() === null && $city->getAboutUk() === null) {
+        // сторінка прихована, поки нема тексту «Про нас» мовою сторінки — ні спільного (site), ні міського (city)
+        if ($site->aboutFor($request->getLocale()) === null && $city->aboutFor($request->getLocale()) === null) {
             throw $this->createNotFoundException('Сторінку ще не наповнено.');
         }
 

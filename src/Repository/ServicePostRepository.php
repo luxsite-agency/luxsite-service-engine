@@ -26,13 +26,23 @@ class ServicePostRepository extends ServiceEntityRepository
         parent::__construct($registry, ServicePost::class);
     }
 
-    /** @return ServicePost[] */
-    public function findPublishedBySite(ServiceSite $site, int $limit = 50): array
+    /**
+     * Предикат «стаття існує мовою» (дзеркало ServicePost::existsIn): uk і ru — є uk-слаг (ru падає на нього, як і раніше),
+     * en — є і slugEn, і titleEn. null — без умови за мовою (як до 22.10.2026).
+     */
+    public static function localeCondition(?string $locale, string $alias = 'p'): ?string
     {
-        return $this->createQueryBuilder('p')
-            ->where('p.site = :site')->setParameter('site', $site)
-            ->andWhere('p.active = true')
-            ->andWhere('p.publishedAt IS NOT NULL AND p.publishedAt <= :now')->setParameter('now', new \DateTimeImmutable())
+        return match ($locale) {
+            null => null,
+            'en' => "($alias.slugEn IS NOT NULL AND $alias.slugEn <> '' AND $alias.titleEn IS NOT NULL AND $alias.titleEn <> '')",
+            default => "($alias.slugUk IS NOT NULL AND $alias.slugUk <> '')",
+        };
+    }
+
+    /** @return ServicePost[] */
+    public function findPublishedBySite(ServiceSite $site, int $limit = 50, ?string $locale = null): array
+    {
+        return $this->published($site, $locale)
             ->orderBy('p.publishedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()->getResult();
@@ -43,12 +53,9 @@ class ServicePostRepository extends ServiceEntityRepository
      *
      * @return ServicePost[]
      */
-    public function findPublishedBySitePage(ServiceSite $site, int $page, int $perPage): array
+    public function findPublishedBySitePage(ServiceSite $site, int $page, int $perPage, ?string $locale = null): array
     {
-        $qb = $this->createQueryBuilder('p')
-            ->where('p.site = :site')->setParameter('site', $site)
-            ->andWhere('p.active = true')
-            ->andWhere('p.publishedAt IS NOT NULL AND p.publishedAt <= :now')->setParameter('now', new \DateTimeImmutable())
+        $qb = $this->published($site, $locale)
             ->orderBy('p.publishedAt', 'DESC')
             ->addOrderBy('p.id', 'DESC');
         if ($perPage > 0) {
@@ -59,14 +66,26 @@ class ServicePostRepository extends ServiceEntityRepository
     }
 
     /** Чи є хоч одна опублікована стаття (меню й sitemap ховають порожній блог). */
-    public function countPublishedBySite(ServiceSite $site): int
+    public function countPublishedBySite(ServiceSite $site, ?string $locale = null): int
     {
-        return (int) $this->createQueryBuilder('p')
+        return (int) $this->published($site, $locale)
             ->select('COUNT(p.id)')
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    /** Опубліковані статті сайту (+ умова мови, якщо задано) */
+    private function published(ServiceSite $site, ?string $locale): \Doctrine\ORM\QueryBuilder
+    {
+        $qb = $this->createQueryBuilder('p')
             ->where('p.site = :site')->setParameter('site', $site)
             ->andWhere('p.active = true')
-            ->andWhere('p.publishedAt IS NOT NULL AND p.publishedAt <= :now')->setParameter('now', new \DateTimeImmutable())
-            ->getQuery()->getSingleScalarResult();
+            ->andWhere('p.publishedAt IS NOT NULL AND p.publishedAt <= :now')->setParameter('now', new \DateTimeImmutable());
+        $cond = self::localeCondition($locale);
+        if ($cond !== null) {
+            $qb->andWhere($cond);
+        }
+
+        return $qb;
     }
 
     /**
@@ -75,9 +94,11 @@ class ServicePostRepository extends ServiceEntityRepository
      */
     public function findOnePublishedBySlug(ServiceSite $site, string $slug, string $locale): ?ServicePost
     {
-        $condition = $locale === 'ru'
-            ? '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))'
-            : 'p.slugUk = :slug';
+        $condition = match ($locale) {
+            'ru' => '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))',
+            'en' => "(p.slugEn = :slug AND p.titleEn IS NOT NULL AND p.titleEn <> '')",
+            default => 'p.slugUk = :slug',
+        };
 
         return $this->createQueryBuilder('p')
             ->where('p.site = :site')->setParameter('site', $site)

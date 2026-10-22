@@ -16,6 +16,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -107,7 +108,8 @@ final class SitemapController extends AbstractController
         // На міських хостах блог теж не показуємо: статті там ті самі, що на
         // апексі, і canonical веде саме туди. Карта має містити лише ті адреси,
         // які ми хочемо бачити в індексі.
-        $posts = $this->posts->findPublishedBySite($site);
+        // статті, що існують мовою без префікса (для uk/ru — усі з uk-слагом, як і раніше)
+        $posts = $this->posts->findPublishedBySite($site, 50, $this->container->get(SiteLocales::class)->default());
         $apex = $this->cities->findActiveApex($site);
         $blogBelongsHere = $apex === null || $apex->getId() === $city->getId();
         if ($posts !== [] && $blogBelongsHere) {
@@ -116,7 +118,7 @@ final class SitemapController extends AbstractController
                 $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l)], $post->getPublishedAt());
             }
         }
-        if ($site->getAboutUk() !== null) {
+        if ($site->aboutFor($this->container->get(SiteLocales::class)->default()) !== null) {
             $add('sv_about');
         }
         // калькулятор є лише в брендів, де він наповнений (типи в БД)
