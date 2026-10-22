@@ -113,6 +113,18 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $imageAltRu = null;
 
+    // контентний сайт (22.10.2026): рубрика, автор, «обрана» на головній; видалення рубрики/автора лишає статтю без них
+    #[ORM\ManyToOne(targetEntity: ServicePostCategory::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ServicePostCategory $category = null;
+
+    #[ORM\ManyToOne(targetEntity: ServiceAuthor::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ServiceAuthor $author = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $featured = false;
+
     // англійська версія (22.10.2026): без фолбеку на uk — стаття існує англійською, лише коли є slugEn і titleEn
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugEn = null;
@@ -489,6 +501,42 @@ class ServicePost implements TimestampableInterface
     public function setImageAltEn(?string $imageAltEn): self
     {
         $this->imageAltEn = $imageAltEn === '' ? null : $imageAltEn;
+
+        return $this;
+    }
+
+    public function getCategory(): ?ServicePostCategory
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?ServicePostCategory $category): self
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+
+    public function getAuthor(): ?ServiceAuthor
+    {
+        return $this->author;
+    }
+
+    public function setAuthor(?ServiceAuthor $author): self
+    {
+        $this->author = $author;
+
+        return $this;
+    }
+
+    public function isFeatured(): bool
+    {
+        return $this->featured;
+    }
+
+    public function setFeatured(bool $featured): self
+    {
+        $this->featured = $featured;
 
         return $this;
     }

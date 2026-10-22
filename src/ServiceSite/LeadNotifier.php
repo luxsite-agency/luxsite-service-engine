@@ -43,7 +43,9 @@ final class LeadNotifier
         }
 
         // у subject не пускаємо CR/LF і хвости (Mime кодує, але вхід чистимо самі)
-        $subjectPhone = mb_substr((string) preg_replace('/\s+/', ' ', $lead->getPhone()), 0, 32);
+        // форма зв'язку контентного сайту (22.10.2026): замість телефону — email; заявки сервісних сайтів — як були
+        $email = $lead->getEmail();
+        $subjectPhone = mb_substr((string) preg_replace('/\s+/', ' ', $email ?? $lead->getPhone()), 0, $email !== null ? 190 : 32);
         // кілька адресатів через кому (пересилка в кілька скриньок)
         $recipients = array_filter(array_map('trim', explode(',', $leadTo)));
         if ($recipients === []) {
@@ -55,13 +57,17 @@ final class LeadNotifier
         try {
             $fromDomain = $city->getSite()?->getApexDomain() ?? $fallbackHost;
             $from = $this->mailFrom !== '' ? $this->mailFrom : 'noreply@' . $fromDomain;
-            $this->mailer->send((new Email())
+            $message = (new Email())
                 ->from(new Address($from, $city->getSite()?->getName() ?? 'Заявки'))
                 ->to(...$recipients)
-                ->subject(sprintf('%s з %s: %s (%s)', $subjectPrefix, $city->getHost(), $subjectPhone, $city->getNameNomUk()))
+                ->subject(sprintf('%s з %s: %s (%s)', $subjectPrefix, $city->getHost(), $subjectPhone, $city->getNameNomUk()));
+            if ($email !== null) {
+                $message->replyTo($email);
+            }
+            $this->mailer->send($message
                 ->text(sprintf(
-                    "Телефон: %s\nІм'я: %s\nПовідомлення:\n%s\n\nДжерело: %s\nСторінка: %s\nМісто: %s",
-                    $lead->getPhone(),
+                    ($email !== null ? 'Email: ' . $email . "\n" : '') . "Телефон: %s\nІм'я: %s\nПовідомлення:\n%s\n\nДжерело: %s\nСторінка: %s\nМісто: %s",
+                    $lead->getPhone() !== '' ? $lead->getPhone() : '-',
                     $lead->getName() ?? '-',
                     $lead->getMessage() ?? '-',
                     LeadAttribution::summary($lead),

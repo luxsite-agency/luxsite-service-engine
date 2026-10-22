@@ -20,6 +20,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Заявка з форми (телефон + ім'я + повідомлення). Виправляє типовий борг
@@ -41,6 +42,7 @@ final class LeadController extends AbstractController
         private readonly LeadAttribution $attribution,
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -67,6 +69,10 @@ final class LeadController extends AbstractController
         // honeypot: приховане поле, яке заповнюють лише боти
         if ((string) $request->request->get('website', '') !== '') {
             return $this->redirect($back);
+        }
+
+        if ($this->serviceSite($request)->isContent()) {
+            return $this->contact($request, $back, $locale);
         }
 
         $phone = trim((string) $request->request->get('phone', ''));
@@ -115,6 +121,47 @@ final class LeadController extends AbstractController
         $type = (string) $request->request->get('lead_type', 'form');
 
         return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => \in_array($type, ['form', 'magnet'], true) ? $type : 'form']);
+    }
+
+    /**
+     * Форма зв'язку контентного сайту (22.10.2026): ім'я, email, повідомлення — без телефону. Заявка лягає в ту саму
+     * чергу (ServiceLead з email), лист — на lead_emails міста з Reply-To відвідувача; у CRM не йде. Дубль (той самий
+     * email у цьому місті щойно) і ліміт — як у заявок.
+     */
+    private function contact(Request $request, string $back, string $locale): Response
+    {
+        $city = $this->serviceCity($request);
+        $email = trim((string) $request->request->get('email', ''));
+        $name = trim((string) $request->request->get('name', ''));
+        $message = trim((string) $request->request->get('message', ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190 || mb_strlen($name) > 128
+            || $message === '' || mb_strlen($message) > 3000) {
+            $this->addFlash('lead_error', $this->translator->trans('contact.invalid', [], 'servicesite'));
+
+            return $this->redirect($back);
+        }
+        if ($this->leads->findRecentDuplicateEmail($city, $email, self::DUPLICATE_WINDOW) !== null) {
+            return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'dup']);
+        }
+        if (!$this->rateLimit->isAccepted($request)) {
+            $this->addFlash('lead_error', $this->translator->trans('contact.too_many', [], 'servicesite'));
+
+            return $this->redirect($back);
+        }
+
+        $lead = (new ServiceLead())
+            ->setCity($city)
+            ->setEmail($email)
+            ->setName($name !== '' ? $name : null)
+            ->setMessage($message)
+            ->setPageUrl(mb_substr($back, 0, 512))
+            ->setLocale($locale);
+        $this->attribution->apply($request, $lead);
+        $this->em->persist($lead);
+        $this->em->flush();
+        $this->notifier->notify($lead, 'Повідомлення', $request->getHost());
+
+        return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'contact']);
     }
 
     /**

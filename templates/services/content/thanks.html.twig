@@ -1,0 +1,13 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# «Дякуємо» після форми зв'язку контентного сайту (noindex). #}
+{% extends 'services/content/layout.html.twig' %}
+
+{% block title %}{{ 'contact.thanks_title'|trans({}, 'servicesite') }} - {{ site.brandName(locale) ?? site.name }}{% endblock %}
+
+{% block meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+    <h1>{{ 'contact.thanks_title'|trans({}, 'servicesite') }}</h1>
+    <p>{{ 'contact.thanks_text'|trans({}, 'servicesite') }}</p>
+    <p><a class="btn" href="{{ path('sv_home') }}">{{ 'thanks.back'|trans({}, 'servicesite') }}</a></p>
+{% endblock %}

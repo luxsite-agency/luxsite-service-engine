@@ -84,6 +84,11 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
             new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
             new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
+            // дата мовою сторінки (intl): «22 жовт. 2026 р.», «Oct 22, 2026» — для статей контентного сайту
+            new TwigFunction('sv_date', static fn (?\DateTimeInterface $date, string $locale): string => $date === null ? ''
+                : (string) (new \IntlDateFormatter($locale, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE))->format($date)),
+            // каркас сторінки за режимом бренду: контентний сайт — services/content/layout.html.twig, інакше — services/base.html.twig
+            new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }
 
