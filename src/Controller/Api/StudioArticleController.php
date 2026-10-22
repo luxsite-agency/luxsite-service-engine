@@ -12,6 +12,7 @@ use App\AdminApi\ApiScope;
 use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\ServiceSite\BrandSettings;
 use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -45,6 +46,9 @@ final class StudioArticleController extends AbstractController
         'sources' => ['uk' => 'Джерела', 'ru' => 'Источники', 'en' => 'Sources'],
     ];
     private const SLUG_MAX = 64;
+    private const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+    /** Атрибут запиту: прийшов через адмін-хост /api/studio/<slug>/… (StudioBrandController) */
+    public const ADMIN_HOST_ATTR = '_studio_admin_host';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -57,6 +61,10 @@ final class StudioArticleController extends AbstractController
         #[Autowire(param: 'kernel.project_dir')]
         private readonly string $projectDir,
         private readonly SiteLocales $locales,
+        private readonly BrandSettings $brandSettings,
+        /** @var list<string> app.studio.image_hosts: звідки приймач качає картинки; порожньо — будь-який публічний https */
+        #[Autowire(param: 'app.studio.image_hosts')]
+        private readonly array $imageHosts = [],
     ) {
     }
 
@@ -69,10 +77,10 @@ final class StudioArticleController extends AbstractController
     #[Route('/ping', name: 'ping', methods: ['GET'])]
     public function ping(Request $request): JsonResponse
     {
-        if ($denied = $this->authorize($request)) {
+        $site = $this->site($request);
+        if ($denied = $this->authorize($request, $site)) {
             return $denied;
         }
-        $site = $this->site($request);
 
         return $this->json(['ok' => true, 'site' => $site->getSlug(), 'apex' => $site->getApexDomain(), 'langs' => $this->locales->enabled($site)]);
     }
@@ -80,10 +88,10 @@ final class StudioArticleController extends AbstractController
     #[Route('/articles/{externalId}', name: 'article_put', methods: ['PUT'], requirements: ['externalId' => '[A-Za-z0-9_-]{1,64}'])]
     public function put(Request $request, string $externalId): JsonResponse
     {
-        if ($denied = $this->authorize($request)) {
+        $site = $this->site($request);
+        if ($denied = $this->authorize($request, $site)) {
             return $denied;
         }
-        $site = $this->site($request);
 
         $data = json_decode($request->getContent(), true);
         if (!\is_array($data)) {
@@ -140,11 +148,14 @@ final class StudioArticleController extends AbstractController
             $created = true;
         }
 
-        // зовнішні посилання — nofollow noopener (панель теж це робить; тут страховка для інших відправників)
-        $body = $this->nofollowExternal($body, $request->getHost());
+        // зовнішні посилання — nofollow noopener, крім доменів outbound.follow бренду (панель теж ставить nofollow; тут
+        // страховка для інших відправників і політика бренду); «свої» — хости міст бренду, а не хост запиту (адмін-хост)
+        $own = $this->ownHosts($site, $request);
+        $follow = $this->brandSettings->followDomains($site);
+        $body = $this->linkPolicy($this->localizeImages($body, $own), $own, $follow);
         $credit = isset($data['cover_credit']) && \is_string($data['cover_credit']) && trim($data['cover_credit']) !== ''
             ? "\n<p class=\"post-photo-credit\" style=\"font-size:.85em;color:#6b7280\">" . htmlspecialchars(trim($data['cover_credit']), ENT_QUOTES) . "</p>\n" : '';
-        $html = $body . $this->faqHtml($data['faq'] ?? [], $lang) . $this->relatedHtml($data['related'] ?? [], $lang) . $this->sourcesHtml($data['sources'] ?? [], $lang) . $credit;
+        $html = $body . $this->faqHtml($data['faq'] ?? [], $lang) . $this->relatedHtml($data['related'] ?? [], $lang) . $this->sourcesHtml($data['sources'] ?? [], $lang, $follow) . $credit;
         $lead = isset($data['lead']) ? trim((string) $data['lead']) : null;
         $metaTitle = isset($data['meta_title']) ? mb_substr(trim((string) $data['meta_title']), 0, 255) : null;
         $metaDesc = isset($data['meta_desc']) ? trim((string) $data['meta_desc']) : null;
@@ -214,8 +225,17 @@ final class StudioArticleController extends AbstractController
         ], $created ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
-    private function authorize(Request $request): ?JsonResponse
+    /**
+     * Токен студії для бренду. Персональний: чинний, власник активний, studio:write, і бренд — у межах токена й
+     * користувача (AdminApiToken::allowsSite, 22.10.2026). Спільний STUDIO_API_TOKEN бренду не знає — лише на доменах
+     * бренду (як було), не через адмін-хост. Бренд з studio_on_public_host: false на своїх доменах — 404.
+     */
+    private function authorize(Request $request, ServiceSite $site): ?JsonResponse
     {
+        $viaAdminHost = $request->attributes->getBoolean(self::ADMIN_HOST_ATTR);
+        if (!$viaAdminHost && !$this->brandSettings->studioOnPublicHost($site)) {
+            return $this->json(['error' => 'Not found.'], Response::HTTP_NOT_FOUND);
+        }
         $header = (string) $request->headers->get('Authorization', '');
         $token = str_starts_with($header, 'Bearer ') ? trim(substr($header, 7)) : '';
         if ($token === '') {
@@ -231,11 +251,14 @@ final class StudioArticleController extends AbstractController
             if (!$personal->hasScope($scope) || !\in_array($scope->requiredRole(), $this->roles->getReachableRoleNames($personal->getUser()->getRoles()), true)) {
                 return $this->json(['error' => 'Токену бракує дозволу studio:write.'], Response::HTTP_FORBIDDEN);
             }
+            if (!$personal->allowsSite($site)) {
+                return $this->json(['error' => 'Токен не має доступу до цього сайту.'], Response::HTTP_FORBIDDEN);
+            }
             $this->tokens->touch($personal, $request->getClientIp());
 
             return null;
         }
-        if ($this->apiToken === '' || !hash_equals($this->apiToken, $token)) {
+        if ($viaAdminHost || $this->apiToken === '' || !hash_equals($this->apiToken, $token)) {
             return $this->json(['error' => 'Невірний токен.'], Response::HTTP_UNAUTHORIZED);
         }
 
@@ -267,12 +290,8 @@ final class StudioArticleController extends AbstractController
         }
         $dir = $this->projectDir . '/public/media/service_post';
         @mkdir($dir, 0775, true);
-        try {
-            $bin = $this->http->request('GET', $url, ['timeout' => 30])->getContent();
-        } catch (\Throwable) {
-            return null;
-        }
-        if (\strlen($bin) < 1000 || !@imagecreatefromstring($bin)) {
+        $bin = $this->fetchImage($url);
+        if ($bin === null) {
             return null;
         }
         file_put_contents($dir . '/' . $name, $bin);
@@ -280,30 +299,105 @@ final class StudioArticleController extends AbstractController
         return $name;
     }
 
-    /** rel="nofollow noopener" target="_blank" для всіх посилань на чужі хости */
-    private function nofollowExternal(string $html, string $ownHost): string
+    /**
+     * Картинка з панелі студії (22.10.2026, проти SSRF): лише https, лише публічні адреси (NoPrivateNetworkHttpClient
+     * перевіряє й кожен редирект), до 3 редиректів, до 10 МБ, хост — з app.studio.image_hosts, якщо список задано.
+     * null — не картинка, заборонена адреса або помилка.
+     */
+    private function fetchImage(string $url): ?string
     {
-        $own = strtolower(preg_replace('/^www\./', '', $ownHost) ?? $ownHost);
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if (!preg_match('~^https://~i', $url) || $host === '' || ($this->imageHosts !== [] && !self::hostIn($host, $this->imageHosts))) {
+            return null;
+        }
+        try {
+            $client = new \Symfony\Component\HttpClient\NoPrivateNetworkHttpClient($this->http);
+            $bin = $client->request('GET', $url, [
+                'timeout' => 30,
+                'max_redirects' => 3,
+                'on_progress' => static function (int $dlNow, int $dlSize): void {
+                    if ($dlNow > self::IMAGE_MAX_BYTES || $dlSize > self::IMAGE_MAX_BYTES) {
+                        throw new \RuntimeException('Картинка більша за 10 МБ.');
+                    }
+                },
+            ])->getContent();
+        } catch (\Throwable) {
+            return null;
+        }
+        if (\strlen($bin) < 1000 || !@imagecreatefromstring($bin)) {
+            return null;
+        }
 
-        return preg_replace_callback('/<a\b([^>]*)>/i', static function (array $m) use ($own): string {
+        return $bin;
+    }
+
+    /**
+     * Картинки в тексті статті з чужих хостів → локальні копії /media/service_post/studio-<sha>.<ext> (hotlink з домену
+     * студії — і залежність, і відбиток мережі). Не вдалося завантажити — посилання лишається як було. До 20 картинок.
+     *
+     * @param list<string> $own
+     */
+    private function localizeImages(string $html, array $own): string
+    {
+        $count = 0;
+
+        return preg_replace_callback('~(<img\b[^>]*\bsrc\s*=\s*")(https://[^"]+)(")~i', function (array $m) use (&$count, $own): string {
+            $host = strtolower((string) preg_replace('/^www\./', '', (string) parse_url(html_entity_decode($m[2]), PHP_URL_HOST)));
+            if (self::hostIn($host, $own) || ++$count > 20) {
+                return $m[0];
+            }
+            $url = html_entity_decode($m[2]);
+            $bin = $this->fetchImage($url);
+            if ($bin === null) {
+                return $m[0];
+            }
+            $ext = match (true) {
+                str_starts_with($bin, "\x89PNG") => 'png',
+                str_starts_with($bin, 'GIF8') => 'gif',
+                str_starts_with($bin, 'RIFF') && substr($bin, 8, 4) === 'WEBP' => 'webp',
+                default => 'jpg',
+            };
+            $name = 'studio-' . substr(sha1($url), 0, 16) . '.' . $ext;
+            $dir = $this->projectDir . '/public/media/service_post';
+            @mkdir($dir, 0775, true);
+            file_put_contents($dir . '/' . $name, $bin);
+
+            return $m[1] . '/media/service_post/' . $name . $m[3];
+        }, $html) ?? $html;
+    }
+
+    /**
+     * Посилання на чужі хости (з http(s):// і protocol-relative //): rel="nofollow noopener" target="_blank"; на домени
+     * outbound.follow бренду — без nofollow (rel="noopener"); на свої хости — без змін.
+     *
+     * @param list<string> $own хости бренду (без www.)
+     * @param list<string> $follow домени без nofollow
+     */
+    private function linkPolicy(string $html, array $own, array $follow): string
+    {
+        return preg_replace_callback('/<a\b([^>]*)>/i', static function (array $m) use ($own, $follow): string {
             $attrs = $m[1];
-            if (!preg_match('/\bhref\s*=\s*"([^"]*)"/i', $attrs, $h) || !preg_match('~^https?://([^/:?#]+)~i', trim($h[1]), $hm)) {
+            if (!preg_match('/\bhref\s*=\s*"([^"]*)"/i', $attrs, $h) || !preg_match('~^(?:https?:)?//([^/:?#]+)~i', trim($h[1]), $hm)) {
                 return $m[0];
             }
             $host = strtolower(preg_replace('/^www\./', '', $hm[1]) ?? $hm[1]);
-            if ($host === $own || str_ends_with($host, '.' . $own)) {
+            if (self::hostIn($host, $own)) {
                 return $m[0];
             }
+            $want = self::hostIn($host, $follow) ? ['noopener'] : ['nofollow', 'noopener'];
             if (preg_match('/\brel\s*=\s*"([^"]*)"/i', $attrs, $r)) {
                 $vals = array_filter(array_map('trim', explode(' ', strtolower($r[1]))));
-                foreach (['nofollow', 'noopener'] as $v) {
+                if ($want === ['noopener']) {
+                    $vals = array_values(array_diff($vals, ['nofollow']));
+                }
+                foreach ($want as $v) {
                     if (!\in_array($v, $vals, true)) {
                         $vals[] = $v;
                     }
                 }
                 $attrs = preg_replace('/\brel\s*=\s*"[^"]*"/i', 'rel="' . implode(' ', $vals) . '"', $attrs, 1) ?? $attrs;
             } else {
-                $attrs .= ' rel="nofollow noopener"';
+                $attrs .= ' rel="' . implode(' ', $want) . '"';
             }
             if (!preg_match('/\btarget\s*=/i', $attrs)) {
                 $attrs .= ' target="_blank"';
@@ -311,6 +405,36 @@ final class StudioArticleController extends AbstractController
 
             return '<a' . $attrs . '>';
         }, $html) ?? $html;
+    }
+
+    /** @param list<string> $domains */
+    private static function hostIn(string $host, array $domains): bool
+    {
+        foreach ($domains as $d) {
+            if ($d !== '' && ($host === $d || str_ends_with($host, '.' . $d))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Хости бренду (міста, без www.) + хост запиту, якщо це не адмін-хост: посилання на них — свої.
+     *
+     * @return list<string>
+     */
+    private function ownHosts(ServiceSite $site, Request $request): array
+    {
+        $hosts = [];
+        foreach ($this->em->getRepository(\App\Entity\ServiceCity::class)->findBy(['site' => $site]) as $city) {
+            $hosts[] = strtolower((string) preg_replace('/^www\./', '', $city->getHost()));
+        }
+        if (!$request->attributes->getBoolean(self::ADMIN_HOST_ATTR)) {
+            $hosts[] = strtolower((string) preg_replace('/^www\./', '', $request->getHost()));
+        }
+
+        return array_values(array_unique($hosts));
     }
 
     /** @param mixed $faq */
@@ -359,10 +483,10 @@ final class StudioArticleController extends AbstractController
     #[Route('/pages', name: 'pages', methods: ['GET'])]
     public function pages(Request $request): JsonResponse
     {
-        if ($denied = $this->authorize($request)) {
+        $site = $this->site($request);
+        if ($denied = $this->authorize($request, $site)) {
             return $denied;
         }
-        $site = $this->site($request);
         $langs = $this->locales->enabled($site);
         $pages = [];
         $push = function (string $type, string $lang, ?string $path, ?string $title, ?string $desc, array $anchors, int $priority) use (&$pages): void {
@@ -387,14 +511,16 @@ final class StudioArticleController extends AbstractController
             }
         };
         $em = $this->em;
-        foreach ($em->getRepository(\App\Entity\ServiceItem::class)->findBy(['site' => $site, 'active' => true]) as $it) {
+        // контентний сайт: каталогу й районів нема (на сайті 404) — студії лише статті
+        $catalog = $site->isContent() ? [] : $em->getRepository(\App\Entity\ServiceItem::class)->findBy(['site' => $site, 'active' => true]);
+        foreach ($catalog as $it) {
             foreach ($langs as $l) {
                 $title = (string) $it->loc('title', $l);
                 $cat = method_exists($it, 'getCategory') ? $it->getCategory() : null;
                 $push('service', $l, $url('sv_service', ['slug' => $it->slug($l), 'category' => $cat?->slug($l) ?? ''], $l), $title, $it->loc('lead', $l), [$title, $it->loc('tabTitle', $l)], 2);
             }
         }
-        foreach ($em->getRepository(\App\Entity\ServiceCategory::class)->findBy(['site' => $site]) as $c) {
+        foreach ($site->isContent() ? [] : $em->getRepository(\App\Entity\ServiceCategory::class)->findBy(['site' => $site]) as $c) {
             foreach ($langs as $l) {
                 $title = (string) $c->loc('title', $l);
                 $push('category', $l, $url('sv_category', ['category' => $c->slug($l), 'slug' => $c->slug($l)], $l), $title, null, [$title], 3);
@@ -408,7 +534,7 @@ final class StudioArticleController extends AbstractController
                 $push('post', $l, $url('sv_blog_post', ['slug' => $p->slug($l)], $l), (string) $p->loc('title', $l), $p->loc('lead', $l), [], 6);
             }
         }
-        foreach ($em->getRepository(\App\Entity\ServiceDistrict::class)->findBy(['active' => true]) as $d) {
+        foreach ($site->isContent() ? [] : $em->getRepository(\App\Entity\ServiceDistrict::class)->findBy(['active' => true]) as $d) {
             // лише райони апекс-міста цього сайту: райони міст-піддоменів живуть на інших хостах
             $city = $d->getCity();
             if ($city === null || $city->getSite() !== $site || !$city->isApex()) {
@@ -423,7 +549,8 @@ final class StudioArticleController extends AbstractController
     }
 
     /** @param mixed $sources */
-    private function sourcesHtml(mixed $sources, string $lang): string
+    /** @param list<string> $follow домени без nofollow (outbound.follow бренду) */
+    private function sourcesHtml(mixed $sources, string $lang, array $follow = []): string
     {
         if (!\is_array($sources) || $sources === []) {
             return '';
@@ -435,7 +562,9 @@ final class StudioArticleController extends AbstractController
                 continue;
             }
             $title = trim((string) ($row['title'] ?? '')) ?: parse_url($url, PHP_URL_HOST);
-            $items .= sprintf("<li><a href=\"%s\" rel=\"nofollow noopener\" target=\"_blank\">%s</a></li>\n", htmlspecialchars($url, ENT_QUOTES), htmlspecialchars((string) $title, ENT_QUOTES));
+            $host = strtolower((string) preg_replace('/^www\./', '', (string) parse_url($url, PHP_URL_HOST)));
+            $rel = self::hostIn($host, $follow) ? 'noopener' : 'nofollow noopener';
+            $items .= sprintf("<li><a href=\"%s\" rel=\"%s\" target=\"_blank\">%s</a></li>\n", htmlspecialchars($url, ENT_QUOTES), $rel, htmlspecialchars((string) $title, ENT_QUOTES));
         }
 
         return $items === '' ? '' : sprintf("\n<section class=\"post-sources\">\n<h2>%s</h2>\n<ul>\n%s</ul>\n</section>\n", self::heading('sources', $lang), $items);
