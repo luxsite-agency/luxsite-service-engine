@@ -54,6 +54,18 @@ final class NewApiTokenType extends AbstractType
                 'help' => sprintf('Не довше за %d днів. Продовження — новий токен, старий відкликати.', $maxDays),
                 'constraints' => [new NotBlank(message: 'Вкажіть строк'), new Range(min: 1, max: $maxDays, notInRangeMessage: 'Від {{ min }} до {{ max }} днів')],
             ]);
+        /** @var array<string, string> $sites назва → slug брендів, доступних користувачу */
+        $sites = $options['sites'];
+        if (\count($sites) > 1) {
+            $builder->add('sites', ChoiceType::class, [
+                'label' => 'Бренди',
+                'choices' => $sites,
+                'multiple' => true,
+                'expanded' => true,
+                'required' => false,
+                'help' => 'Порожньо — усі ваші бренди. Токен колеги, що править один сайт мережі, — лише цей бренд.',
+            ]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -62,6 +74,8 @@ final class NewApiTokenType extends AbstractType
             ->setRequired(['scopes', 'max_days'])
             ->setAllowedTypes('scopes', 'array')
             ->setAllowedTypes('max_days', 'int')
+            ->setDefault('sites', [])
+            ->setAllowedTypes('sites', 'array')
             ->setDefault('csrf_token_id', 'api-token-issue');
     }
 }

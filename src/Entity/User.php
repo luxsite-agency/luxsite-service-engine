@@ -56,6 +56,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, \String
     #[ORM\Column(length: 512, nullable: true)]
     private ?string $avatarUrl = null;
 
+    /**
+     * Бренди, з якими користувач працює через API, MCP і студію (slug-и ServiceSite; 22.10.2026). null — усі (так
+     * працювали користувачі до цього поля). Межа для токенів: токен не може дати більше брендів, ніж має власник.
+     * CRUD адмінки цим не обмежується (свідомо, рішення 22.10.2026).
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $sites = null;
+
+    /** @return list<string>|null */
+    public function getSites(): ?array
+    {
+        return $this->sites;
+    }
+
+    /** @param list<string>|null $sites порожній список = null (усі бренди) */
+    public function setSites(?array $sites): self
+    {
+        $sites = $sites === null ? [] : array_values(array_unique(array_filter($sites, 'is_string')));
+        $this->sites = $sites === [] ? null : $sites;
+
+        return $this;
+    }
+
+    public function canAccessSite(ServiceSite $site): bool
+    {
+        return $this->sites === null || \in_array($site->getSlug(), $this->sites, true);
+    }
+
     public function getGoogleId(): ?string
     {
         return $this->googleId;

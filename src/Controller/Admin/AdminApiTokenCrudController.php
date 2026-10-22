@@ -133,13 +133,20 @@ final class AdminApiTokenCrudController extends AbstractCrudController
     public function issue(Request $request): Response
     {
         $user = $this->currentUser();
-        $form = $this->createForm(NewApiTokenType::class, null, ['scopes' => $this->tokens->allowedScopes($user), 'max_days' => $this->tokens->maxDays()]);
+        // бренди, доступні користувачу (User.sites; 22.10.2026) — вибір у формі, лише коли їх більше одного
+        $sites = [];
+        foreach ($this->container->get('doctrine')->getRepository(\App\Entity\ServiceSite::class)->findAllActive() as $site) {
+            if ($user->canAccessSite($site)) {
+                $sites[$site->getName() . ' (' . $site->getSlug() . ')'] = $site->getSlug();
+            }
+        }
+        $form = $this->createForm(NewApiTokenType::class, null, ['scopes' => $this->tokens->allowedScopes($user), 'max_days' => $this->tokens->maxDays(), 'sites' => $sites]);
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array{name: string, scopes: list<ApiScope>, days: int} $data */
+            /** @var array{name: string, scopes: list<ApiScope>, days: int, sites?: list<string>} $data */
             $data = $form->getData();
             try {
-                $issued = $this->tokens->issue($user, $data['name'], $data['scopes'], $data['days'], $user);
+                $issued = $this->tokens->issue($user, $data['name'], $data['scopes'], $data['days'], $user, $data['sites'] ?? null);
                 // значення — один раз, через сесію (на сервері), на сторінці списку; у БД і логах його нема
                 $request->getSession()->set(self::SESSION_PLAIN, $issued->plain);
                 $this->addFlash('success', sprintf('Токен «%s» створено. Скопіюйте значення зараз — удруге воно не покажеться.', $issued->token->getName()));

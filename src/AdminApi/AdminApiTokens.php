@@ -58,8 +58,13 @@ final class AdminApiTokens
      *
      * @throws \InvalidArgumentException назва, скоупи чи строк поза межами
      */
-    public function issue(User $owner, string $name, array $scopes, ?int $days, User $by): IssuedToken
+    /** @param list<string>|null $sites slug-и брендів токена (null — усі бренди власника); має бути підмножиною User.sites */
+    public function issue(User $owner, string $name, array $scopes, ?int $days, User $by, ?array $sites = null): IssuedToken
     {
+        $ownerSites = $owner->getSites();
+        if ($sites !== null && $sites !== [] && $ownerSites !== null && array_diff($sites, $ownerSites) !== []) {
+            throw new \InvalidArgumentException('Бренди токена мають бути з брендів користувача: ' . implode(', ', $ownerSites));
+        }
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 100) {
             throw new \InvalidArgumentException('Назва токена — від 1 до 100 символів');
@@ -81,6 +86,8 @@ final class AdminApiTokens
         $plain = self::PREFIX . rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = new \DateTimeImmutable();
         $token = new AdminApiToken($owner, $name, $scopes, self::hash($plain), substr($plain, 0, AdminApiToken::PREFIX_LENGTH), $now->modify(sprintf('+%d days', $days)));
+        // токен без власного списку бренду не розширює: обмежений користувач отримує саме свої бренди
+        $token->setSites($sites !== null && $sites !== [] ? $sites : $ownerSites);
         $this->em->persist($token);
         $this->em->flush();
 

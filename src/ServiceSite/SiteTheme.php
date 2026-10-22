@@ -86,9 +86,9 @@ final class SiteTheme
         $this->base = self::merge(self::DEFAULTS, $overrides, 'app.theme');
         $perBrand = [];
         foreach ($brands as $slug => $brand) {
-            $unknown = array_diff_key((array) $brand, ['theme' => true]);
+            $unknown = array_diff_key((array) $brand, array_flip(BrandSettings::KEYS));
             if ($unknown !== []) {
-                throw new \InvalidArgumentException(sprintf('app.brands.%s: невідомі ключі %s. Дозволені: theme', $slug, implode(', ', array_keys($unknown))));
+                throw new \InvalidArgumentException(sprintf('app.brands.%s: невідомі ключі %s. Дозволені: %s', $slug, implode(', ', array_keys($unknown)), implode(', ', BrandSettings::KEYS)));
             }
             $theme = (array) ($brand['theme'] ?? []);
             // перевірка ключів одразу (як і app.theme), щоб одрук у паку валив деплой, а не сторінку бренду
