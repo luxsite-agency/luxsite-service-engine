@@ -8,6 +8,11 @@ framework:
     #esi: true
     #fragments: true
 
+    # symfony/lock стоїть заради замка живої теми (ThemeService, свій FlockStore у var/theme, config/services.yaml).
+    # Загальний lock.factory не вмикаємо: інакше rate limiter-и заявок і API почали б брати flock у системному /tmp
+    # (на FastPanel його може не бути в open_basedir) — поведінка як до 22.10.2026.
+    lock: false
+
 when@prod:
     framework:
         # За traefik (TLS терміновано вище): довіряємо безпосередньому проксі,

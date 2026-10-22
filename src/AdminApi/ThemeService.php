@@ -12,37 +12,46 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceSiteRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Twig\Cache\FilesystemCache;
 use Twig\Environment;
-use Twig\Error\SyntaxError;
-use Twig\Source;
 
 /**
  * Жива правка дизайну сайту під персональним токеном (власник 15.10.2026: «сайт не зламають, тільки дизайн; ризики є,
  * але мінімальні»). Файли живуть у <root>/shared/theme (переживають релізи): templates/** — Twig-перекриття, що Twig
  * бере ПЕРШИМИ (перед templates/site паку й templates рушія), public/theme.css — додатковий CSS (/theme-live/theme.css).
- * Запобіжники: лише services/** і partials/** (*.twig) та theme.css; синтаксис Twig перевіряється до запису; після запису
- * рендеряться ключові сторінки сайту через HTTP — 5xx чи обрив HTML → файл повертається як був; кожна версія — в
- * history/ (відкат theme_revert); компільований кеш шаблону скидається одразу. У git паку ці правки не потрапляють —
- * перенести туди (templates/ паку) може розробник: theme_get віддає поточний текст.
+ * Запобіжники: лише services/** і partials/** (*.twig) та theme.css; шаблон до запису проходить ThemeTemplateGuard —
+ * синтаксис і явний allowlist (LiveThemePolicy: без app.request.server, _context, attribute(), render(), controller(),
+ * include_only() — порт із shop-engine PR #108, 22.10.2026); після запису рендеряться ключові сторінки сайту через HTTP —
+ * 5xx чи обрив HTML → файл повертається як був; кожна версія — в history/ (відкат theme_revert); компільований кеш
+ * шаблону скидається одразу. put/delete/revert — під одним замком на живу тему сайту (flock у var/theme): два записи
+ * паралельно не відкотять один одного, другий чекає до app.theme_lock_wait с, далі 409. У git паку ці правки не
+ * потрапляють — перенести туди (templates/ паку) може розробник: theme_get віддає поточний текст.
  */
 final class ThemeService
 {
     public const string CSS = 'theme.css';
+    /** Імена шаблонів, які можна перекрити (і на які живий шаблон може посилатися — ThemeTemplateGuard). */
+    public const string TEMPLATE_RE = '#^(services|partials)/[A-Za-z0-9_./-]+\.twig$#';
+    /** Замок довший за найгірший smoke (sitemap 10 с + 7 сторінок × 15 с); flock звільняється й зі смертю процесу. */
+    private const int LOCK_TTL = 180;
     private const int MAX_BYTES = 512 * 1024;
     private const int HISTORY_KEEP = 20;
 
     public function __construct(
         private readonly Environment $twig,
-        private readonly HttpClientInterface $http,
+        private readonly ThemeTemplateGuard $guard,
+        #[Autowire(service: 'app.theme_http_client')] private readonly HttpClientInterface $http,
+        #[Autowire(service: 'app.theme_lock_factory')] private readonly LockFactory $locks,
         private readonly ServiceSiteRepository $sites,
         private readonly ServiceCityRepository $cities,
         private readonly AuthorizationCheckerInterface $auth,
         private readonly ApiTokenContext $context,
         private readonly LoggerInterface $logger,
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
+        #[Autowire('%app.theme_lock_wait%')] private readonly int $lockWait = 30,
     ) {
     }
 
@@ -74,7 +83,7 @@ final class ThemeService
         }
         $rows[] = ['path' => self::CSS, 'source' => is_file($this->livePath(self::CSS)) ? 'live' : 'none', 'history' => \count($this->historyOf(self::CSS)), 'note' => 'додатковий CSS після стилів рушія й паку'];
 
-        return ['site' => $siteSlug, 'root' => 'shared/theme', 'files' => $rows, 'rules' => 'Лише services/** і partials/** (*.twig) та theme.css. Шаблони рушія доступні як @engine/… для {% extends %}. Після put сторінки рендеряться автоматично; провал = файл повертається.'];
+        return ['site' => $siteSlug, 'root' => 'shared/theme', 'files' => $rows, 'rules' => 'Лише services/** і partials/** (*.twig) та theme.css. Шаблони рушія доступні як @engine/… для {% extends %}. ' . LiveThemePolicy::summary() . ' Після put сторінки рендеряться автоматично; провал = файл повертається.'];
     }
 
     /** @return array<string, mixed> поточний текст і звідки він */
@@ -95,8 +104,8 @@ final class ThemeService
     }
 
     /**
-     * Записати живий файл: перевірка синтаксису → історія → запис → скидання кешу → рендер ключових сторінок → при
-     * провалі повернення попередньої версії.
+     * Записати живий файл: страж шаблону (синтаксис і allowlist) → історія → запис → скидання кешу → рендер ключових
+     * сторінок → при провалі повернення попередньої версії. Усе — під замком живої теми.
      *
      * @return array<string, mixed>
      */
@@ -105,16 +114,30 @@ final class ThemeService
         $this->requireScope();
         $site = $this->site($siteSlug);
         $rel = $this->normalize($path);
+
+        $this->validate($rel, $content); // до замка: відхилений шаблон не чекає чужого запису
+
+        return $this->locked(fn (): array => $this->doPut($site, $rel, $content));
+    }
+
+    /** Розмір і страж шаблону (синтаксис + allowlist LiveThemePolicy); theme.css стражем не перевіряється. */
+    private function validate(string $rel, string $content): void
+    {
         if (\strlen($content) > self::MAX_BYTES) {
             throw new ApiProblem(sprintf('Файл більший за %d КБ', self::MAX_BYTES / 1024), 422);
         }
         if ($rel !== self::CSS) {
-            try {
-                $this->twig->parse($this->twig->tokenize(new Source($content, $rel)));
-            } catch (SyntaxError $e) {
-                throw new ApiProblem('Twig: ' . $e->getMessage(), 422);
+            $problems = $this->guard->check($rel, $content);
+            if ($problems !== []) {
+                $this->logger->warning('theme.put_denied', ['path' => $rel, 'problems' => \count($problems)] + $this->who());
+                throw new ApiProblem('Шаблон не пройшов перевірку живої теми: ' . implode('; ', $problems), 422);
             }
         }
+    }
+
+    /** Запис уже перевіреного вмісту; викликати лише під locked(). @return array<string, mixed> */
+    private function doPut(\App\Entity\ServiceSite $site, string $rel, string $content): array
+    {
         $file = $this->livePath($rel);
         $previous = is_file($file) ? (string) file_get_contents($file) : null;
         $this->snapshot($rel, $previous);
@@ -146,32 +169,77 @@ final class ThemeService
         $this->requireScope();
         $this->site($siteSlug);
         $rel = $this->normalize($path);
-        $file = $this->livePath($rel);
-        if (!is_file($file)) {
-            throw new ApiProblem('Живого перекриття для ' . $rel . ' нема', 404);
-        }
-        $this->snapshot($rel, (string) file_get_contents($file));
-        unlink($file);
-        $this->invalidate($rel);
-        $this->logger->info('theme.delete', ['path' => $rel] + $this->who());
 
-        return ['path' => $rel, 'source' => $this->sourceOf($rel), 'history' => $this->historyOf($rel)];
+        return $this->locked(function () use ($rel): array {
+            $file = $this->livePath($rel);
+            if (!is_file($file)) {
+                throw new ApiProblem('Живого перекриття для ' . $rel . ' нема', 404);
+            }
+            $this->snapshot($rel, (string) file_get_contents($file));
+            unlink($file);
+            $this->invalidate($rel);
+            $this->logger->info('theme.delete', ['path' => $rel] + $this->who());
+
+            return ['path' => $rel, 'source' => $this->sourceOf($rel), 'history' => $this->historyOf($rel)];
+        });
     }
 
-    /** Повернути версію з історії (version = ім'я з historyOf) через той самий put з перевірками. @return array<string, mixed> */
+    /**
+     * Повернути версію з історії (version = ім'я з historyOf) з тими самими перевірками, що put, під тим самим замком
+     * (doPut, не put: другий flock того ж файлу з цього процесу чекав би сам на себе). Стара версія, записана до стража,
+     * із забороненими конструкціями не повернеться — 422.
+     *
+     * @return array<string, mixed>
+     */
     public function revert(string $siteSlug, string $path, string $version): array
     {
         $this->requireScope();
+        $site = $this->site($siteSlug);
         $rel = $this->normalize($path);
         if (!preg_match('/^\d{8}-\d{6}$/', $version)) {
             throw new ApiProblem('version — як у history: YYYYMMDD-HHMMSS', 422);
         }
-        $file = $this->historyDir($rel) . '/' . $version;
-        if (!is_file($file)) {
-            throw new ApiProblem('Версії нема: ' . $version, 404);
-        }
 
-        return $this->put($siteSlug, $rel, (string) file_get_contents($file));
+        return $this->locked(function () use ($site, $rel, $version): array {
+            $file = $this->historyDir($rel) . '/' . $version;
+            if (!is_file($file)) {
+                throw new ApiProblem('Версії нема: ' . $version, 404);
+            }
+
+            $content = (string) file_get_contents($file);
+            $this->validate($rel, $content);
+
+            return $this->doPut($site, $rel, $content);
+        });
+    }
+
+    /**
+     * Один замок на всю живу тему сайту (smoke рендерить усе): без нього два PUT паралельно знімали б той самий previous,
+     * і провал першого записав би previous поверх успішного другого. Неблокуюче acquire з паузами до app.theme_lock_wait с
+     * — fpm-воркер не висне назавжди; не дочекались — 409, клієнт повторює.
+     *
+     * @template T
+     *
+     * @param callable(): T $op
+     *
+     * @return T
+     */
+    private function locked(callable $op): mixed
+    {
+        $lock = $this->locks->createLock('theme-live', self::LOCK_TTL);
+        $deadline = microtime(true) + max(0, $this->lockWait);
+        while (!$lock->acquire()) {
+            if (microtime(true) >= $deadline) {
+                $this->logger->warning('theme.locked', $this->who());
+                throw new ApiProblem('Живу тему зараз змінює інший запит — повторіть за кілька секунд', 409);
+            }
+            usleep(200_000);
+        }
+        try {
+            return $op();
+        } finally {
+            $lock->release();
+        }
     }
 
     private function requireScope(): void
@@ -193,7 +261,7 @@ final class ThemeService
         if ($rel === self::CSS) {
             return $rel;
         }
-        if (str_contains($rel, '..') || !preg_match('#^(services|partials)/[A-Za-z0-9_./-]+\.twig$#', $rel)) {
+        if (str_contains($rel, '..') || !preg_match(self::TEMPLATE_RE, $rel)) {
             throw new ApiProblem('Дозволені лише services/**.twig, partials/**.twig і theme.css', 422);
         }
 

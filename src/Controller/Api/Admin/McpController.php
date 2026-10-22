@@ -9,6 +9,7 @@ namespace App\Controller\Api\Admin;
 
 use App\AdminApi\ApiProblem;
 use App\AdminApi\ContentService;
+use App\AdminApi\LiveThemePolicy;
 use App\AdminApi\ThemeService;
 use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -84,7 +85,7 @@ final class McpController extends AbstractController
                 'inputSchema' => ['type' => 'object', 'required' => ['site'], 'properties' => ['site' => $siteProp]]],
             ['name' => 'theme_get', 'description' => 'Дизайн: поточний текст файлу (живий, з паку або рушія) і список версій в історії. path — як у theme_list (services/home.html.twig, partials/_img.html.twig, theme.css).',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'path'], 'properties' => ['site' => $siteProp, 'path' => ['type' => 'string']]]],
-            ['name' => 'theme_put', 'description' => 'Дизайн: записати живий файл (шаблон або theme.css). Twig перевіряється на синтаксис, після запису рендеряться головна, каталог, райони, FAQ, блог, перша послуга й район — якщо 5xx чи обірваний HTML, файл повертається й повертається помилка. Попередня версія — в історії. Радше extends @engine/… з перевизначенням блоків, ніж повна копія.',
+            ['name' => 'theme_put', 'description' => 'Дизайн: записати живий файл (шаблон або theme.css). Twig перевіряється на синтаксис, після запису рендеряться головна, каталог, райони, FAQ, блог, перша послуга й район — якщо 5xx чи обірваний HTML, файл повертається й повертається помилка. Попередня версія — в історії. Радше extends @engine/… з перевизначенням блоків, ніж повна копія. ' . LiveThemePolicy::summary() . ' Зайнято іншим записом — помилка 409, повторити за кілька секунд.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'path', 'content'], 'properties' => ['site' => $siteProp, 'path' => ['type' => 'string'], 'content' => ['type' => 'string']]]],
             ['name' => 'theme_delete', 'description' => 'Дизайн: прибрати живе перекриття — далі береться файл паку або рушія. Версія лишається в історії.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'path'], 'properties' => ['site' => $siteProp, 'path' => ['type' => 'string']]]],
