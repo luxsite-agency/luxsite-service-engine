@@ -14,6 +14,7 @@ use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -134,6 +135,6 @@ final class LeadController extends AbstractController
             return $path . ($query ? '?' . $query : '');
         }
 
-        return $this->generateUrl('sv_home', ['_locale' => 'uk']);
+        return $this->generateUrl('sv_home', ['_locale' => $this->container->get(SiteLocales::class)->default()]);
     }
 }

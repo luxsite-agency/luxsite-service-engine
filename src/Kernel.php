@@ -6,10 +6,13 @@
 namespace App;
 
 use App\ServiceSite\CatalogUrls;
+use App\ServiceSite\LocalizedRoutes;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Symfony\Component\Routing\RouteCollection;
 
 class Kernel extends BaseKernel
 {
@@ -17,6 +20,7 @@ class Kernel extends BaseKernel
     use MicroKernelTrait {
         configureContainer as private configureContainerDefaults;
         configureRoutes as private configureRoutesDefaults;
+        loadRoutes as private loadRoutesDefaults;
     }
 
     /**
@@ -78,5 +82,18 @@ class Kernel extends BaseKernel
             throw new \InvalidArgumentException(sprintf('app.blog_prefix: «%s» — зарезервований сегмент іншого розділу сайту.', $blog));
         }
         $routes->import($this->getConfigDir().'/routes/catalog/'.$scheme.'.yaml');
+    }
+
+    /**
+     * Мови розгортання (app.locales): маршрути оголошені як uk без префікса + /ru/; інший набір мов переписує зібрану
+     * колекцію тут, після всіх імпортів (у configureRoutes її ще нема). При [uk, ru] — та сама колекція без змін.
+     * Деталі — App\ServiceSite\LocalizedRoutes.
+     */
+    public function loadRoutes(LoaderInterface $loader): RouteCollection
+    {
+        /** @var list<string> $locales */
+        $locales = $this->container->getParameter('app.locales');
+
+        return LocalizedRoutes::apply($this->loadRoutesDefaults($loader), $locales);
     }
 }
