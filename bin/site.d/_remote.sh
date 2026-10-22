@@ -46,7 +46,7 @@ case "$ROOT" in */site-"$KEY") ;; *) die "шлях '$ROOT' не за схемо�
 case "$RUNTIME" in fastpanel | docker) ;; *) die "SITE_RUNTIME має бути fastpanel|docker" ;; esac
 PROXY="${SITE_PROXY:-}"
 if [ "$RUNTIME" = docker ] && [ -z "$PROXY" ]; then PROXY=traefik; fi
-case "$RUNTIME:$PROXY" in fastpanel: | docker:traefik | docker:edge) ;; *) die "SITE_PROXY '$PROXY' не підходить до рантайму $RUNTIME" ;; esac
+case "$RUNTIME:$PROXY" in fastpanel: | docker:traefik | docker:edge | docker:traefik-ext) ;; *) die "SITE_PROXY '$PROXY' не підходить до рантайму $RUNTIME" ;; esac
 
 env_get() { if [ -f "$2" ]; then sed -n "s/^$1=//p" "$2" | tail -n1; fi; }
 cur_tag() { env_get SITE_TAG "$ROOT/release.env"; }
@@ -67,7 +67,16 @@ COMPOSE_FILE_NAME="${SITE_COMPOSE_FILE:-}"
 if [ -z "$COMPOSE_FILE_NAME" ]; then
     COMPOSE_FILE_NAME=docker-compose.traefik.yml
     if [ "$PROXY" = edge ]; then COMPOSE_FILE_NAME=docker-compose.edge.yml; fi
+    if [ "$PROXY" = traefik-ext ]; then COMPOSE_FILE_NAME=docker-compose.traefik-ext.yml; fi
 fi
+# прод у Docker (edge — за зовнішнім nginx, traefik-ext — за чужим traefik): www-data, паролі MySQL у shared/db.env, без mailpit
+is_prod_docker() { [ "$PROXY" = edge ] || [ "$PROXY" = traefik-ext ]; }
+# traefik-ext: мітки traefik — окремий файл shared/traefik-labels.yml, який deploy генерує з реєстру (traefik_labels нижче)
+LABELS_FILE="$ROOT/shared/traefik-labels.yml"
+compose_args() {
+    printf '%s\n' -f "$(compose_file)"
+    if [ "$PROXY" = traefik-ext ] && [ -s "$LABELS_FILE" ]; then printf '%s\n' -f "$LABELS_FILE"; fi
+}
 compose_file() { case "$COMPOSE_FILE_NAME" in /*) printf '%s' "$COMPOSE_FILE_NAME" ;; *) printf '%s/%s' "$COMPOSE_REL" "$COMPOSE_FILE_NAME" ;; esac; }
 # Змінні для compose-файлу стенда (traefik): хости з реєстру і uid/gid для php у контейнері (типово — хто робить deploy
 # і група теки сайту, щоб файли в shared/ лишались «своїми»). Мають дефолти в самому compose, тож для edge зайві, але не шкодять.
@@ -79,9 +88,61 @@ if [ "$RUNTIME" = docker ]; then
     export SITE_MAIL_HOST SITE_UID SITE_GID
 fi
 compose() {
-    SITE="$KEY" SITE_ROOT="$ROOT" docker compose -p "service-$KEY" --project-directory "$COMPOSE_REL" -f "$(compose_file)" "$@" </dev/null
+    local files; mapfile -t files < <(compose_args)
+    SITE="$KEY" SITE_ROOT="$ROOT" docker compose -p "service-$KEY" --project-directory "$COMPOSE_REL" "${files[@]}" "$@" </dev/null
 }
-compose_in() { SITE="$KEY" SITE_ROOT="$ROOT" docker compose -p "service-$KEY" --project-directory "$COMPOSE_REL" -f "$(compose_file)" "$@"; }
+compose_in() {
+    local files; mapfile -t files < <(compose_args)
+    SITE="$KEY" SITE_ROOT="$ROOT" docker compose -p "service-$KEY" --project-directory "$COMPOSE_REL" "${files[@]}" "$@"
+}
+# traefik_labels: shared/traefik-labels.yml для proxy traefik-ext (22.10.2026). Окремий роутер і сертифікат на КОЖЕН домен
+# (SITE_HOST і SITE_EXTRA): один роутер з Host(a) || Host(b) дав би один сертифікат з усіма доменами в SAN — це видно в
+# CT-логах і зв'язує домени між собою. www.<домен> — лише з server.www_redirect: true (редирект на домен; DNS www має бути,
+# інакше LE не видасть сертифікат і для самого домену). Адмінка — свій роутер з X-Robots-Tag: noindex. Конфіг traefik
+# сервера не змінюється — лише мітки контейнера nginx цього стека; решта контейнерів — traefik.enable=false (у compose).
+traefik_labels() {
+    [ "$PROXY" = traefik-ext ] || return 0
+    local net="${SITE_PROXY_NETWORK:-}" ep="${SITE_TRAEFIK_ENTRYPOINT:-websecure}" cr="${SITE_TRAEFIK_CERTRESOLVER:-}" r="service-$KEY" n=0 h hosts
+    if [ -z "$net" ] || [ -z "$cr" ]; then die "traefik-ext: потрібні server.network і server.certresolver у реєстрі"; fi
+    hosts="${SITE_HOST:-} ${SITE_EXTRA:-}"
+    if [ -z "${hosts// /}" ]; then die "traefik-ext: нема доменів (domains.site / domains.extra)"; fi
+    if [ "$DRY_RUN" = 1 ]; then log "[dry-run] згенерувати $LABELS_FILE: роутери на $hosts${SITE_ADMIN:+ і $SITE_ADMIN}"; return 0; fi
+    {
+        echo "# Згенеровано bin/site deploy $(date -u +%FT%TZ) з реєстру — не правити руками (перезапишеться)."
+        echo "services:"
+        echo "  nginx:"
+        echo "    labels:"
+        echo "      traefik.enable: \"true\""
+        echo "      traefik.docker.network: \"$net\""
+        echo "      traefik.http.services.$r.loadbalancer.server.port: \"80\""
+        for h in $hosts; do
+            n=$((n + 1))
+            if [ "${SITE_WWW_REDIRECT:-}" = yes ]; then
+                echo "      traefik.http.routers.$r-$n.rule: \"Host(\`$h\`) || Host(\`www.$h\`)\""
+                echo "      traefik.http.routers.$r-$n.middlewares: \"$r-www\""
+            else
+                echo "      traefik.http.routers.$r-$n.rule: \"Host(\`$h\`)\""
+            fi
+            echo "      traefik.http.routers.$r-$n.entrypoints: \"$ep\""
+            echo "      traefik.http.routers.$r-$n.tls.certresolver: \"$cr\""
+            echo "      traefik.http.routers.$r-$n.service: \"$r\""
+        done
+        if [ -n "${SITE_ADMIN:-}" ]; then
+            echo "      traefik.http.routers.$r-admin.rule: \"Host(\`$SITE_ADMIN\`)\""
+            echo "      traefik.http.routers.$r-admin.entrypoints: \"$ep\""
+            echo "      traefik.http.routers.$r-admin.tls.certresolver: \"$cr\""
+            echo "      traefik.http.routers.$r-admin.service: \"$r\""
+            echo "      traefik.http.routers.$r-admin.middlewares: \"$r-noindex\""
+            echo "      traefik.http.middlewares.$r-noindex.headers.customresponseheaders.X-Robots-Tag: \"noindex, nofollow\""
+        fi
+        if [ "${SITE_WWW_REDIRECT:-}" = yes ]; then
+            printf '      traefik.http.middlewares.%s-www.redirectregex.regex: "^https?://www\\\\.(.+)"\n' "$r"
+            echo "      traefik.http.middlewares.$r-www.redirectregex.replacement: \"https://\$\${1}\""
+            echo "      traefik.http.middlewares.$r-www.redirectregex.permanent: \"true\""
+        fi
+    } > "$LABELS_FILE.tmp" && mv "$LABELS_FILE.tmp" "$LABELS_FILE"
+    log "traefik-ext: мітки $n домен(ів)${SITE_ADMIN:+ + адмінка} → shared/traefik-labels.yml"
+}
 # mysql_root <клієнт> <аргументи…> — mysql/mysqldump у контейнері mysql від root; пароль — зі змінної самого контейнера
 # (MYSQL_ROOT_PASSWORD: стенд traefik — «root» у compose, edge — shared/db.env), у командному рядку й лозі його нема.
 # Аргументи — без пробілів і лапок (ключ сайту, прапорці); stdin — дамп для mysql.
@@ -199,7 +260,7 @@ gen_hex() { openssl rand -hex "$1" | tr -d '\n'; }
 # Генерується один раз. Якщо .env.local уже є, а db.env нема — паролі не вгадати: відмова з підказкою.
 db_env_edge() {
     local dbenv="$ROOT/shared/db.env"
-    [ "$PROXY" = edge ] || return 0
+    is_prod_docker || return 0
     [ -s "$dbenv" ] && return 0
     if [ "$DRY_RUN" = 1 ]; then log "[dry-run] створити shared/db.env (паролі MySQL стека)"; return 0; fi
     [ -s "$ROOT/shared/.env.local" ] && die "є shared/.env.local, але нема shared/db.env — покладіть db.env (MYSQL_ROOT_PASSWORD, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD) під DATABASE_URL з .env.local"
@@ -219,7 +280,7 @@ first_run() {
         if [ -n "$legacy" ] && [ -s "$legacy/.env.local" ]; then
             cp -p "$legacy/.env.local" "$env"; chmod 600 "$env"; own "$env"
             log "shared/.env.local ← $legacy/.env.local (стара тека застосунку)"
-        elif [ "$PROXY" = edge ]; then
+        elif is_prod_docker; then
             local dbu dbp
             dbu="$(sed -n 's/^MYSQL_USER=//p' "$ROOT/shared/db.env")"; dbp="$(sed -n 's/^MYSQL_PASSWORD=//p' "$ROOT/shared/db.env")"
             umask 077
@@ -317,6 +378,7 @@ do_deploy() {
     if [ "$RUNTIME" = docker ]; then
         # контейнери стартують із нового релізу (./ → /app); vendor і var — спільні томи проєкту
         COMPOSE_REL="$rel"
+        traefik_labels
         run compose up -d --build --remove-orphans
         [ "$DRY_RUN" = 1 ] || wait_mysql
         # var — спільний том: скомпільований контейнер попереднього релізу посилається на його бандли, і cache:clear нового
