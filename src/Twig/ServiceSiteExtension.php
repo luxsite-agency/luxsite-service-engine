@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Twig;
 
 use App\Entity\ServiceItem;
+use App\Entity\ServicePostCategory;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceCity;
 use App\Repository\ServiceCalcTypeRepository;
@@ -15,6 +16,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
+use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
@@ -64,8 +66,12 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
         private readonly ?SiteLocales $siteLocales = null,
+        private readonly ?ServicePostCategoryRepository $postCategories = null,
     ) {
     }
+
+    /** @var array<string, list<ServicePostCategory>> рубрики бренду на запит: «<id сайту>:<мова>» → список */
+    private array $categoryCache = [];
 
     public function getFunctions(): array
     {
@@ -93,6 +99,9 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('sv_date', static fn (?\DateTimeInterface $date, string $locale): string => $date === null ? ''
                 : (string) (new \IntlDateFormatter($locale, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE))->format($date)),
             // каркас сторінки за режимом бренду: контентний сайт — services/content/layout.html.twig, інакше — services/base.html.twig
+            // рубрики бренду (активні, мовою сторінки, за позицією) — для шапки й футера на будь-якій сторінці, не лише там,
+            // де контролер передає categories; без бренду чи на сервісному сайті без рубрик — []
+            new TwigFunction('sv_categories', $this->brandCategories(...)),
             new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }
@@ -291,6 +300,18 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    /** @return list<ServicePostCategory> */
+    public function brandCategories(?ServiceSite $site = null): array
+    {
+        $site ??= $this->locales()->currentSite();
+        if ($site === null || $this->postCategories === null || $site->getId() === null) {
+            return [];
+        }
+        $locale = $this->locales()->current();
+
+        return $this->categoryCache[$site->getId() . ':' . $locale] ??= $this->postCategories->findActiveBySite($site, $locale);
     }
 
     private function locales(): SiteLocales
