@@ -22,6 +22,9 @@ use Symfony\Component\Routing\Attribute\Route;
  *   PUT    /api/admin/v1/{site}/theme/{path}                  тіло — текст файлу (text/plain або JSON {"content": …})
  *   DELETE /api/admin/v1/{site}/theme/{path}                  прибрати живе перекриття
  *   POST   /api/admin/v1/{site}/theme/{path}/revert           JSON {"version": "YYYYMMDD-HHMMSS"}
+ *
+ * 422 — шаблон не пройшов страж (ThemeTemplateGuard: синтаксис і allowlist LiveThemePolicy) або не рендериться;
+ * 409 + Retry-After — живу тему зараз змінює інший запит (замок ThemeService).
  */
 final class ThemeApiController extends AbstractController
 {
@@ -81,7 +84,8 @@ final class ThemeApiController extends AbstractController
         try {
             return $this->json($op());
         } catch (ApiProblem $e) {
-            return $this->json(['error' => $e->getMessage()], $e->status);
+            // 409 — живу тему зараз змінює інший запит (замок ThemeService): повторити за кілька секунд
+            return $this->json(['error' => $e->getMessage()], $e->status, $e->status === 409 ? ['Retry-After' => '5'] : []);
         }
     }
 }

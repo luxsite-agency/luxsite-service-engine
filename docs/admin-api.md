@@ -63,9 +63,10 @@ JSON-RPC 2.0 поверх POST (Streamable HTTP без потоку подій: 
 Власник: «варто додати можливість правити шаблон сайту з-під токена; ризики є, але мінімальні». Живі файли — у
 `<root>/shared/theme` сайту (переживають релізи): `templates/**` Twig бере **першими** (перед `templates/` паку і рушія),
 `public/theme.css` підключається після стилів рушія й паку як `/theme-live/theme.css?v=`. Запобіжники: лише `services/**`,
-`partials/**` (*.twig) і `theme.css`; синтаксис Twig перевіряється до запису; після запису рендеряться головна, каталог,
-райони, FAQ, блог, перша послуга й район через HTTP — 5xx чи обірваний HTML → файл повертається, відповідь 422;
-кожна попередня версія — в `history/` (до 20), `revert`; компільований кеш скидається одразу. У git паку ці правки не
+`partials/**` (*.twig) і `theme.css`; шаблон до запису проходить страж (синтаксис і allowlist, нижче) — інакше 422 з
+переліком рядків; після запису рендеряться головна, каталог, райони, FAQ, блог, перша послуга й район через HTTP — 5xx чи
+обірваний HTML → файл повертається, відповідь 422; кожна попередня версія — в `history/` (до 20), `revert` (з тим самим
+стражем: стара версія із забороненим — 422); компільований кеш скидається одразу. У git паку ці правки не
 потрапляють — розробник переносить у `templates/` паку (`theme_get` віддає поточний текст). Відповідальність за
 зовнішній вигляд — на менеджері; після правок на проді — `/analytics-healthcheck`.
 
@@ -79,6 +80,43 @@ JSON-RPC 2.0 поверх POST (Streamable HTTP без потоку подій: 
 
 MCP: `theme_list`, `theme_get`, `theme_put`, `theme_delete`, `theme_revert`. Порада Claude Code: extends `@engine/…`
 з перевизначенням блоків, а не повна копія — виправлення рушія доходитимуть у неперекриті блоки.
+
+### Що можна в живому шаблоні (allowlist, з 22.10.2026)
+
+Порт виправлень shop-engine PR #108 (рев'ю M1–M3). До того страж перевіряв лише синтаксис, і живий шаблон міг вивести
+`{{ app.request.server.get('DATABASE_URL') }}` — `$_SERVER` з усім оточенням (`APP_SECRET`, ключі) — на публічній сторінці,
+або викликати `{{ render(controller('App\\…::метод')) }}`: sub-request не проходить firewall (той працює лише для main
+request), тож будь-який контролер ішов би без входу. Тепер `ThemeTemplateGuard` іде по AST і дозволяє лише те, що є в
+`src/AdminApi/LiveThemePolicy.php`; невідоме ім'я = відмова:
+
+- теги, фільтри, функції, тести — зі списків; `render`, `render_*`, `controller`, `include_only`, `attribute`, `source`,
+  `dump`, `|invoke`, тест `constant` — нема; `constant()` — лише `JSON_*`; `filter`/`map`/`reduce`/`sort`/`find` — лише
+  зі стрілочною функцією (не рядок `'system'`);
+- `app` — лише точні ланцюжки: `app.request.locale|pathInfo|uri|requestUri|host|schemeAndHttpHost`,
+  `app.request.query.get|has|all`, `app.user` (далі — властивості зі списку, напр. `email`, `displayName`), `app.flashes`,
+  `app.current_route`, `app.locale`; саме `app.request` — лише як умова (`{% if app.request %}`, `is null`, `not`, `and/or`).
+  `app` чи `app.request` у `set`, аргументі, `with`, `app.session`, `app.token`, `app.request.server|headers|cookies|attributes`
+  — відмова; `_context` і `_self` (крім `{% import _self %}`) — відмова;
+- властивості й методи `x.name` — лише імена зі списку (немає `parent`, `token`, `request`, `session`, `password`, `roles`,
+  `settings`, сетерів); ключ масиву — `x['token']` (на об'єкті Twig так методу не викличе);
+- `extends`/`include`/`embed`/`import`/`use`/`block(name, template)` — лише літерал `services/**`, `partials/**` або те саме
+  з `@engine/` — не адмінка, не листи, не шаблони бандлів, не вираз.
+
+Шаблони рушія (`templates/services/**`, `templates/partials/**`) проходять страж як є — це перевіряє тест
+`ThemeTemplateGuardTest::testEveryOverridableEngineTemplatePasses`: нова функція чи властивість у шаблоні рушія = свідомо
+додати ім'я в `LiveThemePolicy` у тому ж PR. Шаблони паків стражем не перевіряються (вони йдуть через git і рев'ю); дизайнер,
+який бере шаблон паку за основу, може отримати 422 з точним рядком (найчастіше `app.request.attributes.get('_route')` →
+`app.current_route`, `x.key` масиву → `x['key']`).
+
+**Замок (M3).** `put`/`delete`/`revert` — під одним замком на живу тему сайту (`symfony/lock`, `FlockStore` у `var/theme` =
+`shared/theme`, ключ `theme-live`): без нього два PUT паралельно знімали той самий `previous`, і провал першого відкочував
+успішний другий. Другий запис чекає до `app.theme_lock_wait` с (30), далі **409** + `Retry-After: 5`, файл не змінено.
+Загальний `framework.lock` вимкнено (`lock: false`) — rate limiter-и працюють як раніше.
+
+**Прийняті ризики (як у shop-engine, ADR п. 9).** Менеджер з `theme:write` (або той, хто вкрав токен) керує HTML/JS/CSS
+сайту: фішинг-форма чи скрипт, що читає введене, страж не ловить — пом'якшення: `ROLE_MODERATOR`, строк токена, журнал,
+історія. Методи об'єктів контексту з allowlist-у (геттери сутностей) доступні шаблону. Між записом і відкатом після провалу
+рендера (кілька секунд) відвідувач може побачити зламану сторінку. `theme.css` не перевіряється (може `@import` чужий URL).
 
 ## REST `/api/admin/v1` (лише на `ADMIN_HOST`, firewall `admin_api`, stateless)
 

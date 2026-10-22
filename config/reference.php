@@ -419,7 +419,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Default: false
  *     },
  *     lock?: Param|bool|string|array{ // Lock configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         resources?: Param|string|array<string, Param|string|list<scalar|Param|null>>,
  *     },
  *     semaphore?: Param|bool|string|array{ // Semaphore configuration
@@ -1610,6 +1610,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     },
  *     ...<string, mixed>
  * }
+ * @psalm-type GmbReviewsConfig = array{
+ *     token?: scalar|Param|null, // Default: null
+ *     base_url?: scalar|Param|null, // Default: "https://gmb.luxsite.agency"
+ *     ttl?: int|Param, // Default: 600
+ *     cache_pool?: scalar|Param|null, // Default: "cache.app"
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1625,6 +1631,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     vich_uploader?: VichUploaderConfig,
  *     knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     liip_imagine?: LiipImagineConfig,
+ *     gmb_reviews?: GmbReviewsConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1640,6 +1647,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         vich_uploader?: VichUploaderConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         liip_imagine?: LiipImagineConfig,
+ *         gmb_reviews?: GmbReviewsConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1656,6 +1664,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         vich_uploader?: VichUploaderConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         liip_imagine?: LiipImagineConfig,
+ *         gmb_reviews?: GmbReviewsConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1672,6 +1681,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         vich_uploader?: VichUploaderConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         liip_imagine?: LiipImagineConfig,
+ *         gmb_reviews?: GmbReviewsConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

@@ -5,7 +5,7 @@
 {%- for e in entries %}
 {%- for locale in ['uk', 'ru'] %}
     <url>
-        <loc>{{ attribute(e, locale) }}</loc>
+        <loc>{{ e[locale] }}</loc>
 {%- if e.lastmod %}
         <lastmod>{{ e.lastmod|date('Y-m-d') }}</lastmod>
 {%- endif %}

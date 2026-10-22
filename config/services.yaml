@@ -54,6 +54,8 @@ parameters:
     # автентифікацій з IP за хвилину
     app.admin_api_token_max_days: 90
     app.admin_api_auth_rate_limit: 30
+    # скільки секунд другий запис живої теми чекає, поки перший (з рендером сторінок) відпустить замок; далі 409
+    app.theme_lock_wait: 30
     # Microsoft Clarity (id проєкту, напр. qo204yt1uv) — тег у <head> поруч із GTM на всіх хостах сайту; порожньо = без тега.
     # Параметр паку, а не поле міста: проєкт Clarity один на бренд (у сайтів з Joomla-імпортом тег часто сидів у шаблоні, не в GTM)
     app.clarity_id: ''
@@ -181,6 +183,19 @@ services:
         factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
         autoconfigure: false
 
+    # Живий дизайн (ThemeService): HTTP-клієнт рендера сторінок після запису (у тестах — MockHttpClient) і замок живої
+    # теми — flock у var/theme (на сервері shared/theme сайту: спільний для всіх fpm-воркерів і релізів сайту).
+    app.theme_http_client:
+        alias: http_client
+    app.theme_lock_store:
+        class: Symfony\Component\Lock\Store\FlockStore
+        arguments: ['%kernel.project_dir%/var/theme']
+        autoconfigure: false
+    app.theme_lock_factory:
+        class: Symfony\Component\Lock\LockFactory
+        arguments: ['@app.theme_lock_store']
+        autoconfigure: false
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
@@ -188,3 +203,14 @@ services:
 when@dev:
     parameters:
         env(STUDIO_API_TOKEN): 'dev-studio-token'
+
+# Тести живого дизайну: рендер сторінок після запису без мережі (tests/Support/ThemeSmokeMock.php) і коротке очікування
+# замка, щоб тест «замок зайнятий → 409» ішов секунди, а не півхвилини
+when@test:
+    parameters:
+        app.theme_lock_wait: 3
+    services:
+        App\Tests\Support\ThemeSmokeMock: ~
+        app.theme_http_client:
+            class: Symfony\Component\HttpClient\MockHttpClient
+            arguments: ['@App\Tests\Support\ThemeSmokeMock']

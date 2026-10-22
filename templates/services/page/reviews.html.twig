@@ -43,7 +43,7 @@
     <p class="meta rating-line">{{ 'reviews.rating'|trans({'%avg%': reviewsAggregate.avg, '%count%': reviewsAggregate.count}, 'servicesite') }}</p>
     {% endif %}
 
-    {% set gbpToken = gbpToken|default(gbp_reviews.token|default('')) %}
+    {% set gbpToken = gbpToken|default(gbp_reviews['token']|default('')) %}
     {% if gbpToken %}
     {# Віджет gbp-manager (app.gbp_reviews: token або cities[slug міста]): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
        власні форма, список і оцінка рушія не показуються, щоб на сторінці була одна оцінка. Мова — мова сторінки. #}

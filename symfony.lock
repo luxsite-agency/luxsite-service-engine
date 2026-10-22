@@ -72,6 +72,9 @@
             "config/routes/liip_imagine.yaml"
         ]
     },
+    "luxsite/gmb-reviews-bundle": {
+        "version": "1.1.1"
+    },
     "phpunit/phpunit": {
         "version": "12.5",
         "recipe": {
@@ -142,6 +145,18 @@
             "src/Controller/.gitignore",
             "src/Kernel.php",
             ".editorconfig"
+        ]
+    },
+    "symfony/lock": {
+        "version": "8.1",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "5.2",
+            "ref": "8e937ff2b4735d110af1770f242c1107fdab4c8e"
+        },
+        "files": [
+            "config/packages/lock.yaml"
         ]
     },
     "symfony/mailer": {
