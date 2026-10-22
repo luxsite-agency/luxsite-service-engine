@@ -51,7 +51,9 @@ final class LocalizedRoutes
                 if ($i > 0) {
                     $variant->setPath('/' . $target . $route->getPath());
                 }
-                $variant->setDefault('_locale', $target);
+                // setDefault/setRequirement('_locale') локалізованого маршруту Symfony ігнорує (Route::isLocalized), тож
+                // defaults замінюються цілком (тоді маршрут ще не «локалізований»), а потім — requirement
+                $variant->setDefaults(['_locale' => $target] + $route->getDefaults());
                 $variant->setRequirement('_locale', preg_quote($target));
                 $out->add($canonical . '.' . $target, $variant, $routes->getPriority($name) ?? 0);
             }
