@@ -99,5 +99,17 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield TextEditorField::new('termsUk', 'Умови надання послуг uk')->hideOnIndex()
             ->setHelp('Порожньо - на /terms-of-service/ показується типовий текст рушія');
         yield TextEditorField::new('termsRu', 'Умови надання послуг ru')->hideOnIndex();
+
+        if (\in_array('en', $this->locales, true)) {
+            yield FormField::addFieldset('English');
+            yield TextField::new('brandNameEn', 'Коротка назва бренду en')->hideOnIndex();
+            yield TextField::new('aboutTitleEn', '«Про нас»: заголовок en')->hideOnIndex();
+            yield TextEditorField::new('aboutEn', '«Про нас»: текст en')->hideOnIndex()
+                ->setHelp('Порожньо — сторінки «Про нас» англійською нема (без фолбеку на uk).');
+            yield TextEditorField::new('privacyEn', 'Політика конфіденційності en')->hideOnIndex()
+                ->setHelp('Порожньо — типовий текст рушія англійською');
+            yield TextEditorField::new('termsEn', 'Умови en')->hideOnIndex()
+                ->setHelp('Порожньо — типовий текст рушія англійською');
+        }
     }
 }

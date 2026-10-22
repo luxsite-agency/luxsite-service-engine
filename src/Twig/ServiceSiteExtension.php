@@ -218,7 +218,7 @@ final class ServiceSiteExtension extends AbstractExtension
 
     public function siteHasBlog(ServiceSite $site): bool
     {
-        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site) > 0;
+        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site, $this->locales()->current()) > 0;
     }
 
     /**

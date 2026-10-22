@@ -107,6 +107,31 @@ class ServiceSite implements TimestampableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $termsRu = null;
 
+    // англійська версія (22.10.2026): без фолбеку на uk
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $brandNameEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $aboutTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $privacyEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $termsEn = null;
+
+    /**
+     * Сирий текст «Про нас» для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
+     * en — англійське, без фолбеку. null = сторінки цією мовою нема.
+     */
+    public function aboutFor(string $locale): ?string
+    {
+        return $this->locRaw('about', $locale === 'ru' ? 'uk' : $locale);
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -337,6 +362,66 @@ class ServiceSite implements TimestampableInterface
     public function setTermsRu(?string $termsRu): self
     {
         $this->termsRu = $termsRu;
+
+        return $this;
+    }
+
+    public function getBrandNameEn(): ?string
+    {
+        return $this->brandNameEn;
+    }
+
+    public function setBrandNameEn(?string $brandNameEn): self
+    {
+        $this->brandNameEn = $brandNameEn === '' ? null : $brandNameEn;
+
+        return $this;
+    }
+
+    public function getAboutTitleEn(): ?string
+    {
+        return $this->aboutTitleEn;
+    }
+
+    public function setAboutTitleEn(?string $aboutTitleEn): self
+    {
+        $this->aboutTitleEn = $aboutTitleEn === '' ? null : $aboutTitleEn;
+
+        return $this;
+    }
+
+    public function getAboutEn(): ?string
+    {
+        return $this->aboutEn;
+    }
+
+    public function setAboutEn(?string $aboutEn): self
+    {
+        $this->aboutEn = $aboutEn === '' ? null : $aboutEn;
+
+        return $this;
+    }
+
+    public function getPrivacyEn(): ?string
+    {
+        return $this->privacyEn;
+    }
+
+    public function setPrivacyEn(?string $privacyEn): self
+    {
+        $this->privacyEn = $privacyEn === '' ? null : $privacyEn;
+
+        return $this;
+    }
+
+    public function getTermsEn(): ?string
+    {
+        return $this->termsEn;
+    }
+
+    public function setTermsEn(?string $termsEn): self
+    {
+        $this->termsEn = $termsEn === '' ? null : $termsEn;
 
         return $this;
     }
