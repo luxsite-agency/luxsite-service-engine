@@ -549,8 +549,10 @@
         {{ _svTags.htmlBodyStart|raw }}
         {%~ endif %}
         {# шапка (топбар, бренд, меню, перемикач мов): пак перекриває весь блок через
-           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається #}
-        {% block header %}
+           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається.
+           Блок page (22.10.2026) — уся видима частина сторінки (шапка, main, футер): дизайн бренду з власною розміткою
+           перекриває його цілком, а голова (SEO, аналітика) і службові скрипти внизу лишаються рушія #}
+        {% block page %}{% block header %}
         <div class="topbar">
             <div class="container">
                 {% set _cities = city_switcher(site, city) %}
@@ -686,7 +688,8 @@
                 </p>
                 {% endblock %}
             </div>
-        </footer>
+        </footer>{% endblock %}
+
         <script>
             /* Джерело заявки. Мітки приходять на першій сторінці візиту, а форму
                людина часто відправляє вже з іншої - тому кладемо в localStorage
