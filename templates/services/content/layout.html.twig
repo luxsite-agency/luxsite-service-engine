@@ -1,0 +1,72 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Каркас контентного сайту (ServiceSite.mode = content, 22.10.2026): голова, аналітика й стилі — з services/base.html.twig;
+   шапка, меню й футер — свої, без телефонів, адрес, месенджерів, перемикача міст і кнопки заявки (правило власника:
+   наших контактів на контентних сайтах не публікуємо). Нейтральний вигляд рушія; дизайн бренду перекриває шаблони паку. #}
+{% extends 'services/base.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .c-head { border-bottom: 1px solid var(--border); background: #fff; }
+        .c-head .container { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-top: 14px; padding-bottom: 14px; }
+        .c-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; color: var(--dark); text-decoration: none; }
+        .c-brand img { width: 40px; height: 40px; object-fit: contain; }
+        .c-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-left: auto; }
+        .c-nav a { color: var(--text); text-decoration: none; }
+        .c-nav a:hover, .c-nav a.active { color: var(--accent-ink); }
+        .c-langs a { margin-left: 8px; font-size: .9rem; }
+        .c-langs a.active { font-weight: 700; }
+        .c-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; margin: 24px 0; }
+        .c-post { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+        .c-post img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+        .c-post .in { padding: 16px; }
+        .c-post h2, .c-post h3 { font-size: 1.15rem; margin: 0 0 8px; }
+        .c-post h2 a, .c-post h3 a { color: var(--dark); text-decoration: none; }
+        .c-meta { color: var(--muted-text); font-size: .9rem; }
+        .c-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; padding: 0; list-style: none; }
+        .c-cats a { display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; }
+        .c-article { max-width: 760px; }
+        .c-article img.c-cover { width: 100%; height: auto; border-radius: var(--radius); }
+        .c-author { display: flex; gap: 16px; align-items: flex-start; margin: 32px 0; padding: 16px; background: var(--bg-muted); border-radius: var(--radius); }
+        .c-author img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+        .c-form { max-width: 560px; display: grid; gap: 12px; }
+        .c-form input, .c-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+        .c-foot { border-top: 1px solid var(--border); margin-top: 48px; padding: 24px 0; color: var(--muted-text); font-size: .9rem; }
+        .c-foot .container { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+        .c-pages { display: flex; gap: 16px; margin: 24px 0; }
+    </style>
+{% endblock %}
+
+{% block header %}
+    <header class="c-head">
+        <div class="container">
+            <a class="c-brand" href="{{ path('sv_home') }}">
+                {% if theme.url('logo') %}<img src="{{ asset(theme.url('logo')) }}" alt="" width="40" height="40">{% endif %}
+                <span>{{ site.brandName(locale) ?? site.name }}</span>
+            </a>
+            <nav class="c-nav" aria-label="{{ 'nav.menu'|trans({}, 'servicesite') }}">
+                {% block nav %}
+                    <a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>
+                    {% if site.aboutFor(locale) or city.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                    <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                {% endblock %}
+            </nav>
+            {% if altUrls is defined and altUrls|length > 1 %}
+            <span class="c-langs">{% for _l, _u in altUrls %}<a href="{{ _u }}" class="{{ locale == _l ? 'active' }}" hreflang="{{ _l }}">{{ sv_locale_code(_l, 'label') }}</a>{% endfor %}</span>
+            {% endif %}
+        </div>
+    </header>
+{% endblock %}
+
+{% block footer %}
+    <div class="c-foot">
+        <div class="container">
+            <span>© {{ 'now'|date('Y') }} {{ site.brandName(locale) ?? site.name }}</span>
+            <a href="{{ path('sv_privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
+            <a href="{{ path('sv_terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>
+            <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block lead_cta %}{% endblock %}

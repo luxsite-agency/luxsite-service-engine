@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\ServiceSite;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Тема публічного сайту з паку: кольори, лого, фавікони, og-зображення, хіро.
@@ -60,44 +61,109 @@ final class SiteTheme
         'options' => [],
     ];
 
-    /** @var array<string, mixed> */
-    private readonly array $values;
+    /** @var array<string, mixed> тема розгортання: DEFAULTS ⊕ app.theme */
+    private readonly array $base;
+
+    /** @var array<string, array<string, mixed>> перекриття тем брендів (app.brands.<slug>.theme), перевірені */
+    private readonly array $brandOverrides;
+
+    /** @var array<string, array<string, mixed>> обчислені теми: slug бренду ('' — розгортання) → значення */
+    private array $resolved = [];
 
     /** @var array<string, string> кеш ?v= на запит: шлях → хеш файлу */
     private array $versions = [];
 
-    /** @param array<string, mixed> $overrides app.theme із паку */
+    /**
+     * @param array<string, mixed> $overrides app.theme із паку
+     * @param array<string, array<string, mixed>> $brands app.brands із паку: { <slug>: { theme: {…ключі DEFAULTS…} } }
+     */
     public function __construct(
         #[Autowire('%app.theme%')] array $overrides = [],
         #[Autowire('%kernel.project_dir%')] private readonly string $projectDir = '',
+        #[Autowire('%app.brands%')] array $brands = [],
+        private readonly ?RequestStack $requests = null,
     ) {
+        $this->base = self::merge(self::DEFAULTS, $overrides, 'app.theme');
+        $perBrand = [];
+        foreach ($brands as $slug => $brand) {
+            $unknown = array_diff_key((array) $brand, array_flip(BrandSettings::KEYS));
+            if ($unknown !== []) {
+                throw new \InvalidArgumentException(sprintf('app.brands.%s: невідомі ключі %s. Дозволені: %s', $slug, implode(', ', array_keys($unknown)), implode(', ', BrandSettings::KEYS)));
+            }
+            $theme = (array) ($brand['theme'] ?? []);
+            // перевірка ключів одразу (як і app.theme), щоб одрук у паку валив деплой, а не сторінку бренду
+            self::merge(self::DEFAULTS, $theme, 'app.brands.' . $slug . '.theme');
+            $perBrand[(string) $slug] = $theme;
+        }
+        $this->brandOverrides = $perBrand;
+    }
+
+    /**
+     * Тема поточного бренду (22.10.2026): DEFAULTS ⊕ app.theme ⊕ app.brands.<slug>.theme; key бренду — його slug, якщо
+     * пак не задав інший (клас body.theme-<slug>, теки public/themes/<slug>/). Бренд — з головного запиту, тож і в
+     * підзапиті сторінки помилки, і в кількох запитах одним ядром (smoke) — свій. Без app.brands — тема розгортання.
+     *
+     * @return array<string, mixed>
+     */
+    private function values(): array
+    {
+        $slug = '';
+        if ($this->brandOverrides !== []) {
+            $site = $this->requests?->getMainRequest()?->attributes->get(\App\EventSubscriber\ServiceHostSubscriber::ATTR_SITE);
+            if ($site instanceof \App\Entity\ServiceSite && isset($this->brandOverrides[$site->getSlug()])) {
+                $slug = $site->getSlug();
+            }
+        }
+        if (!isset($this->resolved[$slug])) {
+            if ($slug === '') {
+                $this->resolved[$slug] = $this->base;
+            } else {
+                $theme = $this->brandOverrides[$slug];
+                $theme['key'] ??= $slug;
+                $this->resolved[$slug] = self::merge($this->base, $theme, 'app.brands.' . $slug . '.theme');
+            }
+        }
+
+        return $this->resolved[$slug];
+    }
+
+    /**
+     * @param array<string, mixed> $base
+     * @param array<string, mixed> $overrides
+     *
+     * @return array<string, mixed>
+     */
+    private static function merge(array $base, array $overrides, string $where): array
+    {
         $unknown = array_diff_key($overrides, self::DEFAULTS);
         if ($unknown !== []) {
-            throw new \InvalidArgumentException('app.theme: невідомі ключі ' . implode(', ', array_keys($unknown)) . '. Дозволені: ' . implode(', ', array_keys(self::DEFAULTS)));
+            throw new \InvalidArgumentException($where . ': невідомі ключі ' . implode(', ', array_keys($unknown)) . '. Дозволені: ' . implode(', ', array_keys(self::DEFAULTS)));
         }
         if (isset($overrides['colors'])) {
             $unknownColors = array_diff_key((array) $overrides['colors'], self::DEFAULTS['colors']);
             if ($unknownColors !== []) {
-                throw new \InvalidArgumentException('app.theme.colors: невідомі ключі ' . implode(', ', array_keys($unknownColors)));
+                throw new \InvalidArgumentException($where . '.colors: невідомі ключі ' . implode(', ', array_keys($unknownColors)));
             }
-            $overrides['colors'] = array_replace(self::DEFAULTS['colors'], (array) $overrides['colors']);
+            $overrides['colors'] = array_replace($base['colors'], (array) $overrides['colors']);
         }
-        $this->values = array_replace(self::DEFAULTS, $overrides);
+
+        return array_replace($base, $overrides);
     }
 
     public function get(string $key): mixed
     {
-        if (!\array_key_exists($key, $this->values)) {
+        $values = $this->values();
+        if (!\array_key_exists($key, $values)) {
             throw new \InvalidArgumentException('SiteTheme: невідомий ключ ' . $key);
         }
 
-        return $this->values[$key];
+        return $values[$key];
     }
 
     /** Довільна опція теми паку (app.theme.options.<ключ>); нема — $default. */
     public function option(string $key, mixed $default = null): mixed
     {
-        $options = $this->values['options'] ?? [];
+        $options = $this->values()['options'] ?? [];
 
         return \is_array($options) && \array_key_exists($key, $options) ? $options[$key] : $default;
     }
@@ -179,14 +245,14 @@ final class SiteTheme
     /** @return array<string, string> */
     public function colors(): array
     {
-        return $this->values['colors'];
+        return $this->values()['colors'];
     }
 
     /** Рядок CSS-змінних для :root (--accent: …; --accent2: …) */
     public function cssVars(): string
     {
         $out = [];
-        foreach ($this->values['colors'] as $name => $value) {
+        foreach ($this->values()['colors'] as $name => $value) {
             $out[] = '--' . str_replace('_', '-', $name) . ': ' . $value . ';';
         }
 

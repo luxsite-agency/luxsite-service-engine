@@ -18,6 +18,7 @@ use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -62,6 +63,7 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly ?ServicePageRepository $pages = null,
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -81,6 +83,17 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
             new TwigFunction('custom_fields', $this->customFieldsOf(...)),
+            // мови розгортання й бренду (app.locales, ServiceSite.locales; 22.10.2026) — замість зашитих uk/ru
+            new TwigFunction('sv_locale', fn (): string => $this->locales()->current()),
+            new TwigFunction('sv_locales', fn (?ServiceSite $site = null): array => $this->locales()->enabled($site)),
+            new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
+            new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
+            new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
+            // дата мовою сторінки (intl): «22 жовт. 2026 р.», «Oct 22, 2026» — для статей контентного сайту
+            new TwigFunction('sv_date', static fn (?\DateTimeInterface $date, string $locale): string => $date === null ? ''
+                : (string) (new \IntlDateFormatter($locale, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE))->format($date)),
+            // каркас сторінки за режимом бренду: контентний сайт — services/content/layout.html.twig, інакше — services/base.html.twig
+            new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }
 
@@ -236,7 +249,7 @@ final class ServiceSiteExtension extends AbstractExtension
 
     public function siteHasBlog(ServiceSite $site): bool
     {
-        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site) > 0;
+        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site, $this->locales()->current()) > 0;
     }
 
     /**
@@ -269,7 +282,7 @@ final class ServiceSiteExtension extends AbstractExtension
             return null;
         }
         $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
-        $value = $this->pageMeta[$route][$field . '_' . ($request->getLocale() === 'ru' ? 'ru' : 'uk')] ?? null;
+        $value = $this->pageMeta[$route][$field . '_' . $this->locales()->current()] ?? null;
 
         return \is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
@@ -278,5 +291,10 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    private function locales(): SiteLocales
+    {
+        return $this->siteLocales ?? new SiteLocales($this->requests);
     }
 }

@@ -1,0 +1,55 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Головна контентного сайту: інтро бренду (апекс-місто), «обрані» й свіжі статті, рубрики. JSON-LD — WebSite і
+   Organization бренду, без адреси й телефону. #}
+{% extends 'services/content/layout.html.twig' %}
+
+{% block title %}{{ city.loc('metaTitle', locale) ?? (site.brandName(locale) ?? site.name) }}{% endblock %}
+
+{% block metaDescription %}{{ city.loc('metaDesc', locale) ?? city.loc('introText', locale)|striptags|slice(0, 160) }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {% set _home = url('sv_home', {_locale: locale}) %}
+    {% set _org = {'@type': 'Organization', '@id': _home ~ '#organization', 'name': site.brandName(locale) ?? site.name, 'url': _home} %}
+    {% if theme.url('logo') %}{% set _org = _org|merge({'logo': app.request.schemeAndHttpHost ~ theme.url('logo')}) %}{% endif %}
+    {{ schema.ld({
+        '@context': 'https://schema.org',
+        '@graph': [
+            {'@type': 'WebSite', '@id': _home ~ '#website', 'url': _home, 'name': site.brandName(locale) ?? site.name, 'inLanguage': sv_locale_code(locale, 'schema'), 'publisher': {'@id': _home ~ '#organization'}},
+            _org,
+        ],
+    }) }}
+{% endblock %}
+
+{% block body %}
+    <section class="c-intro">
+        <h1>{{ city.loc('introTitle', locale) ?? (site.brandName(locale) ?? site.name) }}</h1>
+        {% if city.loc('introText', locale) %}<div>{{ city.loc('introText', locale)|raw }}</div>{% endif %}
+    </section>
+
+    {% if featured is not empty %}
+    <section class="c-featured">
+        <div class="c-posts">
+            {% for post in featured %}{% include 'services/content/_card.html.twig' with {heading: 'h2'} %}{% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if categories is not empty %}
+    <ul class="c-cats">
+        {% for c in categories %}<li><a href="{{ path('sv_blog_category', {slug: c.slug(locale)}) }}">{{ c.loc('title', locale) }}</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if posts is not empty %}
+    <section class="c-latest">
+        <div class="c-posts">
+            {% for post in posts %}{% include 'services/content/_card.html.twig' with {heading: 'h2'} %}{% endfor %}
+        </div>
+        {% if hasMore %}<p><a class="btn" href="{{ path('sv_blog_page', {page: 2}) }}">{{ 'blog.next'|trans({}, 'servicesite') }}</a></p>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if city.loc('text2', locale) %}<section class="block">{{ city.loc('text2', locale)|raw }}</section>{% endif %}
+    {% if city.loc('text3', locale) %}<section class="block">{{ city.loc('text3', locale)|raw }}</section>{% endif %}
+{% endblock %}

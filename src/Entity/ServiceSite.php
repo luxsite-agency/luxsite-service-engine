@@ -13,6 +13,8 @@ use App\Repository\ServiceSiteRepository;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
  * Сервісний сайт-бренд (ніша): електрики, клінінг, сантехніки - один рушій, пак на бренд.
@@ -23,6 +25,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'service_site')]
 class ServiceSite implements TimestampableInterface
 {
+    public const MODE_SERVICES = 'services';
+    public const MODE_CONTENT = 'content';
+
     use LocalizedFieldsTrait;
     use TimestampsTrait;
 
@@ -64,6 +69,22 @@ class ServiceSite implements TimestampableInterface
     private bool $active = true;
 
     /**
+     * Мови бренду (22.10.2026): підмножина мов розгортання app.locales у їхньому порядку; null = усі мови розгортання
+     * (так працюють сайти, створені до цього поля). Мова не з набору → 404, hreflang/sitemap/перемикач — лише ці мови.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $locales = null;
+
+    /**
+     * Режим сайту (22.10.2026): services — сервісний сайт (каталог, ціни, райони, заявки; так працювали всі сайти до
+     * цього поля); content — контентний (блог з рубриками й авторами, «Про нас», форма зв'язку; решта маршрутів — 404).
+     */
+    #[ORM\Column(length: 16, options: ['default' => 'services'])]
+    private string $mode = self::MODE_SERVICES;
+
+    /**
      * Ілюстрація хіро головної (шлях від кореня public, напр. /themes/<key>/hero.webp).
      * Векторна бренд-графіка живе в репо; фото-контент піде через Vich окремо.
      */
@@ -97,6 +118,31 @@ class ServiceSite implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $termsRu = null;
+
+    // англійська версія (22.10.2026): без фолбеку на uk
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $brandNameEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $aboutTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $privacyEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $termsEn = null;
+
+    /**
+     * Сирий текст «Про нас» для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
+     * en — англійське, без фолбеку. null = сторінки цією мовою нема.
+     */
+    public function aboutFor(string $locale): ?string
+    {
+        return $this->locRaw('about', $locale === 'ru' ? 'uk' : $locale);
+    }
 
     public function getId(): ?int
     {
@@ -191,6 +237,66 @@ class ServiceSite implements TimestampableInterface
         $this->active = $active;
 
         return $this;
+    }
+
+    public function getMode(): string
+    {
+        return $this->mode;
+    }
+
+    public function setMode(string $mode): self
+    {
+        if (!\in_array($mode, [self::MODE_SERVICES, self::MODE_CONTENT], true)) {
+            throw new \InvalidArgumentException(sprintf('Режим сайту: services або content, отримано «%s».', $mode));
+        }
+        $this->mode = $mode;
+
+        return $this;
+    }
+
+    public function isContent(): bool
+    {
+        return $this->mode === self::MODE_CONTENT;
+    }
+
+    /** Англійська є лише в контентному режимі: каталог (послуги, ціни, райони) англійською не перекладено */
+    #[Assert\Callback]
+    public function validateEnglishIsContent(ExecutionContextInterface $context): void
+    {
+        if (\in_array('en', $this->locales ?? [], true) && !$this->isContent()) {
+            $context->buildViolation('Англійська мова доступна лише контентному сайту (режим «Контентний»).')->atPath('locales')->addViolation();
+        }
+    }
+
+    /** @return list<string>|null */
+    public function getLocales(): ?array
+    {
+        return $this->locales;
+    }
+
+    /** @param list<string>|null $locales порожній список = null (усі мови розгортання) */
+    public function setLocales(?array $locales): self
+    {
+        $locales = $locales === null ? [] : array_values(array_unique(array_filter($locales, 'is_string')));
+        $this->locales = $locales === [] ? null : $locales;
+
+        return $this;
+    }
+
+    /**
+     * Увімкнені мови бренду в порядку мов розгортання (перша — без префікса).
+     *
+     * @param list<string> $deployment app.locales
+     *
+     * @return list<string>
+     */
+    public function enabledLocales(array $deployment): array
+    {
+        if ($this->locales === null) {
+            return $deployment;
+        }
+
+        return array_values(array_intersect($deployment, $this->locales));
     }
 
     public function getHeroImagePath(): ?string
@@ -297,6 +403,66 @@ class ServiceSite implements TimestampableInterface
     public function setTermsRu(?string $termsRu): self
     {
         $this->termsRu = $termsRu;
+
+        return $this;
+    }
+
+    public function getBrandNameEn(): ?string
+    {
+        return $this->brandNameEn;
+    }
+
+    public function setBrandNameEn(?string $brandNameEn): self
+    {
+        $this->brandNameEn = $brandNameEn === '' ? null : $brandNameEn;
+
+        return $this;
+    }
+
+    public function getAboutTitleEn(): ?string
+    {
+        return $this->aboutTitleEn;
+    }
+
+    public function setAboutTitleEn(?string $aboutTitleEn): self
+    {
+        $this->aboutTitleEn = $aboutTitleEn === '' ? null : $aboutTitleEn;
+
+        return $this;
+    }
+
+    public function getAboutEn(): ?string
+    {
+        return $this->aboutEn;
+    }
+
+    public function setAboutEn(?string $aboutEn): self
+    {
+        $this->aboutEn = $aboutEn === '' ? null : $aboutEn;
+
+        return $this;
+    }
+
+    public function getPrivacyEn(): ?string
+    {
+        return $this->privacyEn;
+    }
+
+    public function setPrivacyEn(?string $privacyEn): self
+    {
+        $this->privacyEn = $privacyEn === '' ? null : $privacyEn;
+
+        return $this;
+    }
+
+    public function getTermsEn(): ?string
+    {
+        return $this->termsEn;
+    }
+
+    public function setTermsEn(?string $termsEn): self
+    {
+        $this->termsEn = $termsEn === '' ? null : $termsEn;
 
         return $this;
     }

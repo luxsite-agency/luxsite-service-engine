@@ -222,12 +222,50 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
 
+    // англійська версія (22.10.2026): без фолбеку на uk
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nameNomEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $introTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $introTextEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $text2En = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $text3En = null;
+
+    /** @var list<array{q: string, a: string}>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutEn = null;
+
     /** Інтро над акордеоном районів */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $districtsIntroUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $districtsIntroRu = null;
+
+    /**
+     * Сирий текст «Про нас» міста для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
+     * en — англійське, без фолбеку. null = сторінки цією мовою нема.
+     */
+    public function aboutFor(string $locale): ?string
+    {
+        return $this->locRaw('about', $locale === 'ru' ? 'uk' : $locale);
+    }
 
     public function getId(): ?int
     {
@@ -837,6 +875,116 @@ class ServiceCity implements TimestampableInterface
     public function setNoindex(bool $noindex): self
     {
         $this->noindex = $noindex;
+
+        return $this;
+    }
+
+    public function getNameNomEn(): ?string
+    {
+        return $this->nameNomEn;
+    }
+
+    public function setNameNomEn(?string $nameNomEn): self
+    {
+        $this->nameNomEn = $nameNomEn === '' ? null : $nameNomEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn === '' ? null : $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn === '' ? null : $metaDescEn;
+
+        return $this;
+    }
+
+    public function getIntroTitleEn(): ?string
+    {
+        return $this->introTitleEn;
+    }
+
+    public function setIntroTitleEn(?string $introTitleEn): self
+    {
+        $this->introTitleEn = $introTitleEn === '' ? null : $introTitleEn;
+
+        return $this;
+    }
+
+    public function getIntroTextEn(): ?string
+    {
+        return $this->introTextEn;
+    }
+
+    public function setIntroTextEn(?string $introTextEn): self
+    {
+        $this->introTextEn = $introTextEn === '' ? null : $introTextEn;
+
+        return $this;
+    }
+
+    public function getText2En(): ?string
+    {
+        return $this->text2En;
+    }
+
+    public function setText2En(?string $text2En): self
+    {
+        $this->text2En = $text2En === '' ? null : $text2En;
+
+        return $this;
+    }
+
+    public function getText3En(): ?string
+    {
+        return $this->text3En;
+    }
+
+    public function setText3En(?string $text3En): self
+    {
+        $this->text3En = $text3En === '' ? null : $text3En;
+
+        return $this;
+    }
+
+    /** @return list<array{q: string, a: string}>|null */
+    public function getFaqEn(): ?array
+    {
+        return $this->faqEn;
+    }
+
+    /** @param list<array{q: string, a: string}>|null $faqEn */
+    public function setFaqEn(?array $faqEn): self
+    {
+        $this->faqEn = $faqEn === [] ? null : $faqEn;
+
+        return $this;
+    }
+
+    public function getAboutEn(): ?string
+    {
+        return $this->aboutEn;
+    }
+
+    public function setAboutEn(?string $aboutEn): self
+    {
+        $this->aboutEn = $aboutEn === '' ? null : $aboutEn;
 
         return $this;
     }

@@ -5,7 +5,7 @@
    топбар години/email/телефон, бенефіти-іконки, muted-секції #f2f6f8,
    бордери #d5dce3. Контролери передають altUrls = {uk, ru} — з нього
    будуються hreflang, canonical і перемикач мов. #}
-{% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{% set locale = sv_locale() %}
 {#~ Аналітика й коди сайту (site_tags: лічильник міста > GTM/GA4/Ads з адмінки → Налаштування; Clarity і верифікація —
    адмінка > пак). Без налаштувань значення ті самі, що давали city.gtmId, app.clarity_id і app.site_verification. #}
 {%~ set _svTags = site_tags(city) %}
@@ -35,10 +35,9 @@
         {% if _canon and _canon[locale] is defined %}
         <link rel="canonical" href="{{ _canon[locale] }}">
         {% endif %}
-        {% if _canon and _canon.uk is defined and _canon.ru is defined %}
-        <link rel="alternate" hreflang="uk-UA" href="{{ _canon.uk }}">
-        <link rel="alternate" hreflang="ru-UA" href="{{ _canon.ru }}">
-        <link rel="alternate" hreflang="x-default" href="{{ _canon.uk }}">
+        {# hreflang — мовами бренду (sv_locales), лише коли їх більше однієї; x-default — мова без префікса #}{% set _svAlt = _canon ? sv_locales()|filter(l => _canon[l] is defined) : [] %}{% if _svAlt|length > 1 %}
+        {% for _l in _svAlt %}<link rel="alternate" hreflang="{{ sv_locale_code(_l, 'hreflang') }}" href="{{ _canon[_l] }}">
+        {% endfor %}<link rel="alternate" hreflang="x-default" href="{{ _canon[_svAlt|first] }}">
         {% endif %}
         {# опис сторінки: один блок живить і <meta description>, і og:description #}
         {% set _desc %}{% block metaDescription %}{% endblock %}{% endset %}
@@ -56,7 +55,7 @@
         {% if _desc %}<meta property="og:description" content="{{ _desc }}">{% endif %}
         <meta property="og:url" content="{{ _canon[locale]|default(app.request.uri) }}">
         <meta property="og:site_name" content="{{ site.name }}">
-        <meta property="og:locale" content="{{ locale == 'ru' ? 'ru_UA' : 'uk_UA' }}">
+        <meta property="og:locale" content="{{ sv_locale_code(locale, 'og') }}">
         {% if _ogImage %}<meta property="og:image" content="{{ _ogImage starts with 'http' ? _ogImage : app.request.schemeAndHttpHost ~ _ogImage }}">{% endif %}
         <meta name="twitter:card" content="{{ _ogImage ? 'summary_large_image' : 'summary' }}">
         {% block meta %}{% endblock %}
@@ -554,8 +553,10 @@
         {{ _svTags.htmlBodyStart|raw }}
         {%~ endif %}
         {# шапка (топбар, бренд, меню, перемикач мов): пак перекриває весь блок через
-           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається #}
-        {% block header %}
+           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається.
+           Блок page (22.10.2026) — уся видима частина сторінки (шапка, main, футер): дизайн бренду з власною розміткою
+           перекриває його цілком, а голова (SEO, аналітика) і службові скрипти внизу лишаються рушія #}
+        {% block page %}{% block header %}
         <div class="topbar">
             <div class="container">
                 {% set _cities = city_switcher(site, city) %}
@@ -571,7 +572,7 @@
                             {% if c.id == city.id %}
                             <span class="active">{{ c.name(locale) }}</span>
                             {% else %}
-                            <a href="https://{{ c.host }}{{ locale == 'ru' ? '/ru/' : '/' }}"
+                            <a href="https://{{ c.host }}{{ locale == sv_default_locale() ? '/' : '/' ~ locale ~ '/' }}"
                                {% if c.noindex %}rel="nofollow"{% endif %}>{{ c.name(locale) }}</a>
                             {% endif %}
                         </li>
@@ -600,10 +601,11 @@
                     {% set _tagline = 'brand.tagline'|trans({}, 'servicesite') %}
                     <span class="name">{{ site.name }}{% if _tagline and _tagline != 'brand.tagline' %}<span class="tagline">{{ _tagline }}</span>{% endif %}</span>
                 </a>
-                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
-                <span class="lang-switch lang-switch--m">
-                    <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
-                    <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
+                {% if altUrls is defined and altUrls|length > 1 %}
+                <span class="lang-switch lang-switch--m">{% for _l, _u in altUrls %}
+
+                    <a href="{{ _u }}" class="{{ locale == _l ? 'active' }}">{{ sv_locale_code(_l, 'label') }}</a>{% endfor %}
+
                 </span>
                 {% endif %}
                 <button class="burger" type="button" aria-label="{{ 'nav.menu'|trans({}, 'servicesite') }}"
@@ -622,14 +624,15 @@
                         {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>
                         <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
-                        {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                        {% if site.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
                     {% endblock %}
                 </nav>
-                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
-                <span class="lang-switch">
-                    <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
-                    <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
+                {% if altUrls is defined and altUrls|length > 1 %}
+                <span class="lang-switch">{% for _l, _u in altUrls %}
+
+                    <a href="{{ _u }}" class="{{ locale == _l ? 'active' }}">{{ sv_locale_code(_l, 'label') }}</a>{% endfor %}
+
                 </span>
                 {% endif %}
             </div>
@@ -667,7 +670,7 @@
                     <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                     {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
-                    {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                    {% if site.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
                     {# сторінки app.pages з позначкою «У футері» (вакансії, ліцензії); вимкнено — нічого #}
                     {% for _fp in footer_pages(site) %}<a href="{{ path('sv_page', {path: _fp.path(locale)}) }}">{{ _fp.loc('title', locale) }}</a>{% endfor %}
@@ -691,7 +694,8 @@
                 </p>
                 {% endblock %}
             </div>
-        </footer>
+        </footer>{% endblock %}
+
         <script>
             /* Джерело заявки. Мітки приходять на першій сторінці візиту, а форму
                людина часто відправляє вже з іншої - тому кладемо в localStorage
@@ -851,7 +855,7 @@
                 });
             })();
         </script>
-        <div class="floating-cta">
+        {# плаваюча кнопка й модалка заявки: контентний сайт перекриває блок порожнім #}{% block lead_cta %}<div class="floating-cta">
             <button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button>
         </div>
         <dialog class="lead-modal" id="lead-modal">
@@ -872,7 +876,8 @@
                 window.addEventListener('resize', update);
                 update();
             })();
-        </script>
+        </script>{% endblock %}
+
         {#~ Банер згоди на cookie (адмінка → Налаштування → «Банер згоди на cookie»): показується, поки нема cookie sv_consent;
             «Прийняти» — consent update granted і старт Clarity/Pixel (svTags 'consent'), «Відхилити» — denied. 180 днів. #}
         {%~ if _svTags.consentBanner %}

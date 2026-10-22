@@ -1,0 +1,30 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# «Про нас» контентного сайту: текст бренду/апекс-міста мовою сторінки, AboutPage без бізнес-розмітки (адреси й телефону нема). #}
+{% extends 'services/content/layout.html.twig' %}
+
+{# locale задає base.html.twig, а він рендериться пізніше за верхній рівень дочірнього шаблону #}
+{% set locale = sv_locale() %}
+
+{% set _h1 = site.loc('aboutTitle', locale) ?? 'nav.about'|trans({}, 'servicesite') %}
+
+{% block title %}{{ _h1 }} - {{ site.brandName(locale) ?? site.name }}{% endblock %}
+
+{% block metaDescription %}{{ (city.loc('about', locale) ?: site.loc('about', locale))|striptags|slice(0, 160) }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': _h1},
+    ]) }}
+    {{ schema.ld({'@context': 'https://schema.org', '@type': 'AboutPage', 'url': altUrls[locale] ?? app.request.uri, 'name': _h1}) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ _h1 }}
+    </nav>
+    <h1>{{ _h1 }}</h1>
+    <div class="block legal-text">{{ (city.loc('about', locale) ?: site.loc('about', locale))|raw }}</div>
+{% endblock %}

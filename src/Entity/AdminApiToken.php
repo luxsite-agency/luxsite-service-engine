@@ -66,6 +66,14 @@ class AdminApiToken
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    /**
+     * Бренди токена (slug-и; 22.10.2026): null — усі бренди власника. Видача перевіряє, що це підмножина User.sites.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $sites = null;
+
     /** @param list<ApiScope> $scopes */
     public function __construct(User $user, string $name, array $scopes, string $tokenHash, string $prefix, \DateTimeImmutable $expiresAt)
     {
@@ -132,6 +140,27 @@ class AdminApiToken
     public function getScopeValues(): array
     {
         return $this->scopes;
+    }
+
+    /** @return list<string>|null */
+    public function getSites(): ?array
+    {
+        return $this->sites;
+    }
+
+    /** @param list<string>|null $sites */
+    public function setSites(?array $sites): self
+    {
+        $sites = $sites === null ? [] : array_values(array_unique(array_filter($sites, 'is_string')));
+        $this->sites = $sites === [] ? null : $sites;
+
+        return $this;
+    }
+
+    /** Токен працює з брендом: бренд у списку токена (або список порожній) і власник має до нього доступ */
+    public function allowsSite(ServiceSite $site): bool
+    {
+        return $this->user->canAccessSite($site) && ($this->sites === null || \in_array($site->getSlug(), $this->sites, true));
     }
 
     public function hasScope(ApiScope $scope): bool

@@ -9,6 +9,9 @@ twig:
         '%kernel.project_dir%/var/theme/templates': ~
         '%kernel.project_dir%/templates/site': ~
         '%kernel.project_dir%/templates': engine
+        # шаблони паку без перекриття брендом: {% extends '@pack/services/base.html.twig' %} у шаблоні бренду. Та сама тека,
+        # що й вище; слеш у кінці — бо ключ мапи paths має бути унікальним
+        '%kernel.project_dir%/templates/site/': pack
     globals:
         # тема сайту з паку (кольори, лого, фавікони, og-зображення): {{ theme.get('logo') }}, {{ theme.cssVars() }}
         theme: '@App\ServiceSite\SiteTheme'

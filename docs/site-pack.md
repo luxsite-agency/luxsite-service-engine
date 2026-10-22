@@ -35,7 +35,7 @@ site-<key>/
 |---|---|---|
 | `config/parameters.yaml` | `config/site/parameters.local.yaml` | `src/Kernel.php::configureContainer` імпортує файл після `services.yaml` (ігнорує відсутність; у `test` не вантажиться). Дефолти всіх ключів — у `config/services.yaml`, зразок — `config/site/parameters.local.yaml.dist`. |
 | `themes/<key>/*` | `public/themes/<key>/` | `App\ServiceSite\SiteTheme` (`app.theme`, лише відмінні ключі; невідомий ключ — виняток). Twig-глобал `theme`: `theme.url('logo')`, `theme.cssVars()`, `theme.get('key')` → клас `body.theme-<key>`, `stylesheet` — додатковий CSS. |
-| `translations/servicesite.{uk,ru}.yaml` | `translations/site/` | `framework.translator.paths` (`config/packages/translation.yaml`). Файли вантажаться в порядку повного шляху: `servicesite.*` < `site/…`, тож ключі паку перекривають дефолти рушія. **Теку не перейменовувати**: ім'я має сортуватися після `servicesite`. Порожнє значення ключа = елемент не показується (слоган, переваги, футерний рядок міст, `about.legal`, напрями робіт району). |
+| `translations/servicesite.{uk,ru,en}.yaml` | `translations/site/` | `framework.translator.paths` (`config/packages/translation.yaml`). Файли вантажаться в порядку повного шляху: `servicesite.*` < `site/…`, тож ключі паку перекривають дефолти рушія. **Теку не перейменовувати**: ім'я має сортуватися після `servicesite`. Порожнє значення ключа = елемент не показується (слоган, переваги, футерний рядок міст, `about.legal`, напрями робіт району). |
 | `templates/**` | `templates/site/` | `twig.paths` (`config/packages/twig.yaml`): `templates/site` стоїть перед `templates`, тож однойменний шаблон паку перекриває шаблон рушія; рушій доступний ще й як `@engine/…` для `extends`. На сервері перед smoke — `lint:twig templates/site`. |
 | секрети | `.env.local` на сервері | `DATABASE_URL`, `MAILER_DSN`, `MAIL_FROM`, `ADMIN_HOST`, `DEFAULT_URI`, `STUDIO_API_TOKEN`, `GOOGLE_CLIENT_*` (запасне джерело — див. нижче), `PIPEDRIVE_API_TOKEN`, `BITRIX24_WEBHOOK_URL`, `LEAD_RATE_LIMIT_ALLOWLIST`, `SETTINGS_SECRET_KEY` (ключ шифрування секретів «Налаштування сайту»; `bin/site deploy` дописує сам) — у пак не потрапляють. |
 
@@ -64,6 +64,24 @@ analytics, листи (вони в рушії, не в шаблонах паку
 сайту Twig бере ще раніше за `templates/` паку; `shared/theme/public/theme.css` — після стилів паку. Пріоритет:
 live (токен) > пак > рушій.
 
+**Дизайн на бренд (22.10.2026, кілька брендів в одному розгортанні — мережа контентних сайтів).** Бренди одного паку
+можуть мати повністю різну розмітку, а не лише кольори:
+- **Шаблони бренду** — `templates/brands/<slug>/services/**`, `…/partials/**` паку (→ `templates/site/brands/<slug>/`).
+  Порядок для запиту бренду: живий дизайн бренду `var/theme/brands/<slug>/templates` > живий дизайн розгортання
+  `var/theme/templates` > шаблони бренду > шаблони паку > `@engine` (`App\Twig\BrandTemplateLoader`, бренд — з головного
+  запиту, ключ кешу Twig — бренд + файл + md5). Бренд без своєї теки — як раніше. `@pack/…` — шаблон паку без перекриття
+  брендом, `@engine/…` — рушія. `bin/site validate` перевіряє ті самі правила (`services/`, `partials/`, `*.twig`).
+- **Своя розмітка цілком** — `{% extends '@engine/services/base.html.twig' %}` + `{% block page %}…{% endblock %}`: блок
+  `page` — уся видима частина (шапка, `main`, футер), голова (canonical, hreflang, og, аналітика, коди з «Налаштувань») і
+  службові скрипти внизу лишаються рушія; `{% block stylesheets %}` — свій CSS замість вбудованого;
+  `{% block meta_generator %}{% endblock %}` — без `<meta name="generator">`.
+- **Тема бренду** — `app.brands: { <slug>: { theme: {…ключі app.theme…} } }` у `config/parameters.yaml` паку: поверх
+  `app.theme`; `key` за замовчуванням = slug (`body.theme-<slug>`, файли в `themes/<slug>/` паку → `public/themes/<slug>/`).
+  Невідомі ключі — помилка ще на старті ядра (як і в `app.theme`).
+- Щоб бренди не були «близнюками»: окремі `base` бренду (різна сітка, класи, порядок блоків), свої шрифти локально
+  (`@font-face` у `themes/<slug>/`), без `generator`, свої GA4/GTM у «Налаштуваннях сайту», окремий сертифікат на домен
+  (`docs/site-ops.md`).
+
 **Точки перекриття (13.10.2026, сайт зі схемою root; за замовчуванням усе як було):**
 - **Шапка** — `{% block header %}` у `services/base.html.twig` (топбар, бренд, меню, перемикач мов; `block nav` усередині
   лишається): `{% extends '@engine/services/base.html.twig' %}{% block header %}…свій…{% endblock %}`. Поруч — `block footer`.
@@ -79,6 +97,24 @@ live (токен) > пак > рушій.
 реліз не вмикається. Ризик рівня 3: шаблон паку не отримує нових блоків/змінних рушія автоматично — після оновлення
 рушія звіряти перекриті файли з `@engine` (CI рушія лінтить лише фікстуру `tests/site/pack-demo/templates`; паки
 перевіряє їхній деплой). Після зміни дизайну на проді — `/analytics-healthcheck`.
+
+### Контентний сайт (`ServiceSite.mode = content`, 22.10.2026)
+
+Бренд без послуг, цін, районів і заявок — блог для людей і посилань (мережа сателітів). Перемикач — адмінка → Сайти-бренди →
+«Режим»; англомовний бренд (`app.locales: [en]`) — лише контентний (валідатор бренду). Що змінюється:
+
+| | Контентний режим |
+|---|---|
+| Маршрути | **allowlist** (`App\EventSubscriber\SiteModeSubscriber::CONTENT_ROUTES`): головна, блог (+ `page/N/`), стаття, рубрика `/<блог>/category/<slug>/` (+ `page/N/`), автор `/author/<slug>/`, «Про нас», контакти, «Дякуємо», privacy/terms, sitemap, robots, `/lead`. Решта маршрутів сайту (каталог, райони, FAQ, відгуки, калькулятор, вхід Google) — 404. Сервісний сайт рубрик і авторів не має (404). |
+| Головна | `services/content/home.html.twig`: H1/інтро/блоки 2–3 апекс-міста мовою сторінки, «обрані» статті (`ServicePost.featured`, до 3), свіжі статті (`app.blog_per_page`, 0 = 12), рубрики. |
+| Рубрики й автори | Адмінка → «Рубрики блогу» (`ServicePostCategory`, мовні поля uk/ru/en) і «Автори статей» (`ServiceAuthor`: ім'я, слаг, роль/біо мовами, фото). У статті — «Рубрика», «Автор», «Обрана». Видалення рубрики чи автора лишає статті без них. Автори — реальні люди або «Редакція <бренду>». |
+| Контакти | Лише форма зв'язку (ім'я, email, повідомлення) → `/lead` → заявка з `email` (без телефону) у тій самій черзі, лист на `lead_emails` міста з Reply-To відвідувача, без CRM. **Телефони, email, адреси, месенджери міста на сторінках не виводяться**, навіть якщо заповнені. |
+| Шаблони | `services/content/*`: `layout` (свої шапка й футер поверх `services/base.html.twig`: голова, стилі й аналітика — рушія; блок `lead_cta` порожній), `home`, `list` (блог/рубрика/автор), `post`, `about`, `contact`, `thanks`, `legal`. Пак перекриває їх, як і решту шаблонів. Twig: `sv_layout()` — каркас за режимом, `sv_date(date, locale)` — дата мовою сторінки. |
+| JSON-LD | Головна — `WebSite` + `Organization` бренду (без адреси й телефону); стаття — `BlogPosting` з `author` (`Person`, якщо є автор), `publisher`, `articleSection`; автор — `Person`. `LocalBusiness` не виводиться. |
+| Sitemap | Головна, блог, статті, рубрики й автори зі статтями, «Про нас» (якщо є текст мовою), контакти, privacy, terms. Статті й рубрики — лише мовами, якими існують. |
+| Юридичні сторінки | Текст бренду з адмінки або типовий текст рушія під форму зв'язку (`legal.privacy_html`, `legal.terms_html` у перекладах; `%site%`, `%domain%`, `%contact%`). |
+
+Адмін-хост (будь-якого розгортання) віддає `X-Robots-Tag: noindex, nofollow` на всі відповіді.
 
 ### Швидкість (рецепт для всіх сайтів, 11.10.2026)
 
@@ -116,6 +152,8 @@ live (токен) > пак > рушій.
 | `app.home_lead_position` | `after_works` | Форма заявки на головній (один блок): `after_works` (як було) або `after_hero` — лід-магніт одразу під першим екраном. На головній форма має ключі паку `lead.subtitle` (абзац під заголовком) і `lead.messengers_hint` (підпис до месенджерів міста під формою); порожні = нема. На `/thank-you/` з неї `lead_type: magnet`. |
 | `app.footer_catalog` | `false` | `true` = у футері повний каталог: категорії (посилання в nested) з усіма послугами колонками, назви без міста; на мобільному категорії згорнуті (`details`). Заголовок — ключ `footer.catalog_title` (порожній = без). Футер обгорнуто в `{% block footer %}` — пак може дописати своє через `extends '@engine/services/base.html.twig'`. |
 | `app.home_districts` | `{}` | Чипи районів на головній: `{kyiv: [pozniaky, obolon, …], chernivtsi: '*'}` — slug міста → список `slug_uk` у порядку показу або `'*'` (усі активні). Нема ключа = лише primary-райони. |
+| `app.locales` | `[uk, ru]` | Мови розгортання (з 22.10.2026): перша — **без префікса** в адресі, решта — `/<мова>/`. Маршрути рушія оголошені як `uk` + `/ru/`; інший набір (англомовні сайти: `[en]`) переписує їх один раз при компіляції роутера (`App\ServiceSite\LocalizedRoutes`, `Kernel::loadRoutes`): варіант без префікса стає першою мовою, мови поза набором зникають (404). Бренд вмикає підмножину в адмінці (Сайти-бренди → «Мови сайту», `ServiceSite.locales`; порожньо = усі): вимкнена мова → 404, hreflang, sitemap і перемикач мов — лише увімкнені мови, бренд з однією мовою — без hreflang. На хостах брендів мова розгортання за замовчуванням діє й там, де маршрут мови не має (404, `/lead`, sitemap); адмінка лишається українською. Усі бренди розгортання мають одну мову без префікса — бренд з іншою = окреме розгортання. Тексти записів англійською — поля `*En` (каталог поки лише uk/ru: англомовний сайт — контентний). |
+| `app.locale_codes` | uk/ru/en | Коди мови для розмітки: `{ <мова>: { hreflang, og, schema, label } }` — `hreflang` (`uk-UA`), `og:locale` (`uk_UA`), `inLanguage` JSON-LD (`uk-UA`), підпис у перемикачі (`UA`). Дефолти дають колишні значення uk/ru, для `en` — `en`/`en_US`/`en`/`EN`. Пак перекриває мапу цілком (`en_GB` — тут). |
 | `app.blog_prefix` | `blog` | Сегмент розділу статей: `/blog/` або інший (`news` → `/news/`, `/ru/news/`). |
 | `app.page_meta` | `{}` | `<title>`/description фіксованих сторінок 1:1 зі старого сайту: `{ sv_blog: { title_uk, title_ru, desc_uk, desc_ru }, sv_about: {…}, sv_privacy: {…} }` (ключ — маршрут без локалі). Порожньо = як будує шаблон. |
 | `app.pages` | `false` | Сторінки від кореня (адмінка → «Сторінки»): вакансії, ліцензії, будь-який текст поза каталогом на `/<слаг>/` і `/<батько>/<слаг>/` (ru — `/ru/…`), без `/page/`. Див. «Адреси від кореня» нижче. `false` — маршрут не спрацьовує, пункту меню нема, футер і карта як були. |

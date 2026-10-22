@@ -1,15 +1,15 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Брендована 404 рушія. Рендериться ErrorController-ом поза контекстом тенанта, тому самодостатня: без site/city,
-   локаль визначаємо з path запиту. Пак перекриває її файлом templates/services/error404.html.twig (→ templates/site/),
+   мову визначаємо з path запиту (sv_path_locale: /<мова>/… або мова розгортання без префікса). Пак перекриває її файлом templates/services/error404.html.twig (→ templates/site/),
    теж самодостатнім (доступні app.request, theme, path()/asset()). #}
-{% set isRu = app.request is not null and app.request.pathInfo starts with '/ru/' %}
+{% set _l = sv_path_locale() %}{% set isRu = _l == 'ru' %}
 <!DOCTYPE html>
-<html lang="{{ isRu ? 'ru' : 'uk' }}">
+<html lang="{{ _l }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ isRu ? 'Страница не найдена (404)' : 'Сторінку не знайдено (404)' }}</title>
+    <title>{{ isRu ? 'Страница не найдена (404)' : (_l == 'en' ? 'Page not found (404)' : 'Сторінку не знайдено (404)') }}</title>
     <style>
         body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
                min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -33,6 +33,10 @@
         <p class="sub">Возможно, ссылка устарела или в адресе опечатка.</p>
         <a class="btn" href="/ru/">На главную</a><br>
         <a class="plain" href="/ru/services/">Все услуги</a>
+    {% elseif _l == 'en' %}
+        <p class="msg">This page doesn’t exist</p>
+        <p class="sub">The link may be outdated, or there is a typo in the address.</p>
+        <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/en/' }}">Back to home</a>
     {% else %}
         <p class="msg">Такої сторінки немає</p>
         <p class="sub">Можливо, посилання застаріло або в адресі одрук.</p>

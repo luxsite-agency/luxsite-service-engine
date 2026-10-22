@@ -25,6 +25,7 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Table(name: 'service_post')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_en', columns: ['site_id', 'slug_en'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_studio_group', columns: ['site_id', 'studio_group_id'])]
 #[ORM\Index(columns: ['site_id', 'active', 'published_at'], name: 'idx_svc_post_site_published')]
 #[Vich\Uploadable]
@@ -54,14 +55,15 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $studioSyncedAt = null;
 
-    #[ORM\Column(length: 160)]
-    private string $slugUk = '';
+    /** NULL — статті нема українською (англомовний бренд; 22.10.2026): кілька таких на сайті не конфліктують в унікальному індексі */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $slugUk = null;
 
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
-    #[ORM\Column(length: 255)]
-    private string $titleUk = '';
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
@@ -111,6 +113,40 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $imageAltRu = null;
 
+    // контентний сайт (22.10.2026): рубрика, автор, «обрана» на головній; видалення рубрики/автора лишає статтю без них
+    #[ORM\ManyToOne(targetEntity: ServicePostCategory::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ServicePostCategory $category = null;
+
+    #[ORM\ManyToOne(targetEntity: ServiceAuthor::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ServiceAuthor $author = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $featured = false;
+
+    // англійська версія (22.10.2026): без фолбеку на uk — стаття існує англійською, лише коли є slugEn і titleEn
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $slugEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $imageAltEn = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -142,12 +178,13 @@ class ServicePost implements TimestampableInterface
 
     public function getSlugUk(): string
     {
-        return $this->slugUk;
+        return $this->slugUk ?? '';
     }
 
-    public function setSlugUk(string $slugUk): self
+    /** '' = NULL: статті нема українською */
+    public function setSlugUk(?string $slugUk): self
     {
-        $this->slugUk = $slugUk;
+        $this->slugUk = $slugUk === '' ? null : $slugUk;
 
         return $this;
     }
@@ -166,12 +203,12 @@ class ServicePost implements TimestampableInterface
 
     public function getTitleUk(): string
     {
-        return $this->titleUk;
+        return $this->titleUk ?? '';
     }
 
-    public function setTitleUk(string $titleUk): self
+    public function setTitleUk(?string $titleUk): self
     {
-        $this->titleUk = $titleUk;
+        $this->titleUk = $titleUk === '' ? null : $titleUk;
 
         return $this;
     }
@@ -384,10 +421,155 @@ class ServicePost implements TimestampableInterface
         return $this;
     }
 
-    /** alt за локаллю з фолбеком ru→uk (у шаблонах: post.imageAlt(locale)) */
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === '' ? null : $slugEn;
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn === '' ? null : $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn === '' ? null : $leadEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn === '' ? null : $descEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn === '' ? null : $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn === '' ? null : $metaDescEn;
+
+        return $this;
+    }
+
+    public function getImageAltEn(): ?string
+    {
+        return $this->imageAltEn;
+    }
+
+    public function setImageAltEn(?string $imageAltEn): self
+    {
+        $this->imageAltEn = $imageAltEn === '' ? null : $imageAltEn;
+
+        return $this;
+    }
+
+    public function getCategory(): ?ServicePostCategory
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?ServicePostCategory $category): self
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+
+    public function getAuthor(): ?ServiceAuthor
+    {
+        return $this->author;
+    }
+
+    public function setAuthor(?ServiceAuthor $author): self
+    {
+        $this->author = $author;
+
+        return $this;
+    }
+
+    public function isFeatured(): bool
+    {
+        return $this->featured;
+    }
+
+    public function setFeatured(bool $featured): self
+    {
+        $this->featured = $featured;
+
+        return $this;
+    }
+
+    /** alt за локаллю з фолбеком ru→uk (у шаблонах: post.imageAlt(locale)); en — без фолбеку */
     public function imageAlt(string $locale): ?string
     {
+        if ($locale === 'en') {
+            return $this->imageAltEn;
+        }
+
         return $locale === 'ru' && $this->imageAltRu !== null && $this->imageAltRu !== '' ? $this->imageAltRu : $this->imageAlt;
+    }
+
+    /**
+     * Чи існує стаття цією мовою: є слаг і заголовок (ru — з фолбеком на uk, як і раніше). Той самий предикат —
+     * у ServicePostRepository::localeCondition() для списків, sitemap і пошуку за слагом.
+     */
+    public function existsIn(string $locale): bool
+    {
+        return trim((string) $this->loc('slug', $locale)) !== '' && trim((string) $this->loc('title', $locale)) !== '';
+    }
+
+    /** Стаття має хоч одну мову (адмінка, студія) */
+    #[Assert\Callback]
+    public function validateHasLanguage(\Symfony\Component\Validator\Context\ExecutionContextInterface $context): void
+    {
+        foreach (['uk', 'en'] as $l) {
+            if ($this->existsIn($l)) {
+                return;
+            }
+        }
+        $context->buildViolation('Потрібні заголовок і слаг хоча б однією мовою.')->atPath('titleUk')->addViolation();
     }
 
     /** Слаг за локаллю з фолбеком ru→uk */
@@ -398,6 +580,6 @@ class ServicePost implements TimestampableInterface
 
     public function __toString(): string
     {
-        return $this->titleUk;
+        return $this->titleUk ?? $this->titleEn ?? '';
     }
 }

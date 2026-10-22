@@ -11,6 +11,7 @@ use App\Entity\ServiceReview;
 use App\Entity\User;
 use App\Repository\ServiceReviewRepository;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -118,6 +119,6 @@ final class ReviewController extends AbstractController
             return $path . ($query ? '?' . $query : '');
         }
 
-        return $this->generateUrl('sv_reviews', ['_locale' => 'uk']);
+        return $this->generateUrl('sv_reviews', ['_locale' => $this->container->get(SiteLocales::class)->default()]);
     }
 }

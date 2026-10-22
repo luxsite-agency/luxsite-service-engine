@@ -91,6 +91,9 @@ class DashboardController extends AbstractDashboardController
         if ($this->getParameter('app.pages')) {
             yield MenuItem::linkTo(ServicePageCrudController::class, 'Сторінки', 'fa fa-file-lines');
         }
+        // контентні сайти (22.10.2026): рубрики й автори блогу
+        yield MenuItem::linkTo(ServicePostCategoryCrudController::class, 'Рубрики блогу', 'fa fa-tags');
+        yield MenuItem::linkTo(ServiceAuthorCrudController::class, 'Автори статей', 'fa fa-user-pen');
         yield MenuItem::linkTo(ServiceWorkCrudController::class, 'Наші роботи', 'fa fa-camera');
 
         yield MenuItem::section('Калькулятор');
