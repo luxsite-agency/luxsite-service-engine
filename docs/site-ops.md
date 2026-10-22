@@ -306,6 +306,33 @@ server: { host: <ssh-аліас>, user: www-data, runtime: docker, proxy: edge, 
 4. Client ID і Client Secret — у рядки групи «Вхід через Google», перемикач «Увімкнено» → зберегти.
 5. «Перевірити налаштування» (формат Client ID, стан секрету, перемикач, кількість адрес, discovery/JWKS Google з сервера) →
    «Спробувати на сайті» (сторінка відгуків першого міста; повний вхід — своїм акаунтом Google).
+## Прод у Docker за traefik сервера (`runtime: docker`, `proxy: traefik-ext`, 22.10.2026)
+
+Сервер, де вже працює чужий traefik (провайдер docker, свої entrypoints і certresolver), а сусідні стеки чіпати не можна.
+Стек — `docker-compose.traefik-ext.yml` (як edge: php від www-data, `shared/db.env`, ліміти, без mailpit і портів) +
+**згенерований** `shared/traefik-labels.yml` (другий `-f`; deploy перезаписує його щоразу з реєстру).
+
+```yaml
+server: { host: <ssh-аліас>, user: www-data, runtime: docker, proxy: traefik-ext, network: <мережа traefik>,
+          entrypoint: websecure, certresolver: <резолвер LE>, www_redirect: false, path: /opt/sites/site-<key> }
+domains: { site: <домен бренду>, admin: <хост адмінки>, extra: [<домени інших брендів>] }
+```
+
+- **Окремий роутер і сертифікат на кожен домен** (`domains.site` і кожен із `domains.extra`): один роутер з
+  `Host(a) || Host(b)` дав би один сертифікат з усіма доменами в SAN — це видно в CT-логах і зв'язує бренди між собою.
+  Перевірка після деплою: `openssl s_client -connect <домен>:443 -servername <домен> </dev/null | openssl x509 -noout -ext subjectAltName`
+  — у SAN лише цей домен (і `www.`, якщо `www_redirect: true`).
+- `www_redirect: true` — роутер ще й на `www.<домен>` з 301 на домен; DNS `www` має існувати, інакше LE не видасть
+  сертифікат і для самого домену.
+- Адмінка — свій роутер із `X-Robots-Tag: noindex, nofollow`.
+- **Сусіди не зачіпаються:** конфіг traefik сервера не змінюється, у мережі traefik — лише nginx цього стека;
+  `traefik.enable=false` на php і mysql (traefik сервера може мати `exposedByDefault=true`). Імена роутерів —
+  `service-<key>-<n>`, `service-<key>-admin`.
+- HTTP-01: traefik відповідає на `/.well-known/acme-challenge/` сам на entrypoint `web`; наш nginx на http не
+  редиректить, тож домени за Cloudflare з проксі проходять, якщо в CF нема примусового https для цього шляху.
+- Мережа traefik належить іншому compose-проєкту: якщо її перестворять, наш nginx від'єднається — після такого
+  `bin/site deploy <key>` (або `docker network connect <мережа> service-<key>-nginx`).
+- Smoke і http-перевірка деплою — по `domains.site` і кожному `domains.extra`.
 
 ## Вимоги до сервера (fastpanel)
 

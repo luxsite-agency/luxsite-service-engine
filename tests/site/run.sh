@@ -65,6 +65,10 @@ has "server.proxy"
 sed -e '/^          runtime: fastpanel$/a\          proxy: edge' tests/site/sites.yaml > "$bad/sites-proxy2.yaml"
 t "validate: proxy на fastpanel — відмова" '!0' env SITES_FILE="$bad/sites-proxy2.yaml" bin/site validate
 t "site_ctx: proxy на fastpanel — відмова" '!0' env SITES_FILE="$bad/sites-proxy2.yaml" bin/site deploy client HEAD
+# traefik-ext (22.10.2026): без server.network/certresolver — відмова
+sed -e 's/^          proxy: edge$/          proxy: traefik-ext/' tests/site/sites.yaml > "$bad/sites-proxy3.yaml"
+t "validate: traefik-ext без network і certresolver — відмова" '!0' env SITES_FILE="$bad/sites-proxy3.yaml" bin/site validate
+has "server.network"
 sed -e 's#^          compose: /opt/stand/compose/beta.yml$#          compose: ""#' tests/site/sites.yaml > "$bad/sites-compose.yaml"
 t "validate: порожній server.compose — відмова" '!0' env SITES_FILE="$bad/sites-compose.yaml" bin/site validate
 has "server.compose"
@@ -87,6 +91,12 @@ if command -v docker >/dev/null; then
     has "service-edgedemo-nginx"; has "external: true"; has "Dockerfile.edge"; has "MYSQL_ROOT_PASSWORD"
     if grep -qE '^ +(ports|labels):' docker-compose.edge.yml; then fail=$((fail + 1)); echo "FAIL   ↳ edge: ports/labels у compose"; else pass=$((pass + 1)); echo "ok     ↳ edge: без ports і міток traefik"; fi
     rm -rf "$(dirname "$edgeroot")"
+    # traefik-ext: у compose немає роутерів, php/mysql — traefik.enable=false; мітки на домен — з shared/traefik-labels.yml
+    extroot="$(mktemp -d)/site-extdemo"; mkdir -p "$extroot/shared"; printf 'MYSQL_ROOT_PASSWORD=x\n' > "$extroot/shared/db.env"
+    t "compose config: прод за traefik сервера" 0 env SITE=extdemo SITE_ROOT="$extroot" SITE_PROXY_NETWORK=proxy_net docker compose -f docker-compose.traefik-ext.yml config
+    has "name: proxy_net"; has "traefik.enable: \"false\""
+    if grep -qE 'traefik\.http\.routers' docker-compose.traefik-ext.yml; then fail=$((fail + 1)); echo "FAIL   ↳ traefik-ext: роутери в compose"; else pass=$((pass + 1)); echo "ok     ↳ traefik-ext: роутерів у compose нема"; fi
+    rm -rf "$(dirname "$extroot")"
 fi
 
 # Диспетчер

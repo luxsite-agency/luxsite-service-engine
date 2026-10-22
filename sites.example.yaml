@@ -10,7 +10,8 @@
 #   repo           пак сайту на GitHub (owner/name, приватний); pack — необов'язковий локальний шлях до паку (має пріоритет)
 #   server         host (ssh-аліас; local = ця машина), runtime: fastpanel (PHP-FPM + nginx панелі FastPanel) | docker
 #                  (compose), proxy (лише docker: traefik — стенд, docker-compose.traefik.yml | edge — прод за зовнішнім nginx
-#                  у мережі edge, docker-compose.edge.yml; docs/site-ops.md), compose (лише docker: свій compose-файл — ім'я
+#                  у мережі edge, docker-compose.edge.yml | traefik-ext — прод за наявним traefik сервера,
+#                  docker-compose.traefik-ext.yml + network, certresolver, entrypoint, www_redirect; docs/site-ops.md), compose (лише docker: свій compose-файл — ім'я
 #                  в релізі або абсолютний шлях на сервері; порожньо = типовий для proxy), path (…/site-<key>), user (власник
 #                  файлів у FastPanel; ssh іде під root), php (бінарник на сервері), fpm_reload (команда після перемикання
 #                  релізу), docroot (симлінк docroot панелі, який cutover переводить на current/public), legacy_app (стара
@@ -74,6 +75,32 @@ sites:
       support: true
       auto_update: false
       backup_target: null
+    - key: example-network
+      name: 'Мережа контентних сайтів — прод у Docker за traefik сервера (кілька брендів, окремий сертифікат на домен)'
+      repo: example-org/site-example-network
+      server:
+          host: net.example.net
+          user: www-data
+          runtime: docker
+          proxy: traefik-ext
+          network: proxy_net
+          entrypoint: websecure
+          certresolver: letsencrypt
+          www_redirect: false
+          path: /opt/sites/site-example-network
+      domains:
+          site: brand-a.example.com
+          admin: admin.example.net
+          extra: [brand-b.example.org, brand-c.example.net]
+      locales: [en]
+      engine: v1.0.0
+      status: active
+      support: true
+      auto_update: false
+      backup_target: null
+      notes: >-
+          Бренди — ServiceSite у БД, кожен зі своїм апекс-містом; domains.site + domains.extra — їхні домени: на кожен свій
+          роутер traefik і свій сертифікат (shared/traefik-labels.yml генерує deploy).
     - key: example-stand
       name: 'Example Services — стенд на цій машині (docker за traefik, оновлюється з main)'
       repo: example-org/site-example
