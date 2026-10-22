@@ -54,7 +54,7 @@ for key in "${keys[@]}"; do
     want_pack=""
     pack_dir="$S_PACK"; case "$pack_dir" in "" | /*) ;; *) pack_dir="$SITE_ENGINE_DIR/$pack_dir" ;; esac
     if [ -n "$pack_dir" ] && [ -d "$pack_dir" ]; then
-        want_pack="$(cd "$pack_dir" && { find config/parameters.yaml "themes/$key" translations templates -type f 2>/dev/null || true; } | LC_ALL=C sort | xargs -r sha256sum | sha256sum | cut -c1-8)"
+        want_pack="$(pack_hash "$pack_dir" "$key")"
     fi
     if [ "$DRY_RUN" = 1 ]; then have=""; fi
     if [ "$have" = "$want" ] && { [ -z "$want_pack" ] || [ "$have_pack" = "$want_pack" ]; }; then same+=("$key: $want-$have_pack"); continue; fi

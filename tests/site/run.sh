@@ -124,6 +124,20 @@ t "_remote.sh deploy: SITE_COMPOSE_FILE замість типового" 0 env S
 has "/opt/stand/compose/beta.yml"
 t "deploy beta (local, docker, server.compose з реєстру)" 0 bin/site deploy beta HEAD --pack "$bad/pack-beta"
 has "/opt/stand/compose/beta.yml"
+# теми брендів (app.brands): копіюються й входять у хеш паку; пак без app.brands — хеш як був
+cp -a tests/site/pack-demo "$bad/pack-brands"; mkdir -p "$bad/pack-brands/themes/alpha"; printf 'body{}\n' > "$bad/pack-brands/themes/alpha/theme.css"
+printf '    app.brands:\n        alpha: { theme: { stylesheet: themes/alpha/theme.css } }\n        beta-x: { theme: { key: gamma } }\n' >> "$bad/pack-brands/config/parameters.yaml"
+t "deploy demo з app.brands (теми брендів)" 0 bin/site deploy demo HEAD --pack "$bad/pack-brands"
+has "теми брендів: alpha"; has "нема themes/gamma/"
+tag1="$(grep -o 'тег [0-9a-f]*-[0-9a-f]*' <<<"$LAST" | head -1)"
+printf 'body{color:red}\n' > "$bad/pack-brands/themes/alpha/theme.css"
+t "deploy demo: змінено тему бренду" 0 bin/site deploy demo HEAD --pack "$bad/pack-brands"
+tag2="$(grep -o 'тег [0-9a-f]*-[0-9a-f]*' <<<"$LAST" | head -1)"
+t "хеш паку враховує themes/<бренд>/ (тег змінився)" 0 test -n "$tag1" -a "$tag1" != "$tag2"
+t "deploy demo без app.brands" 0 bin/site deploy demo HEAD --pack tests/site/pack-demo
+tag3="$(grep -o 'тег [0-9a-f]*-[0-9a-f]*' <<<"$LAST" | head -1)"
+want3="$(cd tests/site/pack-demo && { find config/parameters.yaml themes/demo translations templates -type f 2>/dev/null || true; } | LC_ALL=C sort | xargs -r sha256sum | sha256sum | cut -c1-8)"
+t "пак без app.brands — хеш як до тем брендів" 0 test "${tag3##*-}" = "$want3"
 t "_remote.sh: proxy edge на fastpanel — відмова" '!0' env SITE_RUNTIME=fastpanel SITE_PROXY=edge bash bin/site.d/_remote.sh doctor edgedemo /tmp/x/site-edgedemo
 t "doctor edgedemo (ssh, dry-run)" 0 bin/site doctor edgedemo
 has "docker"
