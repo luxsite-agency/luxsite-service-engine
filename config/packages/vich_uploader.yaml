@@ -28,3 +28,8 @@ vich_uploader:
             uri_prefix: /media/service_work
             upload_destination: '%kernel.project_dir%/public/media/service_work'
             namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        # сторінки app.pages: обкладинка (ServicePage) і галерея (ServicePageImage)
+        service_page_media:
+            uri_prefix: /media/service_page
+            upload_destination: '%kernel.project_dir%/public/media/service_page'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer

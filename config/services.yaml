@@ -31,9 +31,14 @@ parameters:
 
     # ---- Дефолти рушія; сайт перекриває їх у config/site/parameters.local.yaml (пак, поза git) ----
     # Схема URL каталогу: flat = /services/<послуга>/, nested = /services/<категорія>/<послуга>/,
-    # root = /<категорія>/<послуга>/ від кореня (сайт з Joomla). Усі схеми в індексі живих сайтів, тому
-    # вибирає пак; див. src/Kernel.php::configureRoutes і config/routes/catalog/*.yaml.
+    # root = /<категорія>/<послуга>/ від кореня (сайт з Joomla), slug = послуга /<послуга>/ і категорія /<категорія>/
+    # від кореня одним сегментом (старі CMS, де кожна сторінка жила на /<слаг>/). Усі схеми в індексі живих сайтів, тому
+    # вибирає пак; див. src/Kernel.php::configureRoutes, config/routes/catalog/*.yaml і App\ServiceSite\RootSlugs.
     app.catalog.url_scheme: flat
+    # Довільні сторінки (адмінка → «Сторінки»: вакансії, ліцензії, будь-який текст) від кореня сайту: /<слаг>/ і
+    # /<батько>/<слаг>/, ru — /ru/…; у sitemap, футері (позначка «У футері»), галерея зображень. false = вимкнено
+    # (маршрут не спрацьовує, меню адмінки без пункту) — як на сайтах до v0.9.34.
+    app.pages: false
     # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
     app.blog_prefix: blog
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
@@ -41,7 +46,7 @@ parameters:
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
     # порожньо = як будує шаблон рушія. Сторінки з даними в БД (головна, послуги, категорії, пости) — через адмінку.
     app.page_meta: {}
-    # Додаткові поля записів (без міграцій): { item|post|category: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized,
+    # Додаткові поля записів (без міграцій): { item|post|category|page: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized,
     # filter, categories: [slug_uk розділу…] } ] }. Значення — колонка extra запису, адмінка показує поля сама, шаблони —
     # custom_fields(entity, locale). Деталі — App\ServiceSite\CustomFields, docs/site-pack.md.
     app.custom_fields: {}

@@ -1,0 +1,20 @@
+# Схема URL каталогу «slug»: послуга /<послуга>/ і категорія /<категорія>/ від кореня сайту одним сегментом,
+# без /services/ (старі CMS, де кожна сторінка жила на /<слаг>/; адреси в індексі зберігаються 1:1).
+# Вмикається параметром app.catalog.url_scheme: slug у паку.
+# Обидва маршрути мають той самий шаблон, тому кожен спрацьовує лише для свого запису: умова питає
+# App\ServiceSite\RootSlugs (alias root_slugs), чи є на сайті активна послуга / категорія з таким слагом цієї мови.
+# Невідомий /<x>/ проходить далі: sv_legacy_redirect (301 з app.legacy_redirects) або 404; 410 для app.gone_prefixes
+# віддає LegacyUrlSubscriber ще до роутингу. Фіксовані сторінки (/about/, /services/ …, priority 10) і сторінки
+# app.pages (sv_page, priority 5) перевіряються раніше; збіг слагів у корені ловлять адмінка і app:site:slugs (doctor).
+# Посилання на послугу в шаблонах і коді — лише через service_path() / CatalogUrls, не через path('sv_service').
+sv_service:
+    path: { uk: '/{slug}/', ru: '/ru/{slug}/' }
+    controller: App\Controller\Services\CatalogController::item
+    requirements: { slug: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city') and service('root_slugs').matches('item', request, params)"
+
+sv_category:
+    path: { uk: '/{category}/', ru: '/ru/{category}/' }
+    controller: App\Controller\Services\CatalogController::category
+    requirements: { category: '[a-z0-9-]+' }
+    condition: "request.attributes.has('service_city') and service('root_slugs').matches('category', request, params)"
