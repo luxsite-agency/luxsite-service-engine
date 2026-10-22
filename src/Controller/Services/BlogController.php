@@ -65,7 +65,7 @@ final class BlogController extends AbstractController
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
         $perPage = max(0, (int) $this->getParameter('app.blog_per_page'));
-        $total = $this->posts->countPublishedBySite($site);
+        $total = $this->posts->countPublishedBySite($site, $request->getLocale());
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
             throw $this->createNotFoundException('Такої сторінки блогу немає.');
@@ -75,7 +75,7 @@ final class BlogController extends AbstractController
         return $this->render('services/blog/index.html.twig', [
             'site' => $site,
             'city' => $city,
-            'posts' => $this->posts->findPublishedBySitePage($site, $page, $perPage),
+            'posts' => $this->posts->findPublishedBySitePage($site, $page, $perPage, $request->getLocale()),
             'page' => $page,
             'pages' => $pages,
             'altUrls' => $altUrls,

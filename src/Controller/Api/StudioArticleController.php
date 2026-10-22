@@ -12,6 +12,7 @@ use App\AdminApi\ApiScope;
 use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -37,7 +38,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 #[Route('/api/studio', name: 'api_studio_', priority: 20, condition: "request.attributes.has('service_site')")]
 final class StudioArticleController extends AbstractController
 {
-    private const LANGS = ['uk', 'ru'];
+    /** Заголовки блоків, які приймач дописує до тексту статті, за мовою */
+    private const HEADINGS = [
+        'faq' => ['uk' => 'Часті питання', 'ru' => 'Частые вопросы', 'en' => 'Frequently asked questions'],
+        'related' => ['uk' => 'Читайте також', 'ru' => 'Читайте также', 'en' => 'Read also'],
+        'sources' => ['uk' => 'Джерела', 'ru' => 'Источники', 'en' => 'Sources'],
+    ];
     private const SLUG_MAX = 64;
 
     public function __construct(
@@ -50,7 +56,14 @@ final class StudioArticleController extends AbstractController
         private readonly \Symfony\Component\Security\Core\Role\RoleHierarchyInterface $roles,
         #[Autowire(param: 'kernel.project_dir')]
         private readonly string $projectDir,
+        private readonly SiteLocales $locales,
     ) {
+    }
+
+    /** Заголовок дописаного блоку мовою статті (невідома мова — як uk, так було до en) */
+    private static function heading(string $kind, string $lang): string
+    {
+        return self::HEADINGS[$kind][$lang] ?? self::HEADINGS[$kind]['uk'];
     }
 
     #[Route('/ping', name: 'ping', methods: ['GET'])]
@@ -61,7 +74,7 @@ final class StudioArticleController extends AbstractController
         }
         $site = $this->site($request);
 
-        return $this->json(['ok' => true, 'site' => $site->getSlug(), 'apex' => $site->getApexDomain(), 'langs' => self::LANGS]);
+        return $this->json(['ok' => true, 'site' => $site->getSlug(), 'apex' => $site->getApexDomain(), 'langs' => $this->locales->enabled($site)]);
     }
 
     #[Route('/articles/{externalId}', name: 'article_put', methods: ['PUT'], requirements: ['externalId' => '[A-Za-z0-9_-]{1,64}'])]
@@ -77,15 +90,17 @@ final class StudioArticleController extends AbstractController
             return $this->json(['error' => 'Тіло має бути JSON-об’єктом.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $lang = strtolower((string) ($data['lang'] ?? 'uk'));
+        // мова статті: одна з мов бренду; без lang — мова розгортання без префікса (uk на сайтах, створених до en)
+        $langs = $this->locales->enabled($site);
+        $lang = strtolower((string) ($data['lang'] ?? $this->locales->default()));
         $groupId = trim((string) ($data['group_id'] ?? ''));
         $title = trim((string) ($data['title'] ?? ''));
         $slug = strtolower(trim((string) ($data['slug'] ?? '')));
         $body = (string) ($data['body_html'] ?? '');
 
         $errors = [];
-        if (!\in_array($lang, self::LANGS, true)) {
-            $errors['lang'] = 'Підтримуються мови: ' . implode(', ', self::LANGS);
+        if (!\in_array($lang, $langs, true)) {
+            $errors['lang'] = 'Підтримуються мови: ' . implode(', ', $langs);
         }
         if ($groupId === '' || !preg_match('/^[0-9a-f-]{36}$/', $groupId)) {
             $errors['group_id'] = 'Потрібен UUID групи перекладів.';
@@ -109,7 +124,11 @@ final class StudioArticleController extends AbstractController
         $post = $repo->findOneBy(['site' => $site, 'studioGroupId' => $groupId]);
 
         // Слаг має бути унікальним у межах сайту й мови: зайнятий іншим постом → 409
-        $slugField = $lang === 'ru' ? 'slugRu' : 'slugUk';
+        $slugField = match ($lang) {
+            'ru' => 'slugRu',
+            'en' => 'slugEn',
+            default => 'slugUk',
+        };
         $clash = $repo->findOneBy(['site' => $site, $slugField => $slug]);
         if ($clash !== null && $clash !== $post) {
             return $this->json(['error' => sprintf('Слаг "%s" уже зайнятий постом #%d.', $slug, $clash->getId())], Response::HTTP_CONFLICT);
@@ -130,7 +149,11 @@ final class StudioArticleController extends AbstractController
         $metaTitle = isset($data['meta_title']) ? mb_substr(trim((string) $data['meta_title']), 0, 255) : null;
         $metaDesc = isset($data['meta_desc']) ? trim((string) $data['meta_desc']) : null;
 
-        if ($lang === 'ru') {
+        if ($lang === 'en') {
+            // англійська — без фолбеку й без дублювання в uk (slug_uk може бути NULL, 22.10.2026)
+            $post->setSlugEn($slug)->setTitleEn($title)->setLeadEn($lead)->setDescEn($html)
+                ->setMetaTitleEn($metaTitle ?: null)->setMetaDescEn($metaDesc ?: null);
+        } elseif ($lang === 'ru') {
             $post->setSlugRu($slug)->setTitleRu($title)->setLeadRu($lead)->setDescRu($html)
                 ->setMetaTitleRu($metaTitle ?: null)->setMetaDescRu($metaDesc ?: null);
             if ($post->getSlugUk() === '') {
@@ -148,7 +171,11 @@ final class StudioArticleController extends AbstractController
         if (!empty($data['cover_alt']) && !$manualCover) {
             $alt = mb_substr((string) $data['cover_alt'], 0, 255);
             // alt по мовах: uk → image_alt, ru → image_alt_ru (шаблони беруть post.imageAlt(locale) з фолбеком на uk)
-            $lang === 'ru' ? $post->setImageAltRu($alt) : $post->setImageAlt($alt);
+            match ($lang) {
+                'ru' => $post->setImageAltRu($alt),
+                'en' => $post->setImageAltEn($alt),
+                default => $post->setImageAlt($alt),
+            };
         }
         if (!$manualCover && !empty($data['cover_url']) && \is_string($data['cover_url'])) {
             $name = $this->downloadCover((string) $data['cover_url'], $post->getImageName());
@@ -302,7 +329,7 @@ final class StudioArticleController extends AbstractController
             $items .= sprintf("<h3>%s</h3>\n<p>%s</p>\n", htmlspecialchars($q, ENT_QUOTES), htmlspecialchars($a, ENT_QUOTES));
         }
 
-        return $items === '' ? '' : sprintf("\n<section class=\"post-faq\">\n<h2>%s</h2>\n%s</section>\n", $lang === 'ru' ? 'Частые вопросы' : 'Часті питання', $items);
+        return $items === '' ? '' : sprintf("\n<section class=\"post-faq\">\n<h2>%s</h2>\n%s</section>\n", self::heading('faq', $lang), $items);
     }
 
     /** «Читайте також» — внутрішні посилання на інші статті цього сайту (без nofollow) */
@@ -322,7 +349,7 @@ final class StudioArticleController extends AbstractController
             $items .= sprintf("<li><a href=\"%s\">%s</a></li>\n", htmlspecialchars($path, ENT_QUOTES), htmlspecialchars($title, ENT_QUOTES));
         }
 
-        return $items === '' ? '' : sprintf("\n<section class=\"post-related\">\n<h2>%s</h2>\n<ul>\n%s</ul>\n</section>\n", $lang === 'ru' ? 'Читайте также' : 'Читайте також', $items);
+        return $items === '' ? '' : sprintf("\n<section class=\"post-related\">\n<h2>%s</h2>\n<ul>\n%s</ul>\n</section>\n", self::heading('related', $lang), $items);
     }
 
     /**
@@ -336,6 +363,7 @@ final class StudioArticleController extends AbstractController
             return $denied;
         }
         $site = $this->site($request);
+        $langs = $this->locales->enabled($site);
         $pages = [];
         $push = function (string $type, string $lang, ?string $path, ?string $title, ?string $desc, array $anchors, int $priority) use (&$pages): void {
             if ($path === null || $title === null || $title === '') {
@@ -360,20 +388,23 @@ final class StudioArticleController extends AbstractController
         };
         $em = $this->em;
         foreach ($em->getRepository(\App\Entity\ServiceItem::class)->findBy(['site' => $site, 'active' => true]) as $it) {
-            foreach (['uk', 'ru'] as $l) {
+            foreach ($langs as $l) {
                 $title = (string) $it->loc('title', $l);
                 $cat = method_exists($it, 'getCategory') ? $it->getCategory() : null;
                 $push('service', $l, $url('sv_service', ['slug' => $it->slug($l), 'category' => $cat?->slug($l) ?? ''], $l), $title, $it->loc('lead', $l), [$title, $it->loc('tabTitle', $l)], 2);
             }
         }
         foreach ($em->getRepository(\App\Entity\ServiceCategory::class)->findBy(['site' => $site]) as $c) {
-            foreach (['uk', 'ru'] as $l) {
+            foreach ($langs as $l) {
                 $title = (string) $c->loc('title', $l);
                 $push('category', $l, $url('sv_category', ['category' => $c->slug($l), 'slug' => $c->slug($l)], $l), $title, null, [$title], 3);
             }
         }
         foreach ($em->getRepository(\App\Entity\ServicePost::class)->findBy(['site' => $site, 'active' => true]) as $p) {
-            foreach (['uk', 'ru'] as $l) {
+            foreach ($langs as $l) {
+                if (!$p->existsIn($l)) {
+                    continue;
+                }
                 $push('post', $l, $url('sv_blog_post', ['slug' => $p->slug($l)], $l), (string) $p->loc('title', $l), $p->loc('lead', $l), [], 6);
             }
         }
@@ -383,7 +414,7 @@ final class StudioArticleController extends AbstractController
             if ($city === null || $city->getSite() !== $site || !$city->isApex()) {
                 continue;
             }
-            foreach (['uk', 'ru'] as $l) {
+            foreach ($langs as $l) {
                 $push('district', $l, $url('sv_district', ['slug' => $d->slug($l)], $l), (string) $d->loc('name', $l), null, [], 4);
             }
         }
@@ -407,6 +438,6 @@ final class StudioArticleController extends AbstractController
             $items .= sprintf("<li><a href=\"%s\" rel=\"nofollow noopener\" target=\"_blank\">%s</a></li>\n", htmlspecialchars($url, ENT_QUOTES), htmlspecialchars((string) $title, ENT_QUOTES));
         }
 
-        return $items === '' ? '' : sprintf("\n<section class=\"post-sources\">\n<h2>%s</h2>\n<ul>\n%s</ul>\n</section>\n", $lang === 'ru' ? 'Источники' : 'Джерела', $items);
+        return $items === '' ? '' : sprintf("\n<section class=\"post-sources\">\n<h2>%s</h2>\n<ul>\n%s</ul>\n</section>\n", self::heading('sources', $lang), $items);
     }
 }

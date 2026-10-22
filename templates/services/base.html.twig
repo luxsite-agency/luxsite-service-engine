@@ -618,7 +618,7 @@
                         {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>
                         <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
-                        {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                        {% if site.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
                     {% endblock %}
                 </nav>
@@ -664,7 +664,7 @@
                     <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                     {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
-                    {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
+                    {% if site.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
                 </nav>
                 <p>© {{ 'now'|date('Y') }} {{ site.name }} - {{ city.name(locale) }}.
