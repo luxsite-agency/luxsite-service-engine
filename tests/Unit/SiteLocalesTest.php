@@ -56,6 +56,8 @@ final class SiteLocalesTest extends TestCase
         self::assertSame(['en', 'de'], $l->enabled(), 'порядок — як у розгортанні');
         self::assertSame('en', $l->default());
         self::assertSame('de', $l->fromPath());
+        self::assertSame('en', $l->ofPath('/contact/'), 'сторінка без префікса — мова розгортання (/lead → «Дякуємо»)');
+        self::assertSame('fr', $l->ofPath('/fr/contact/'));
         self::assertSame(['en', 'de', 'fr'], $l->enabled(new ServiceSite()), 'бренд без набору — усі мови');
         self::assertNull((new ServiceSite())->setLocales([])->getLocales(), 'порожній список = усі мови');
     }

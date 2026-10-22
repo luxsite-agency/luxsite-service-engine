@@ -78,15 +78,29 @@ final class SiteLocales
      */
     public function fromPath(): string
     {
-        $main = $this->requests->getMainRequest();
-        $path = $main?->getPathInfo() ?? '/';
+        $path = $this->requests->getMainRequest()?->getPathInfo() ?? '/';
+
+        return $this->prefixOf($path) ?? ($this->currentSite() === null ? $this->frameworkDefault : $this->default());
+    }
+
+    /**
+     * Мова сторінки за її шляхом (/<мова>/… або мова без префікса) — для нелокалізованих адрес, що знають сторінку-джерело
+     * (форма заявки /lead повертає на неї й веде на «Дякуємо» тією ж мовою).
+     */
+    public function ofPath(string $path): string
+    {
+        return $this->prefixOf($path) ?? $this->default();
+    }
+
+    private function prefixOf(string $path): ?string
+    {
         foreach (\array_slice($this->locales, 1) as $l) {
             if (str_starts_with($path, '/' . $l . '/')) {
                 return $l;
             }
         }
 
-        return $this->currentSite() === null ? $this->frameworkDefault : $this->default();
+        return null;
     }
 
     /** Код мови для розмітки: hreflang (uk-UA), og (uk_UA), schema (uk-UA), label (UA); нема запису — сама мова */
