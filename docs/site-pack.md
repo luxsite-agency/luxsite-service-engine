@@ -64,6 +64,24 @@ analytics, листи (вони в рушії, не в шаблонах паку
 сайту Twig бере ще раніше за `templates/` паку; `shared/theme/public/theme.css` — після стилів паку. Пріоритет:
 live (токен) > пак > рушій.
 
+**Дизайн на бренд (22.10.2026, кілька брендів в одному розгортанні — мережа контентних сайтів).** Бренди одного паку
+можуть мати повністю різну розмітку, а не лише кольори:
+- **Шаблони бренду** — `templates/brands/<slug>/services/**`, `…/partials/**` паку (→ `templates/site/brands/<slug>/`).
+  Порядок для запиту бренду: живий дизайн бренду `var/theme/brands/<slug>/templates` > живий дизайн розгортання
+  `var/theme/templates` > шаблони бренду > шаблони паку > `@engine` (`App\Twig\BrandTemplateLoader`, бренд — з головного
+  запиту, ключ кешу Twig — бренд + файл + md5). Бренд без своєї теки — як раніше. `@pack/…` — шаблон паку без перекриття
+  брендом, `@engine/…` — рушія. `bin/site validate` перевіряє ті самі правила (`services/`, `partials/`, `*.twig`).
+- **Своя розмітка цілком** — `{% extends '@engine/services/base.html.twig' %}` + `{% block page %}…{% endblock %}`: блок
+  `page` — уся видима частина (шапка, `main`, футер), голова (canonical, hreflang, og, аналітика, коди з «Налаштувань») і
+  службові скрипти внизу лишаються рушія; `{% block stylesheets %}` — свій CSS замість вбудованого;
+  `{% block meta_generator %}{% endblock %}` — без `<meta name="generator">`.
+- **Тема бренду** — `app.brands: { <slug>: { theme: {…ключі app.theme…} } }` у `config/parameters.yaml` паку: поверх
+  `app.theme`; `key` за замовчуванням = slug (`body.theme-<slug>`, файли в `themes/<slug>/` паку → `public/themes/<slug>/`).
+  Невідомі ключі — помилка ще на старті ядра (як і в `app.theme`).
+- Щоб бренди не були «близнюками»: окремі `base` бренду (різна сітка, класи, порядок блоків), свої шрифти локально
+  (`@font-face` у `themes/<slug>/`), без `generator`, свої GA4/GTM у «Налаштуваннях сайту», окремий сертифікат на домен
+  (`docs/site-ops.md`).
+
 **Точки перекриття (13.10.2026, сайт зі схемою root; за замовчуванням усе як було):**
 - **Шапка** — `{% block header %}` у `services/base.html.twig` (топбар, бренд, меню, перемикач мов; `block nav` усередині
   лишається): `{% extends '@engine/services/base.html.twig' %}{% block header %}…свій…{% endblock %}`. Поруч — `block footer`.
