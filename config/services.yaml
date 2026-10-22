@@ -44,6 +44,9 @@ parameters:
     # тема бренду поверх app.theme (key за замовчуванням = slug: body.theme-<slug>, public/themes/<slug>/). Шаблони бренду —
     # templates/site/brands/<slug>/ (App\Twig\BrandTemplateLoader). Порожньо — одна тема на розгортання, як було.
     app.brands: {}
+    # Звідки приймач студії качає картинки (обкладинка й картинки тексту): список доменів (і піддоменів); порожньо — будь-який
+    # публічний https (приватні адреси й так заборонені, NoPrivateNetworkHttpClient). До 10 МБ, до 3 редиректів.
+    app.studio.image_hosts: []
     # Коди мови для розмітки: hreflang, og:locale, inLanguage (JSON-LD), підпис у перемикачі мов. Пак перекриває лише
     # потрібне (напр. en: { og: en_GB }); мова без запису — код мови як є.
     app.locale_codes:

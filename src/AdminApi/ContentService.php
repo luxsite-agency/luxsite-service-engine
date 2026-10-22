@@ -80,6 +80,9 @@ final class ContentService
         $token = $this->context->current();
         $sites = [];
         foreach ($this->sites->findAllActive() as $site) {
+            if ($token !== null && !$token->allowsSite($site)) {
+                continue;
+            }
             $cities = [];
             foreach ($this->cities->findAllActiveBySite($site) as $city) {
                 $cities[] = ['id' => $city->getId(), 'slug' => $city->getSlug(), 'host' => $city->getHost(), 'apex' => $city->isApex(), 'noindex' => $city->isNoindex()];
@@ -202,7 +205,14 @@ final class ContentService
 
     private function site(string $slug): ServiceSite
     {
-        return $this->sites->findActiveBySlug($slug) ?? throw new ApiProblem('Сайт не знайдено: ' . $slug, 404);
+        $site = $this->sites->findActiveBySlug($slug) ?? throw new ApiProblem('Сайт не знайдено: ' . $slug, 404);
+        // бренди токена й користувача (22.10.2026): чужий бренд — як неіснуючий для цього токена
+        $token = $this->context->current();
+        if ($token !== null && !$token->allowsSite($site)) {
+            throw new ApiProblem('Токен не має доступу до сайту: ' . $slug, 403);
+        }
+
+        return $site;
     }
 
     /**

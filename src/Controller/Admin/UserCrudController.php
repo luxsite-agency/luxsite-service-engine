@@ -36,6 +36,7 @@ class UserCrudController extends AbstractCrudController
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly \App\AdminApi\AdminApiTokens $tokens,
+        private readonly \App\Repository\ServiceSiteRepository $sites,
     ) {
     }
 
@@ -82,6 +83,16 @@ class UserCrudController extends AbstractCrudController
             ])
             ->allowMultipleChoices();
         yield BooleanField::new('active', 'Активний');
+        // бренди для API, MCP і студії (22.10.2026); CRUD адмінки цим не обмежується
+        $choices = [];
+        foreach ($this->sites->findAllActive() as $site) {
+            $choices[$site->getName() . ' (' . $site->getSlug() . ')'] = $site->getSlug();
+        }
+        if (\count($choices) > 1) {
+            yield ChoiceField::new('sites', 'Бренди (API, студія)')->hideOnIndex()
+                ->setChoices($choices)->allowMultipleChoices()->renderExpanded()
+                ->setHelp('Порожньо — усі бренди. Обмежує токени користувача (REST, MCP, студію): токен не дасть більше брендів, ніж тут. Розділи адмінки цим не обмежуються.');
+        }
     }
 
     /** @param User $entityInstance */
