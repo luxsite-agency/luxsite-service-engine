@@ -41,6 +41,23 @@ parameters:
     app.pages: false
     # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
     app.blog_prefix: blog
+    # Мови розгортання (22.10.2026): перша — без префікса в адресі, решта — /<мова>/. Маршрути оголошені як uk + /ru/;
+    # інший набір (сателіти: [en]) переписує їх при компіляції роутера (App\ServiceSite\LocalizedRoutes, Kernel::loadRoutes).
+    # Бренд вмикає підмножину в адмінці (ServiceSite.locales; порожньо = усі). Адмінка лишається українською.
+    app.locales: [uk, ru]
+    # Дизайн на бренд (22.10.2026, кілька брендів в одному розгортанні): { <slug>: { theme: {…ключі app.theme…} } } —
+    # тема бренду поверх app.theme (key за замовчуванням = slug: body.theme-<slug>, public/themes/<slug>/). Шаблони бренду —
+    # templates/site/brands/<slug>/ (App\Twig\BrandTemplateLoader). Порожньо — одна тема на розгортання, як було.
+    app.brands: {}
+    # Звідки приймач студії качає картинки (обкладинка й картинки тексту): список доменів (і піддоменів); порожньо — будь-який
+    # публічний https (приватні адреси й так заборонені, NoPrivateNetworkHttpClient). До 10 МБ, до 3 редиректів.
+    app.studio.image_hosts: []
+    # Коди мови для розмітки: hreflang, og:locale, inLanguage (JSON-LD), підпис у перемикачі мов. Пак перекриває лише
+    # потрібне (напр. en: { og: en_GB }); мова без запису — код мови як є.
+    app.locale_codes:
+        uk: { hreflang: uk-UA, og: uk_UA, schema: uk-UA, label: UA }
+        ru: { hreflang: ru-UA, og: ru_UA, schema: ru-UA, label: RU }
+        en: { hreflang: en, og: en_US, schema: en, label: EN }
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
     #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);

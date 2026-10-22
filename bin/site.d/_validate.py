@@ -147,7 +147,7 @@ def engine_params(engine_dir):
 RESERVED_SEGMENTS = {
     "services", "districts", "blog", "news", "about", "contacts", "faq", "reviews", "privacy-policy",
     "terms-of-service", "thank-you", "calculator-cleaning", "lead", "sitemap.xml", "robots.txt",
-    "ru", "uk", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
+    "ru", "uk", "en", "author", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
 }
 
 
@@ -276,11 +276,17 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
                 rel = os.path.relpath(os.path.join(dp, f), tpl).replace(os.sep, "/")
                 if rel in ("README.md", ".gitkeep"):
                     continue
+                # дизайн бренду (22.10.2026): templates/brands/<slug>/services|partials/… — ті самі правила для решти шляху
+                m = re.match(r"^brands/([a-z0-9-]+)/(.+)$", rel)
+                if rel.startswith("brands/") and not m:
+                    err(f"{where}: templates/{rel} — шаблони бренду лише в templates/brands/<slug>/services|partials/")
+                    continue
+                base = m.group(2) if m else rel
                 if not f.endswith(".twig"):
                     err(f"{where}: templates/{rel} — у шаблонах паку лише *.twig")
-                elif not (rel.startswith("services/") or rel.startswith("partials/")):
+                elif not (base.startswith("services/") or base.startswith("partials/")):
                     err(f"{where}: templates/{rel} — пак перекриває лише services/ і partials/ (не адмінку)")
-                elif engine_dir and not os.path.isfile(os.path.join(engine_dir, "templates", rel)):
+                elif engine_dir and not m and not os.path.isfile(os.path.join(engine_dir, "templates", rel)):
                     warn(f"{where}: templates/{rel} — у рушії такого шаблону нема (новий partial паку або одрук у назві)")
     # файли: секрети, розміри
     total = 0

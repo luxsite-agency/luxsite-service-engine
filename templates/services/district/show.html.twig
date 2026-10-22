@@ -1,7 +1,7 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends 'services/base.html.twig' %}
 
-{% set _loc = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{% set _loc = sv_locale() %}
 {# три патерни заголовків по колу: сусідні локації йдуть підряд за position,
    тож у списку району вони не повторюють один одного #}
 {% set _v = ['a', 'b', 'c'][district.position % 3] %}

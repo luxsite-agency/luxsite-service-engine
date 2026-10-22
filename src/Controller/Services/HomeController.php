@@ -10,6 +10,8 @@ namespace App\Controller\Services;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePostCategoryRepository;
+use App\Repository\ServicePostRepository;
 use App\Repository\ServicePriceRepository;
 use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceTeamMemberRepository;
@@ -38,6 +40,8 @@ final class HomeController extends AbstractController
         private readonly ServiceTeamMemberRepository $team,
         private readonly ServiceDistrictRepository $districts,
         private readonly ServiceWorkRepository $works,
+        private readonly ServicePostRepository $posts,
+        private readonly ServicePostCategoryRepository $postCategories,
     ) {
     }
 
@@ -51,6 +55,9 @@ final class HomeController extends AbstractController
     {
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
+        if ($site->isContent()) {
+            return $this->contentHome($request);
+        }
 
         $itemsByCategory = [];
         foreach ($this->items->findActiveBySite($site, $city) as $item) {
@@ -121,5 +128,32 @@ final class HomeController extends AbstractController
         }
 
         return $out;
+    }
+
+    /**
+     * Головна контентного сайту (ServiceSite.mode = content): інтро бренду (апекс-місто: H1, інтро, блоки 2–3 мовою
+     * сторінки), «обрані» статті, свіжі статті (app.blog_per_page; 0 = 12) і рубрики. Без каталогу, цін, відгуків і заявок.
+     */
+    private function contentHome(Request $request): Response
+    {
+        $site = $this->serviceSite($request);
+        $locale = $request->getLocale();
+        $perPage = (int) $this->getParameter('app.blog_per_page') ?: 12;
+        $featured = $this->posts->findFeatured($site, $locale, 3);
+        $featuredIds = array_map(static fn ($p) => $p->getId(), $featured);
+        $latest = array_values(array_filter(
+            $this->posts->findPublishedFiltered($site, $locale, null, null, 1, $perPage + \count($featured)),
+            static fn ($p): bool => !\in_array($p->getId(), $featuredIds, true),
+        ));
+
+        return $this->render('services/content/home.html.twig', [
+            'site' => $site,
+            'city' => $this->serviceCity($request),
+            'featured' => $featured,
+            'posts' => \array_slice($latest, 0, $perPage),
+            'hasMore' => $this->posts->countPublishedFiltered($site, $locale, null, null) > \count($featured) + $perPage,
+            'categories' => $this->postCategories->findActiveBySite($site, $locale),
+            'altUrls' => $this->altUrls('sv_home'),
+        ]);
     }
 }

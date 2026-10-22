@@ -20,6 +20,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_ADMIN')]
@@ -30,6 +31,13 @@ class ServiceCityCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва міста, а не хост */
     private const INDEX_PRIMARY = 'nameNomUk';
+
+    /** @param list<string> $locales app.locales — вкладка English лише там, де en увімкнено (22.10.2026) */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -166,5 +174,21 @@ class ServiceCityCrudController extends AbstractCrudController
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+
+        if (\in_array('en', $this->locales, true)) {
+            yield FormField::addTab('English', 'fa fa-language');
+            yield TextField::new('nameNomEn', 'Назва міста en')->hideOnIndex()->setColumns(6)
+                ->setHelp('Без фолбеку на uk: порожньо — назва з поля uk.');
+            yield TextField::new('introTitleEn', 'H1 en')->hideOnIndex()->setColumns(6);
+            yield TextEditorField::new('introTextEn', 'Інтро en')->hideOnIndex()->setColumns(12);
+            yield TextEditorField::new('text2En', 'Блок 2 en')->hideOnIndex()->setColumns(6);
+            yield TextEditorField::new('text3En', 'Блок 3 en')->hideOnIndex()->setColumns(6);
+            yield TextEditorField::new('aboutEn', '«Про нас» для міста (en)')->hideOnIndex()->setColumns(12);
+            yield CollectionField::new('faqEn', 'FAQ en')->hideOnIndex()->setColumns(12)
+                ->setEntryType(ServiceFaqItemType::class)
+                ->allowAdd()->allowDelete();
+            yield TextField::new('metaTitleEn', 'Meta title en')->hideOnIndex()->setColumns(6);
+            yield TextareaField::new('metaDescEn', 'Meta description en')->hideOnIndex()->setColumns(6);
+        }
     }
 }

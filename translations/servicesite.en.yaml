@@ -1,0 +1,257 @@
+# UI strings of the engine (servicesite domain), English (22.10.2026; first English sites are content sites). Neutral defaults: brand texts (tagline, hero benefits,
+# meta descriptions, headings, work categories, copyright) are set by the site pack in translations/servicesite.*.yaml -> translations/site/
+# (key with empty value = element is hidden). Content texts are in the DB.
+nav.menu: Menu
+nav.services: Services
+nav.districts: Districts
+nav.blog: Blog
+nav.about: About us
+nav.faq: FAQ
+# <title> and H1 of the /faq/ page: site pack overrides completely (parameters %faq_title% = nav.faq, %site%, %city%, %cityGen%, %cityLoc%)
+faq.page_title: '%faq_title% - %site% %city%'
+faq.page_h1: '%faq_title%'
+nav.contacts: Contact
+nav.privacy: Privacy policy
+nav.terms: Terms of service
+footer.privacy: Privacy policy
+footer.terms: Terms of use
+nav.reviews: Reviews
+
+contacts.hours: Working hours
+contacts.address: Address
+about.where: Where we work
+about.cities: ''
+about.legal: ''
+footer.cities: ''
+# catalog title in footer (app.footer_catalog); empty = no title
+footer.catalog_title: ''
+contacts.map_title: Our location
+contacts.map_hint: Click to show Google Map
+contacts.map_open: Open in Google Maps
+contacts.coverage: 'Service area: %city% and suburbs.'
+# cookie consent banner (admin panel -> Settings -> "Cookie consent banner"); site pack can override texts
+consent.title: Cookie consent
+consent.text: 'We use cookies for analytics and advertising to improve website performance.'
+consent.more: Learn more
+consent.accept: Accept
+consent.decline: Decline
+
+home.services_title: 'Our services'
+home.districts_title: 'Service areas'
+home.reviews_title: 'Customer reviews'
+home.team_title: Our team
+home.faq_title: 'FAQ'
+home.faq_all: 'All questions'
+
+catalog.title: Services
+catalog.all_in_category: All services in category
+catalog.prices_title: Prices
+# price table heading: search query format
+catalog.prices_title_full: How much does %service% cost %in% %city%
+catalog.related_title: Other services in category
+catalog.specs_title: Specifications
+catalog.price_free_text: Price upon request
+catalog.uah: UAH
+
+prices.from: from
+prices.title: Service prices %in% %city%
+prices.col_service: Service
+prices.col_price: 'Price, UAH'
+
+district.title: Service areas
+# <title> and H1 of the /districts/ page: site pack overrides completely (parameters %site%, %city%, %cityGen%, %cityLoc%)
+district.page_title: '%district_title% - %site% %city%'
+district.page_h1: '%district_title% - %city%'
+# TODO multi-niche: move profession to ServiceSite field together with prices.title
+district.h1_prefix: Services
+districts.other: Other districts
+district.min_price: Minimum call-out fee
+district.image_alt: 'Panorama of %cityGen%'
+district.services_title: 'All services'
+
+common.order: Book now
+common.call: Call
+common.breadcrumb_home: Home
+
+review.form_title: Leave a review
+review.login_hint: 'To leave a review, sign in with Google in one click.'
+review.login_google: Sign in with Google
+review.as: 'You are writing as:'
+review.stars: 'Rating:'
+review.placeholder: Describe the work done and whether you are satisfied with the result (at least 20 characters)
+review.submit: Submit review
+
+thanks.title: Thank you, your message has been sent!
+thanks.text: We will get back to you shortly.
+thanks.urgent: If urgent, call us right away
+thanks.back: Back to home
+
+lead.title: Request service
+lead.cta: Submit request
+lead.messengers: 'Or message us directly:'
+# lead magnet on home page (app.home_lead_position): paragraph under heading and messenger caption under form; empty = none
+lead.subtitle: ''
+lead.messengers_hint: ''
+form.required: Fill in this field
+form.phone: Enter phone number
+lead.phone: Phone
+lead.name: Name
+lead.message: What needs to be done?
+lead.submit: Send
+
+brand.tagline: ''
+brand.in: in
+
+hero.person_name: ''
+hero.person_role: ''
+# counters under hero illustration: value (number) and label (caption); empty value = item hidden
+hero.stat1_value: ''
+hero.stat1_label: ''
+hero.stat2_value: ''
+hero.stat2_label: ''
+hero.stat3_value: ''
+hero.stat3_label: ''
+hero.benefit1: Experienced technicians
+hero.benefit2: Price upfront before work starts
+hero.benefit3: Entire city and suburbs
+hero.benefit4: Visits at your convenience
+hero.benefit5: Payment after completion
+
+# Meta descriptions for pages without custom text (city is substituted)
+meta.catalog: 'Services %in% %city%: full range of work, prices, and timelines. On-site service, upfront pricing.'
+meta.districts: 'We service all districts of %cityGen% and suburbs. Nearest available technician, open daily, upfront pricing.'
+meta.blog: 'Tips and useful articles from specialists %in% %city%.'
+meta.faq: 'Answers to FAQs about our services %in% %city%: timelines, pricing, scope of work, warranty, and payment.'
+meta.contacts: 'Phone, email, and business hours %in% %city%. Accepting requests daily.'
+meta.reviews: 'Customer reviews about our services %in% %city%.'
+
+# Cost calculator
+nav.calculator: Calculator
+calc.title: Cost calculator
+calc.intro: Select work type, specify area and extra options to see instant estimated cost. Final price will be confirmed after detailing your request.
+calc.type_label: Work type
+calc.area_label: Area
+calc.mini_note: Estimate only. Final cost confirmed upon request details.
+calc.object_label: Property type
+calc.dirt_label: Condition
+calc.m2: sq m
+calc.per_m2: UAH/sq m
+calc.group.object_type: Property type
+calc.group.dirt_level: Contamination level
+calc.group.urgency: Urgency
+calc.group.floor: Floor and elevator
+calc.group.weekend: Day of visit
+calc.options_title: Extra options
+calc.summary_title: Your estimate
+calc.base_label: Base price
+calc.options_label: Extra services
+calc.total_label: Total
+calc.min_note: minimum order amount applied
+calc.disclaimer: Calculation is an estimate. Final cost will be confirmed by phone after clarifying details.
+calc.submit: Submit request
+calc.mini_title: Calculate cost
+calc.mini_title_service: Calculate cost for this service
+calc.mini_title_district: Calculate cost for your area
+calc.service_label: Service
+calc.mini_result: Estimated cost
+calc.mini_order: Book now
+calc.mini_full: Full estimate with options
+meta.calculator: 'Online cost calculator %in% %city%: select work type, area, and extra options to get instant estimated price.'
+meta.district: '%district%, %cityNom%: on-site services. Upfront pricing before work starts.'
+meta.about: 'About company: who we are, how we work %in% %city%, and why clients trust us.'
+meta.privacy: 'Data collected by the website, usage purposes, sharing, and deletion options. Privacy policy.'
+meta.terms: 'How to order, pricing breakdown, payment terms, and warranty coverage. Terms of service.'
+title.catalog: 'Services %in% %city% - full list and prices'
+title.blog: 'Blog - %cityNom%'
+title.about: 'About company - %cityNom%'
+title.contacts: 'Contacts %in% %city%'
+title.reviews: 'Customer reviews for %site%'
+title.reviews_city: 'Customer reviews for %site% %in% %city%'
+title.district: '%district% - our services, %cityNom%'
+reviews.rating: 'Average rating %avg% out of 5 based on %count% reviews'
+reviews.count: '%count% review|%count% reviews'
+reviews.all: 'All reviews'
+reviews.more: Read more
+reviews.less: Show less
+reviews.prev: Previous reviews
+reviews.next: Next reviews
+title.district_long: '%district% - services, %cityNom%'
+blog.h1: Blog
+blog.page_suffix: ' - page %page%'
+blog.pagination: 'Blog pages'
+blog.prev: '← Newer'
+blog.next: 'Older →'
+reviews.h1: 'Customer reviews for %site%'
+reviews.h1_city: 'Customer reviews for %site% %in% %city%'
+district.official_title: 'Districts of %cityGen%'
+district.suburbs_title: 'Suburbs and nearby areas'
+district.all_link: 'All districts'
+district.inside_title: 'Neighborhoods: %group%'
+district.nearby_title: 'Nearby in district: %group%'
+district.parent_link: 'Administrative district'
+district.service_title: 'We service all districts of %cityGen%'
+district.faq_title: 'FAQ'
+title.district_b: '%district%: on-site service - %cityNom%'
+title.district_c: 'Services - %district%, %cityNom%'
+district.h1_a: 'Services - %district%'
+district.h1_b: 'On-site service - %district%'
+district.h1_c: 'Our services - %district%, %cityNom%'
+meta.district_b: '%district%, %cityNom%: on-site service, upfront pricing before work starts, payment upon completion.'
+meta.district_c: 'Book services in %district%, %cityNom%. On-site visit at your convenience, upfront pricing.'
+district.contains: 'Includes neighborhoods'
+district.areas_title: 'Work categories'
+district.area_home_title: ''
+district.area_home_text: ''
+district.area_commercial_title: ''
+district.area_commercial_text: ''
+district.area_textile_title: ''
+district.area_textile_text: ''
+district.area_extra_title: ''
+district.area_extra_text: ''
+district.also_here_a: '%group% - we also work here:'
+district.also_here_b: 'We also service nearby areas:'
+district.also_here_c: 'Same technicians service:'
+footer.copyright: 'All website materials are protected by law.'
+works.title: 'Our work'
+works.before: 'Before'
+works.after: 'After'
+
+# Content site (22.10.2026): contact form instead of a service request, default legal texts (%site%, %domain%, %contact% = contact form URL)
+contact.title: 'Contact us'
+contact.intro: 'Send us a message and we will reply to the email address you provide.'
+contact.email: 'Email'
+contact.message: 'Message'
+contact.submit: 'Send message'
+contact.privacy_note: 'By sending this form you agree to our <a href="%url%">privacy policy</a>.'
+contact.invalid: 'Please check your email address and message.'
+contact.too_many: 'Too many messages in a row. Please try again later.'
+contact.thanks_title: 'Thank you, your message has been sent'
+contact.thanks_text: 'We will reply to the email address you provided.'
+legal.privacy_html: |
+    <p>%site% operates %domain%. This policy explains how we handle visitor data on our website.</p>
+    <h2>Data We Collect</h2>
+    <p>We only receive personal information that you voluntarily submit through our <a href="%contact%">contact form</a>. This includes:</p>
+    <ul>
+    <li>Your name</li>
+    <li>Your email address</li>
+    <li>Your message text</li>
+    </ul>
+    <p>We use this information solely to reply to you. We do not sell or rent your personal data; it is processed only by the services needed to run the site (hosting, email delivery).</p>
+    <h2>Technical Data and Cookies</h2>
+    <p>The website server automatically collects basic technical data, such as IP addresses and browser logs, to ensure secure operation. If web analytics is enabled (for example, Google Analytics), it sets cookies to help us understand site usage. You can manage your preferences through our cookie banner.</p>
+    <h2>Storage and Rights</h2>
+    <p>We store messages sent via the form for up to 12 months. You have the right to request access to your personal data, ask for corrections, or request deletion. To exercise these rights, write to us using the <a href="%contact%">contact form</a>.</p>
+    <h2>Changes</h2>
+    <p>We may update this policy occasionally. Any revisions will be published directly on this page.</p>
+legal.terms_html: |
+    <p>Welcome to %domain%. By accessing and reading our website, you agree to the following terms.</p>
+    <h2>Informational Content</h2>
+    <p>All articles, guides, and materials published on %domain% are provided for general informational purposes only. They do not constitute professional advice. You should not rely on this content without seeking independent expert counsel.</p>
+    <h2>Accuracy and Guarantees</h2>
+    <p>%site% works to keep all information up to date and accurate. However, we offer no express or implied guarantees regarding the completeness, reliability, or availability of the website content.</p>
+    <h2>External Links</h2>
+    <p>Our website may contain links to external web resources. %site% does not control or endorse these third-party websites and bears no responsibility for their content or privacy practices.</p>
+    <h2>Copyright</h2>
+    <p>Unless stated otherwise, all text and image content on %domain% belongs to %site%. You may quote short excerpts from our articles provided that you include an active link to the original page on %domain%.</p>
+    <h2>Contact Us</h2>
+    <p>If you have any questions about these terms, please send a message through the <a href="%contact%">contact form</a>.</p>

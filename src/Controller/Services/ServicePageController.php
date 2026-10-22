@@ -54,7 +54,7 @@ final class ServicePageController extends AbstractController
             'city' => $city,
             'page' => $page,
             'children' => $page->getParent() === null ? $this->pages->findLiveChildren($page, $city) : [],
-            'altUrls' => $this->altUrls('sv_page', ['path' => $page->path('uk')], ['path' => $page->path('ru')]),
+            'altUrls' => $this->altUrls('sv_page', static fn (string $l): array => ['path' => $page->path($l)]),
         ]);
     }
 }

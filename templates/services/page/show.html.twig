@@ -21,7 +21,7 @@
         '@type': 'WebPage',
         'name': page.loc('title', locale),
         'url': altUrls[locale],
-        'inLanguage': locale == 'ru' ? 'ru-UA' : 'uk-UA',
+        'inLanguage': sv_locale_code(locale, 'schema'),
         'isPartOf': {'@type': 'WebSite', 'url': app.request.schemeAndHttpHost ~ '/'},
     } %}
     {% if page.loc('lead', locale) %}{% set _ld = _ld|merge({'description': page.loc('lead', locale)|striptags}) %}{% endif %}

@@ -99,6 +99,14 @@ while (($url = array_shift($queue)) !== null) {
         $errors[] = sprintf('  %s: %s %s', $url, $e::class, $e->getMessage());
     }
     $ok = $code >= 200 && $code < 400;
+    // контентний сайт (ServiceSite.mode = content, 22.10.2026): сервісні розділи, які bin/site перевіряє на кожному сайті,
+    // там навмисно 404 (SiteModeSubscriber) — це не провал
+    $siteOf = $request->attributes->get(\App\EventSubscriber\ServiceHostSubscriber::ATTR_SITE);
+    if (!$ok && $code === 404 && $siteOf instanceof \App\Entity\ServiceSite && $siteOf->isContent()
+        && \in_array(parse_url($url, PHP_URL_PATH), ['/services/', '/districts/', '/faq/'], true)) {
+        $ok = true;
+        $url .= ' (контентний сайт)';
+    }
     // місто під noindex (демо, місто в розробці): sitemap.xml навмисно 404, а robots.txt каже Disallow: / — це не провал
     if (!$ok && $code === 404 && str_ends_with($url, '/sitemap.xml')) {
         $robots = $kernel->handle(Request::create(preg_replace('~/sitemap\.xml$~', '/robots.txt', $url), 'GET', [], [], [], ['HTTP_USER_AGENT' => 'service-engine smoke']));
