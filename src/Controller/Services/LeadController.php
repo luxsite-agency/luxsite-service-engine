@@ -56,7 +56,7 @@ final class LeadController extends AbstractController
         $city = $this->serviceCity($request);
         $back = $this->backUrl($request);
         // /lead нелокалізований, тож локаль беремо зі сторінки-джерела, не з request
-        $locale = str_starts_with((string) parse_url($back, PHP_URL_PATH), '/ru/') ? 'ru' : 'uk';
+        $locale = $this->container->get(SiteLocales::class)->ofPath((string) parse_url($back, PHP_URL_PATH));
 
         if (!$this->isCsrfTokenValid('sv_lead', (string) $request->request->get('_token'))) {
             $this->addFlash('lead_error', 'Сесія застаріла, спробуйте ще раз.');
