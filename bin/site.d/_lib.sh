@@ -79,6 +79,31 @@ for s in items:
 PY
 }
 
+# pack_brand_themes <config/parameters.yaml паку> — теки тем брендів (app.brands, 22.10.2026): theme.key бренду або його
+# slug, по одній на рядок; лише [a-z0-9-] (той самий формат, що ключ сайту). Нема app.brands — нічого.
+pack_brand_themes() {
+    need_yaml
+    "${SITE_PYTHON:-python3}" - "$1" <<'PY' | tr -d '\r'
+import re, sys, yaml
+data = yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}
+brands = ((data.get("parameters") or {}).get("app.brands") or {}) if isinstance(data, dict) else {}
+seen = []
+for slug, b in (brands.items() if isinstance(brands, dict) else []):
+    key = str(((b or {}).get("theme") or {}).get("key") or slug) if isinstance(b, dict) else str(slug)
+    if re.fullmatch(r"[a-z0-9][a-z0-9-]*", key) and key not in seen:
+        seen.append(key)
+print("\n".join(seen))
+PY
+}
+
+# pack_hash <тека паку> <ключ> — хеш вмісту паку, що йде в реліз (тег <sha>-<хеш>): параметри, тема сайту, теми брендів,
+# переклади, шаблони. Один для deploy і sync, інакше sync перерозгортав би сайт щоразу.
+pack_hash() {
+    local pack="$1" key="$2" b dirs=("themes/$2")
+    while IFS= read -r b; do [ -n "$b" ] && [ "$b" != "$key" ] && dirs+=("themes/$b"); done < <(pack_brand_themes "$pack/config/parameters.yaml")
+    (cd "$pack" && { find config/parameters.yaml "${dirs[@]}" translations templates -type f 2>/dev/null || true; } | LC_ALL=C sort | xargs -r sha256sum | sha256sum | cut -c1-8)
+}
+
 # ---------- Контекст сайту з реєстру ----------
 # site_ctx <key> — заповнює S_* одним викликом python:
 #   S_HOST S_USER S_PATH S_RUNTIME (fastpanel|docker) S_PROXY (docker: traefik — стенд, docker-compose.traefik.yml;
