@@ -90,8 +90,8 @@ request), тож будь-який контролер ішов би без вх�
 `src/AdminApi/LiveThemePolicy.php`; невідоме ім'я = відмова:
 
 - теги, фільтри, функції, тести — зі списків; `render`, `render_*`, `controller`, `include_only`, `attribute`, `source`,
-  `dump`, `|invoke`, тест `constant` — нема; `constant()` — лише `JSON_*`; `filter`/`map`/`reduce`/`sort`/`find` — лише
-  зі стрілочною функцією (не рядок `'system'`);
+  `dump`, `|invoke`, тест `constant` — нема; `constant()` — лише `JSON_*`; `filter`/`map`/`reduce`/`sort`/`find` і оператори
+  `has some`/`has every` — лише зі стрілочною функцією (не рядок `'system'`);
 - `app` — лише точні ланцюжки: `app.request.locale|pathInfo|uri|requestUri|host|schemeAndHttpHost`,
   `app.request.query.get|has|all`, `app.user` (далі — властивості зі списку, напр. `email`, `displayName`), `app.flashes`,
   `app.current_route`, `app.locale`; саме `app.request` — лише як умова (`{% if app.request %}`, `is null`, `not`, `and/or`).

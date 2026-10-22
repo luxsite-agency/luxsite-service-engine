@@ -60,7 +60,9 @@ final class ThemeTemplateGuardTest extends KernelTestCase
         yield 'деструктуризація в set' => ["{% set x = ({request: r} = site) %}"];
         yield 'деструктуризація в друці' => ['{{ {name: n} = site }}'];
         yield 'деструктуризація послідовності' => ['{% do [a, b] = [1, 2] %}'];
-        yield 'присвоєння у виразі' => ['{% set x = (y = 5) %}'];
+        yield 'has some(callable)' => ["{{ ['abc'] has some('is_string') ? 1 : 0 }}"];
+        yield 'has every(змінна)' => ["{% set f = 'is_string' %}{{ ['abc'] has every(f) ? 1 : 0 }}"];
+        yield 'присвоєння у виразі' =>['{% set x = (y = 5) %}'];
         yield "loop['parent']" => ["{% for i in [1] %}{% set c = loop['parent'] %}{% endfor %}"];
         yield 'loop[вираз]' => ["{% for i in [1] %}{% set c = loop['par' ~ 'ent'] %}{% endfor %}"];
         yield 'loop як значення' => ["{% for i in [1] %}{% set l = loop %}{{ l['parent']['app'] }}{% endfor %}"];
@@ -124,6 +126,7 @@ final class ThemeTemplateGuardTest extends KernelTestCase
         yield 'import partial' => ["{% import 'services/partials/_schema.html.twig' as schema %}"];
         yield 'include partial' => ["{% include 'services/partials/_faq.html.twig' with {faq: []} only %}{{ include('@engine/services/partials/_messengers.html.twig') }}"];
         yield 'стрілочні' => ['{{ [1, 2]|map(v => v * 2)|filter(v => v > 2)|sort((a, b) => a <=> b)|join(",") }}'];
+        yield 'has some зі стрілкою' => ['{{ [1, 2] has some(v => v > 1) and [1, 2] has every(v => v > 0) ? 1 : 0 }}'];
         yield 'constant(JSON_*)' => ["{{ {a: 1}|json_encode(constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES'))|raw }}"];
         yield 'функції рушія' => ["{{ path('sv_home') }}{{ csrf_token('lead') }}{{ asset('x.css') }}{{ theme.get('logo') }}{{ site_brand(site, locale) }}"];
         yield 'loop' => ["{% for x in [1] %}{{ loop.index }}{{ loop.first ? 'a' }}{{ loop.length }}{{ loop['last'] ? 'z' }}{% endfor %}"];

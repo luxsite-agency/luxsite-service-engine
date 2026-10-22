@@ -12,6 +12,8 @@ use Twig\Error\SyntaxError;
 use Twig\Node\EmbedNode;
 use Twig\Node\Expression\ArrowFunctionExpression;
 use Twig\Node\Expression\Binary\AndBinary;
+use Twig\Node\Expression\Binary\HasEveryBinary;
+use Twig\Node\Expression\Binary\HasSomeBinary;
 use Twig\Node\Expression\Binary\ObjectDestructuringSetBinary;
 use Twig\Node\Expression\Binary\OrBinary;
 use Twig\Node\Expression\Binary\SequenceDestructuringSetBinary;
@@ -48,7 +50,7 @@ use Twig\Template;
  *   - extends / include / embed / import / use / block(name, template) — лише літерал services/**, partials/** або
  *     @engine/services/**, @engine/partials/** (*.twig) — не адмінка, не листи, не шаблони бандлів;
  *   - constant — лише літерал JSON_*; filter / map / reduce / sort / find — лише зі стрілочною функцією (рядок-callable
- *     'system' Twig 3 ще приймає);
+ *     'system' Twig 3 ще приймає); те саме для операторів has some / has every;
  *   - присвоєння у виразі (x = …, {key: v} = obj, [a, b] = …, Twig 3.27+) — відмова: деструктуризація об'єкта компілюється в
  *     getAttribute(obj, key, ANY_CALL) без GetAttrExpression, тож ключ оминав би список властивостей (рев'ю PR #8:
  *     {% do {request: r} = loop['parent']['app'] %}{% do {server: s} = r %}{{ s.get('APP_SECRET') }});
@@ -116,6 +118,9 @@ final class ThemeTemplateGuard
             $this->reference($expr, 'import', $problems);
         } elseif ($node instanceof SetBinary || $node instanceof ObjectDestructuringSetBinary || $node instanceof SequenceDestructuringSetBinary) {
             $problems[] = sprintf('присвоєння у виразі (рядок %d): у живій темі лише {%% set x = … %%}, без = і деструктуризації {key: v} = …', $node->getTemplateLine());
+        } elseif (($node instanceof HasSomeBinary || $node instanceof HasEveryBinary) && !$node->getNode('right') instanceof ArrowFunctionExpression) {
+            // x has some('system') — CoreExtension::arraySome викликає будь-який callable (рев'ю PR #8)
+            $problems[] = sprintf('has some / has every (рядок %d): лише стрілочна функція (v => …), не рядок-callable', $node->getTemplateLine());
         } elseif ($node instanceof BlockReferenceExpression && $node->hasNode('template')) {
             $this->reference($node->getNode('template'), 'block()', $problems);
         } elseif ($node instanceof GetAttrExpression) {
