@@ -14,6 +14,7 @@ use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -55,7 +56,7 @@ final class LeadController extends AbstractController
         $city = $this->serviceCity($request);
         $back = $this->backUrl($request);
         // /lead нелокалізований, тож локаль беремо зі сторінки-джерела, не з request
-        $locale = str_starts_with((string) parse_url($back, PHP_URL_PATH), '/ru/') ? 'ru' : 'uk';
+        $locale = $this->container->get(SiteLocales::class)->ofPath((string) parse_url($back, PHP_URL_PATH));
 
         if (!$this->isCsrfTokenValid('sv_lead', (string) $request->request->get('_token'))) {
             $this->addFlash('lead_error', 'Сесія застаріла, спробуйте ще раз.');
@@ -134,6 +135,6 @@ final class LeadController extends AbstractController
             return $path . ($query ? '?' . $query : '');
         }
 
-        return $this->generateUrl('sv_home', ['_locale' => 'uk']);
+        return $this->generateUrl('sv_home', ['_locale' => $this->container->get(SiteLocales::class)->default()]);
     }
 }

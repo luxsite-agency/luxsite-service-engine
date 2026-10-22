@@ -40,21 +40,30 @@ trait ServiceCityAware
         return $site;
     }
 
-    /**
-     * Абсолютні URL сторінки в обох локалях (canonical + hreflang + перемикач мов).
-     * Слаги різняться між мовами — ru-параметри передаються окремо, коли треба.
-     *
-     * @param array<string, string> $ukParams
-     * @param array<string, string>|null $ruParams null = ті самі, що uk
-     *
-     * @return array{uk: string, ru: string}
-     */
-    private function altUrls(string $route, array $ukParams = [], ?array $ruParams = null): array
+    /** Мови розгортання й бренду (SiteLocales) — у локатор AbstractController */
+    public static function getSubscribedServices(): array
     {
-        return [
-            'uk' => $this->generateUrl($route, $ukParams + ['_locale' => 'uk'], UrlGeneratorInterface::ABSOLUTE_URL),
-            'ru' => $this->generateUrl($route, ($ruParams ?? $ukParams) + ['_locale' => 'ru'], UrlGeneratorInterface::ABSOLUTE_URL),
-        ];
+        return parent::getSubscribedServices() + [SiteLocales::class => SiteLocales::class];
+    }
+
+    /**
+     * Абсолютні URL сторінки мовами бренду (canonical + hreflang + перемикач мов): мова → URL у порядку мов
+     * розгортання (для типових uk/ru — {uk, ru}). Слаги різняться між мовами — тоді параметри передаються
+     * функцією від мови: fn (string $l) => ['slug' => $post->slug($l)].
+     *
+     * @param array<string, string>|\Closure(string): array<string, string> $params
+     *
+     * @return array<string, string>
+     */
+    private function altUrls(string $route, array|\Closure $params = []): array
+    {
+        $urls = [];
+        foreach ($this->container->get(SiteLocales::class)->enabled() as $locale) {
+            $p = $params instanceof \Closure ? $params($locale) : $params;
+            $urls[$locale] = $this->generateUrl($route, $p + ['_locale' => $locale], UrlGeneratorInterface::ABSOLUTE_URL);
+        }
+
+        return $urls;
     }
 
     /**
@@ -69,9 +78,9 @@ trait ServiceCityAware
      * можна: «прибирання квартир Харків» - окремий запит, і canonical на
      * Київ означав би відмову від харківської видачі.
      *
-     * @param array{uk: string, ru: string} $altUrls
+     * @param array<string, string> $altUrls
      *
-     * @return array{uk: string, ru: string}|null
+     * @return array<string, string>|null
      */
     private function apexUrls(array $altUrls, ServiceCity $city, ?ServiceCity $apex): ?array
     {
@@ -80,10 +89,8 @@ trait ServiceCityAware
             return null;
         }
 
-        $swap = static fn (string $url): string => (string) preg_replace(
+        return array_map(static fn (string $url): string => (string) preg_replace(
             '~^(https?://)[^/]+~', '$1' . $host, $url,
-        );
-
-        return ['uk' => $swap($altUrls['uk']), 'ru' => $swap($altUrls['ru'])];
+        ), $altUrls);
     }
 }

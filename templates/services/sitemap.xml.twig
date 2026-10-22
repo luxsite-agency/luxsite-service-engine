@@ -2,17 +2,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
+{#- e.urls: мова бренду → URL; xhtml:link лише коли мов більше однієї, x-default — мова без префікса #}
 {%- for e in entries %}
-{%- for locale in ['uk', 'ru'] %}
+{%- for locale, loc in e.urls %}
     <url>
-        <loc>{{ attribute(e, locale) }}</loc>
+        <loc>{{ loc }}</loc>
 {%- if e.lastmod %}
         <lastmod>{{ e.lastmod|date('Y-m-d') }}</lastmod>
 {%- endif %}
-        <xhtml:link rel="alternate" hreflang="uk" href="{{ e.uk }}"/>
-        <xhtml:link rel="alternate" hreflang="ru" href="{{ e.ru }}"/>
-        <xhtml:link rel="alternate" hreflang="x-default" href="{{ e.uk }}"/>
-    </url>
+{%- if e.urls|length > 1 %}
+{% for l, u in e.urls %}        <xhtml:link rel="alternate" hreflang="{{ l }}" href="{{ u }}"/>
+{% endfor %}        <xhtml:link rel="alternate" hreflang="x-default" href="{{ e.urls|first }}"/>
+{% endif %}    </url>
 {%- endfor %}
 {%- endfor %}
 </urlset>

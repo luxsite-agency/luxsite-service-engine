@@ -1,13 +1,13 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Генерична сторінка помилки (500 та інші). Мінімальна і самодостатня. #}
-{% set isRu = app.request is not null and app.request.pathInfo starts with '/ru/' %}
+{% set _l = sv_path_locale() %}{% set isRu = _l == 'ru' %}
 <!DOCTYPE html>
-<html lang="{{ isRu ? 'ru' : 'uk' }}">
+<html lang="{{ _l }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ isRu ? 'Произошла ошибка' : 'Сталася помилка' }}</title>
+    <title>{{ isRu ? 'Произошла ошибка' : (_l == 'en' ? 'Something went wrong' : 'Сталася помилка') }}</title>
     <style>
         body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
                min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -27,6 +27,10 @@
         <h1>Что-то пошло не так</h1>
         <p class="sub">Мы уже знаем о проблеме. Обновите страницу через минуту.</p>
         <a class="btn" href="/ru/">На главную</a>
+    {% elseif _l == 'en' %}
+        <h1>Something went wrong</h1>
+        <p class="sub">We already know about the problem. Please reload the page in a minute.</p>
+        <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/en/' }}">Back to home</a>
     {% else %}
         <h1>Щось пішло не так</h1>
         <p class="sub">Ми вже знаємо про проблему. Оновіть сторінку за хвилину.</p>

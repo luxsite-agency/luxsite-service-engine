@@ -122,11 +122,7 @@ final class DistrictController extends AbstractController
             // район без власного FAQ показує міський (пак: app.district_faq_fallback)
             'faq' => $district->loc('faq', $request->getLocale())
                 ?: ($this->getParameter('app.district_faq_fallback') ? ($city->loc('faq', $request->getLocale()) ?? []) : []),
-            'altUrls' => $this->altUrls(
-                'sv_district',
-                ['slug' => $district->slug('uk')],
-                ['slug' => $district->slug('ru')],
-            ),
+            'altUrls' => $this->altUrls('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)]),
         ]);
     }
 
