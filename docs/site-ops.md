@@ -19,9 +19,11 @@
   (кеш у `<path>/.composer`), симлінки на спільне (`shared/.env.local`, `shared/media` → `public/media`, `shared/log` → `var/log`),
   бекап `*-pre-deploy.tar`, `doctrine:migrations:migrate`, `cache:warmup`, `lint:twig templates/site` (коли пак має свої шаблони), **smoke** (`bin/smoke.php`: ядро Symfony обробляє
   `/`, `/services/`, `/districts/`, `/faq/`, `/sitemap.xml`, `/robots.txt`, `/login` адмінки, а з карти сайту сам додає першу
-  послугу, район і пост блогу та першу картинку Liip зі сторінки послуги — без веб-сервера, бо другого php-fpm на FastPanel нема), перемикання
+  послугу, район і пост блогу та першу картинку Liip зі сторінки послуги — без веб-сервера, бо другого php-fpm на FastPanel нема;
+  у схемі `slug` — першу, середню й останню адресу `/<x>/` з карти, а що відкрилося, пише за маршрутом: item/category/page;
+  з `app.pages` — і сторінки; хости `domains.extra` — їхні `/`, `/sitemap.xml`, `/robots.txt` з тим самим автовідкриттям), перемикання
   `current → releases/<tag>` + `release.env`, скидання php-fpm (`server.fpm_reload`), перевірка через nginx
-  (`server.check_ip`); провал після перемикання — автоматичний відкат на попередній тег.
+  (`server.check_ip`; головна апекса і кожного хоста `domains.extra`); провал після перемикання — автоматичний відкат на попередній тег.
 - **Два рантайми** (`server.runtime`): `fastpanel` — ssh під root (аліас сервера), файлові дії `sudo -u <server.user>`,
   php = `server.php`; `docker` — compose релізу, `SITE_ROOT=<path>`, проєкт `service-<key>`. Для docker `server.proxy`:
   `traefik` (типово) — стенд за traefik, `docker-compose.traefik.yml` (розділ «Стенд у Docker за traefik»); `edge` — прод
@@ -122,8 +124,15 @@ bin/site deploy example --pack ~/site-example
 
 Читає стан: доступ, `ARCHIVED` проти `status`, версія рушія проти `engine` реєстру, docroot панелі (fastpanel) або
 контейнери (docker), `doctrine:migrations:up-to-date`, останній звичайний бекап (старший за 36 год або менший за 50K — WARN),
-cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), TLS сайту й адмінки (< 14 днів — WARN).
-Код виходу 1 при FAIL.
+cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), збіги слагів у корені сайту
+(`bin/console app:site:slugs`: дві послуги / послуга й категорія / сторінка й категорія на одній адресі або запис на адресі
+фіксованого розділу — FAIL з переліком; рушій без команди — рядка нема), TLS сайту, адмінки й кожного хоста `domains.extra`
+(< 14 днів — WARN). Код виходу 1 при FAIL.
+
+**Місто на окремому домені** (не піддомен апекса; `ServiceCity.host` = інший домен): допишіть хост у реєстр —
+`domains.extra: [klinika-misto.example]` — і docroot панелі в `server.docroot_extra` (cutover перемикає всі). Тоді smoke
+деплою й перевірка через nginx ходять і на цей домен, а doctor перевіряє його сертифікат (wildcard апекса окремий домен
+не покриває). Валідатор: список імен хостів без повторів і без `domains.site`/`domains.admin`.
 
 ### archive
 

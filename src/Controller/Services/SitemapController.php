@@ -13,6 +13,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
@@ -41,6 +42,7 @@ final class SitemapController extends AbstractController
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceCalcTypeRepository $calcTypes,
+        private readonly ServicePageRepository $pages,
     ) {
     }
 
@@ -72,14 +74,14 @@ final class SitemapController extends AbstractController
 
         $add('sv_home', [], null, $city->getUpdatedAt());
         $add('sv_services');
-        // у схемах nested і root у карті є й сторінки категорій
+        // у схемах nested, root і slug у карті є й сторінки категорій
         // послуги, що надаються в цьому місті (sitemap — на хост міста); категорії без них — поза картою
         $siteItems = $this->items->findActiveBySite($site, $city);
         $catsWithItems = [];
         foreach ($siteItems as $item) {
             $catsWithItems[$item->getCategory()->getId()] = true;
         }
-        if ($this->catalogUrls->isNested()) {
+        if ($this->catalogUrls->hasCategoryPages()) {
             foreach ($this->categories->findActiveBySite($site) as $category) {
                 if (!$category->isLanding() || !isset($catsWithItems[$category->getId()])) {
                     continue; // не посадкова: noindex, у карті сайту їй не місце
@@ -123,6 +125,12 @@ final class SitemapController extends AbstractController
         }
         if ($site->getAboutUk() !== null) {
             $add('sv_about');
+        }
+        // сторінки app.pages, видимі в цьому місті (своя карта на кожен хост, як у послуг)
+        if ($this->getParameter('app.pages')) {
+            foreach ($this->pages->findLiveBySite($site, $city) as $page) {
+                $add('sv_page', ['path' => $page->path('uk')], ['path' => $page->path('ru')], $page->getUpdatedAt());
+            }
         }
         // калькулятор є лише в брендів, де він наповнений (типи в БД)
         if ($this->calcTypes->findActiveBySite($site) !== []) {
