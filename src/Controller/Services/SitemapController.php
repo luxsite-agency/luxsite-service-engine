@@ -7,12 +7,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Repository\ServiceAuthorRepository;
 use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
@@ -42,6 +44,8 @@ final class SitemapController extends AbstractController
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceCalcTypeRepository $calcTypes,
+        private readonly ServicePostCategoryRepository $postCategories,
+        private readonly ServiceAuthorRepository $authors,
     ) {
     }
 
@@ -65,6 +69,10 @@ final class SitemapController extends AbstractController
         $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null) use (&$entries): void {
             $entries[] = ['urls' => $this->altUrls($route, $params), 'lastmod' => $lastmod];
         };
+
+        if ($site->isContent()) {
+            return $this->xml($this->contentEntries($site, $city));
+        }
 
         // lastmod беремо з даних сторінки, а не з дати деплою: інакше
         // «змінилось усе й сьогодні» щоразу, і Google перестає вірити даті
@@ -132,12 +140,78 @@ final class SitemapController extends AbstractController
         $add('sv_privacy');
         $add('sv_terms');
 
+        return $this->xml($entries);
+    }
+
+    /** @param list<array{urls: array<string, string>, lastmod: ?\DateTimeInterface}> $entries */
+    private function xml(array $entries): Response
+    {
         $response = $this->render('services/sitemap.xml.twig', ['entries' => $entries]);
         $response->headers->set('Content-Type', 'application/xml; charset=UTF-8');
         $response->setPublic();
         $response->setMaxAge(3600);
 
         return $response;
+    }
+
+    /**
+     * Карта контентного сайту (ServiceSite.mode = content): головна, блог, рубрики й автори зі статтями, статті, «Про нас»,
+     * контакти, юридичні сторінки. Сторінки, що існують не всіма мовами бренду (статті, рубрики), — лише своїми мовами.
+     * Блог і статті — лише на апексі (як у сервісного сайту).
+     *
+     * @return list<array{urls: array<string, string>, lastmod: ?\DateTimeInterface}>
+     */
+    private function contentEntries(\App\Entity\ServiceSite $site, \App\Entity\ServiceCity $city): array
+    {
+        $locales = $this->container->get(SiteLocales::class)->enabled($site);
+        $default = $locales[0] ?? 'en';
+        $entries = [];
+        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null, ?\Closure $existsIn = null) use (&$entries): void {
+            $urls = $this->altUrls($route, $params);
+            if ($existsIn !== null) {
+                $urls = array_filter($urls, $existsIn, \ARRAY_FILTER_USE_KEY);
+            }
+            if ($urls !== []) {
+                $entries[] = ['urls' => $urls, 'lastmod' => $lastmod];
+            }
+        };
+
+        $add('sv_home', [], $city->getUpdatedAt());
+        $apex = $this->cities->findActiveApex($site);
+        if ($apex === null || $apex->getId() === $city->getId()) {
+            $posts = $this->posts->findPublishedBySite($site, 5000, $default);
+            if ($posts !== []) {
+                $add('sv_blog');
+            }
+            $withPosts = ['cat' => [], 'author' => []];
+            foreach ($posts as $post) {
+                $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l) ?: '-'], $post->getPublishedAt(), $post->existsIn(...));
+                if ($post->getCategory() !== null) {
+                    $withPosts['cat'][$post->getCategory()->getId()] = true;
+                }
+                if ($post->getAuthor() !== null) {
+                    $withPosts['author'][$post->getAuthor()->getId()] = true;
+                }
+            }
+            foreach ($this->postCategories->findActiveBySite($site, $default) as $c) {
+                if (isset($withPosts['cat'][$c->getId()])) {
+                    $add('sv_blog_category', static fn (string $l): array => ['slug' => $c->slug($l) ?: '-'], null, $c->existsIn(...));
+                }
+            }
+            foreach ($this->authors->findActiveBySite($site) as $a) {
+                if (isset($withPosts['author'][$a->getId()])) {
+                    $add('sv_author', ['slug' => $a->getSlug()]);
+                }
+            }
+        }
+        if ($site->aboutFor($default) !== null || $city->aboutFor($default) !== null) {
+            $add('sv_about');
+        }
+        $add('sv_contacts');
+        $add('sv_privacy');
+        $add('sv_terms');
+
+        return $entries;
     }
 
     #[Route(path: '/robots.txt', name: 'sv_robots', priority: 10)]

@@ -44,6 +44,10 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $name = null;
 
+    /** Email з форми зв'язку контентного сайту (22.10.2026); у заявках сервісних сайтів — NULL */
+    #[ORM\Column(length: 190, nullable: true)]
+    private ?string $email = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
 
@@ -139,6 +143,18 @@ class ServiceLead implements TimestampableInterface
     public function setPhone(string $phone): self
     {
         $this->phone = $phone;
+
+        return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): self
+    {
+        $this->email = $email;
 
         return $this;
     }

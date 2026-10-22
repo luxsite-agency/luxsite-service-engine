@@ -7,7 +7,9 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\ServiceAuthor;
 use App\Entity\ServicePost;
+use App\Entity\ServicePostCategory;
 use App\Entity\ServiceSite;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -71,6 +73,55 @@ class ServicePostRepository extends ServiceEntityRepository
         return (int) $this->published($site, $locale)
             ->select('COUNT(p.id)')
             ->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Сторінка статей рубрики чи автора (контентний сайт): мовою $locale, свіжі першими; $perPage <= 0 = усі.
+     *
+     * @return ServicePost[]
+     */
+    public function findPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author, int $page, int $perPage): array
+    {
+        $qb = $this->filtered($site, $locale, $category, $author)
+            ->orderBy('p.publishedAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC');
+        if ($perPage > 0) {
+            $qb->setFirstResult(max(0, $page - 1) * $perPage)->setMaxResults($perPage);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function countPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author): int
+    {
+        return (int) $this->filtered($site, $locale, $category, $author)->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * «Обрані» статті для головної контентного сайту, свіжі першими.
+     *
+     * @return ServicePost[]
+     */
+    public function findFeatured(ServiceSite $site, string $locale, int $limit): array
+    {
+        return $this->published($site, $locale)
+            ->andWhere('p.featured = true')
+            ->orderBy('p.publishedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    private function filtered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author): \Doctrine\ORM\QueryBuilder
+    {
+        $qb = $this->published($site, $locale);
+        if ($category !== null) {
+            $qb->andWhere('p.category = :cat')->setParameter('cat', $category);
+        }
+        if ($author !== null) {
+            $qb->andWhere('p.author = :author')->setParameter('author', $author);
+        }
+
+        return $qb;
     }
 
     /** Опубліковані статті сайту (+ умова мови, якщо задано) */

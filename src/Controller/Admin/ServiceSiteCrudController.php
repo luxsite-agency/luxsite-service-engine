@@ -79,6 +79,9 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield TextField::new('schemaType', 'Schema.org тип')
             ->setHelp('Підтип LocalBusiness для JSON-LD: Electrician, Plumber, HouseCleaning…');
         yield BooleanField::new('active', 'Активний');
+        yield ChoiceField::new('mode', 'Режим')->hideOnIndex()
+            ->setChoices(['Сервісний (каталог, ціни, заявки)' => 'services', 'Контентний (блог, рубрики, форма зв\'язку)' => 'content'])
+            ->setHelp('Контентний: головна зі статтями, рубрики, автори, «Про нас», форма зв\'язку; каталог, райони, відгуки, FAQ і калькулятор — 404, контакти міста не публікуються.');
         yield ChoiceField::new('locales', 'Мови сайту')->hideOnIndex()
             ->setChoices(array_combine(array_map('strtoupper', $this->locales), $this->locales))
             ->allowMultipleChoices()->renderExpanded()

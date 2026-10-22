@@ -846,7 +846,7 @@
                 });
             })();
         </script>
-        <div class="floating-cta">
+        {# плаваюча кнопка й модалка заявки: контентний сайт перекриває блок порожнім #}{% block lead_cta %}<div class="floating-cta">
             <button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button>
         </div>
         <dialog class="lead-modal" id="lead-modal">
@@ -867,7 +867,8 @@
                 window.addEventListener('resize', update);
                 update();
             })();
-        </script>
+        </script>{% endblock %}
+
         {#~ Банер згоди на cookie (адмінка → Налаштування → «Банер згоди на cookie»): показується, поки нема cookie sv_consent;
             «Прийняти» — consent update granted і старт Clarity/Pixel (svTags 'consent'), «Відхилити» — denied. 180 днів. #}
         {%~ if _svTags.consentBanner %}

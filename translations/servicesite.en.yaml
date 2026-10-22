@@ -215,3 +215,43 @@ footer.copyright: 'All website materials are protected by law.'
 works.title: 'Our work'
 works.before: 'Before'
 works.after: 'After'
+
+# Content site (22.10.2026): contact form instead of a service request, default legal texts (%site%, %domain%, %contact% = contact form URL)
+contact.title: 'Contact us'
+contact.intro: 'Send us a message and we will reply to the email address you provide.'
+contact.email: 'Email'
+contact.message: 'Message'
+contact.submit: 'Send message'
+contact.privacy_note: 'By sending this form you agree to our <a href="%url%">privacy policy</a>.'
+contact.invalid: 'Please check your email address and message.'
+contact.too_many: 'Too many messages in a row. Please try again later.'
+contact.thanks_title: 'Thank you, your message has been sent'
+contact.thanks_text: 'We will reply to the email address you provided.'
+legal.privacy_html: |
+    <p>%site% operates %domain%. This policy explains how we handle visitor data on our website.</p>
+    <h2>Data We Collect</h2>
+    <p>We only receive personal information that you voluntarily submit through our <a href="%contact%">contact form</a>. This includes:</p>
+    <ul>
+    <li>Your name</li>
+    <li>Your email address</li>
+    <li>Your message text</li>
+    </ul>
+    <p>We use this information solely to reply to you. We do not sell or rent your personal data; it is processed only by the services needed to run the site (hosting, email delivery).</p>
+    <h2>Technical Data and Cookies</h2>
+    <p>The website server automatically collects basic technical data, such as IP addresses and browser logs, to ensure secure operation. If web analytics is enabled (for example, Google Analytics), it sets cookies to help us understand site usage. You can manage your preferences through our cookie banner.</p>
+    <h2>Storage and Rights</h2>
+    <p>We store messages sent via the form for up to 12 months. You have the right to request access to your personal data, ask for corrections, or request deletion. To exercise these rights, write to us using the <a href="%contact%">contact form</a>.</p>
+    <h2>Changes</h2>
+    <p>We may update this policy occasionally. Any revisions will be published directly on this page.</p>
+legal.terms_html: |
+    <p>Welcome to %domain%. By accessing and reading our website, you agree to the following terms.</p>
+    <h2>Informational Content</h2>
+    <p>All articles, guides, and materials published on %domain% are provided for general informational purposes only. They do not constitute professional advice. You should not rely on this content without seeking independent expert counsel.</p>
+    <h2>Accuracy and Guarantees</h2>
+    <p>%site% works to keep all information up to date and accurate. However, we offer no express or implied guarantees regarding the completeness, reliability, or availability of the website content.</p>
+    <h2>External Links</h2>
+    <p>Our website may contain links to external web resources. %site% does not control or endorse these third-party websites and bears no responsibility for their content or privacy practices.</p>
+    <h2>Copyright</h2>
+    <p>Unless stated otherwise, all text and image content on %domain% belongs to %site%. You may quote short excerpts from our articles provided that you include an active link to the original page on %domain%.</p>
+    <h2>Contact Us</h2>
+    <p>If you have any questions about these terms, please send a message through the <a href="%contact%">contact form</a>.</p>

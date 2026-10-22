@@ -1,0 +1,18 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Юридична сторінка контентного сайту: текст бренду з адмінки (text) або типовий текст рушія з перекладів (legal.<kind>.*). #}
+{% extends 'services/content/layout.html.twig' %}
+
+{% set _h1 = heading|trans({}, 'servicesite') %}
+
+{% block title %}{{ _h1 }} - {{ site.brandName(locale) ?? site.name }}{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ _h1 }}
+    </nav>
+    <h1>{{ _h1 }}</h1>
+    <div class="block legal-text">
+        {% if text %}{{ text|raw }}{% else %}{{ ('legal.' ~ kind ~ '_html')|trans({'%site%': site.brandName(locale) ?? site.name, '%domain%': site.apexDomain, '%contact%': path('sv_contacts')}, 'servicesite')|raw }}{% endif %}
+    </div>
+{% endblock %}

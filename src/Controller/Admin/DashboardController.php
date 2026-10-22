@@ -87,6 +87,9 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(ServiceReviewCrudController::class, 'Відгуки клієнтів', 'fa fa-star-half-stroke');
         yield MenuItem::linkTo(ServiceTeamMemberCrudController::class, 'Команда', 'fa fa-people-group');
         yield MenuItem::linkTo(ServicePostCrudController::class, 'Блог', 'fa fa-pen');
+        // контентні сайти (22.10.2026): рубрики й автори блогу
+        yield MenuItem::linkTo(ServicePostCategoryCrudController::class, 'Рубрики блогу', 'fa fa-tags');
+        yield MenuItem::linkTo(ServiceAuthorCrudController::class, 'Автори статей', 'fa fa-user-pen');
         yield MenuItem::linkTo(ServiceWorkCrudController::class, 'Наші роботи', 'fa fa-camera');
 
         yield MenuItem::section('Калькулятор');

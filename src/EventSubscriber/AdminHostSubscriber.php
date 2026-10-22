@@ -10,6 +10,7 @@ namespace App\EventSubscriber;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
@@ -28,7 +29,21 @@ final class AdminHostSubscriber implements EventSubscriberInterface
 
     public static function getSubscribedEvents(): array
     {
-        return [KernelEvents::REQUEST => ['onKernelRequest', 40]];
+        return [
+            KernelEvents::REQUEST => ['onKernelRequest', 40],
+            KernelEvents::RESPONSE => ['onKernelResponse', -10],
+        ];
+    }
+
+    /**
+     * Службовий хост пошуковикам не потрібен ні в якому вигляді (22.10.2026): X-Robots-Tag на всіх відповідях — і на
+     * сторінках, і на файлах, де <meta robots> не буває. robots.txt там і так «Disallow: /».
+     */
+    public function onKernelResponse(ResponseEvent $event): void
+    {
+        if ($event->isMainRequest() && strtolower($event->getRequest()->getHost()) === strtolower($this->adminHost)) {
+            $event->getResponse()->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        }
     }
 
     public function onKernelRequest(RequestEvent $event): void
