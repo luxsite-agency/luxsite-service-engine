@@ -1,0 +1,14 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Картка статті в списках контентного сайту: post, locale; heading — h2|h3 #}
+<article class="c-post">
+    {% if post.imageName %}<a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}" tabindex="-1"><img src="/media/service_post/{{ post.imageName }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}" width="640" height="360" loading="lazy"></a>{% endif %}
+    <div class="in">
+        <{{ heading|default('h2') }}><a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}">{{ post.loc('title', locale) }}</a></{{ heading|default('h2') }}>
+        <p class="c-meta">
+            {%- if post.publishedAt %}<time datetime="{{ post.publishedAt|date('Y-m-d') }}">{{ sv_date(post.publishedAt, locale) }}</time>{% endif %}
+            {%- if post.category and post.category.existsIn(locale) %} · <a href="{{ path('sv_blog_category', {slug: post.category.slug(locale)}) }}">{{ post.category.loc('title', locale) }}</a>{% endif -%}
+        </p>
+        {% set _lead = post.loc('lead', locale)|striptags|trim %}
+        {% if _lead %}<p>{{ _lead|length > 220 ? _lead|slice(0, 220) ~ '…' : _lead }}</p>{% endif %}
+    </div>
+</article>

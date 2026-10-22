@@ -45,7 +45,7 @@ final class PageController extends AbstractController
             throw $this->createNotFoundException('Сторінку ще не наповнено.');
         }
 
-        return $this->render('services/page/about.html.twig', [
+        return $this->render($site->isContent() ? 'services/content/about.html.twig' : 'services/page/about.html.twig', [
             'site' => $site,
             'city' => $city,
             'team' => $this->teamFor('about', $city),
@@ -77,8 +77,10 @@ final class PageController extends AbstractController
     )]
     public function thanks(Request $request): Response
     {
-        return $this->render('services/page/thanks.html.twig', [
-            'site' => $this->serviceSite($request),
+        $site = $this->serviceSite($request);
+
+        return $this->render($site->isContent() ? 'services/content/thanks.html.twig' : 'services/page/thanks.html.twig', [
+            'site' => $site,
             'city' => $this->serviceCity($request),
             'altUrls' => $this->altUrls('sv_thanks'),
         ]);
@@ -93,6 +95,14 @@ final class PageController extends AbstractController
     public function contacts(Request $request): Response
     {
         $city = $this->serviceCity($request);
+        if ($this->serviceSite($request)->isContent()) {
+            // контентний сайт: лише форма зв'язку, без телефонів, адрес і месенджерів (правило власника 22.10.2026)
+            return $this->render('services/content/contact.html.twig', [
+                'site' => $this->serviceSite($request),
+                'city' => $city,
+                'altUrls' => $this->altUrls('sv_contacts'),
+            ]);
+        }
 
         return $this->render('services/page/contacts.html.twig', [
             'site' => $this->serviceSite($request),
@@ -157,6 +167,17 @@ final class PageController extends AbstractController
     {
         $site = $this->serviceSite($request);
         $text = $site->loc($field, $request->getLocale());
+        if ($site->isContent()) {
+            // контентний сайт: свій каркас і типовий текст під форму зв'язку (без телефонів, відгуків і заявок)
+            return $this->render('services/content/legal.html.twig', [
+                'site' => $site,
+                'city' => $this->serviceCity($request),
+                'heading' => 'nav.' . $field,
+                'kind' => $field,
+                'text' => $text !== null && trim($text) !== '' ? $text : null,
+                'altUrls' => $this->altUrls($route),
+            ]);
+        }
         if ($text === null || trim($text) === '') {
             return $this->render('services/page/' . $field . '.html.twig', [
                 'site' => $site,

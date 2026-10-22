@@ -13,6 +13,8 @@ use App\Repository\ServiceSiteRepository;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
  * Сервісний сайт-бренд (ніша): електрики, клінінг, сантехніки - один рушій, пак на бренд.
@@ -23,6 +25,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'service_site')]
 class ServiceSite implements TimestampableInterface
 {
+    public const MODE_SERVICES = 'services';
+    public const MODE_CONTENT = 'content';
+
     use LocalizedFieldsTrait;
     use TimestampsTrait;
 
@@ -71,6 +76,13 @@ class ServiceSite implements TimestampableInterface
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $locales = null;
+
+    /**
+     * Режим сайту (22.10.2026): services — сервісний сайт (каталог, ціни, райони, заявки; так працювали всі сайти до
+     * цього поля); content — контентний (блог з рубриками й авторами, «Про нас», форма зв'язку; решта маршрутів — 404).
+     */
+    #[ORM\Column(length: 16, options: ['default' => 'services'])]
+    private string $mode = self::MODE_SERVICES;
 
     /**
      * Ілюстрація хіро головної (шлях від кореня public, напр. /themes/<key>/hero.webp).
@@ -225,6 +237,35 @@ class ServiceSite implements TimestampableInterface
         $this->active = $active;
 
         return $this;
+    }
+
+    public function getMode(): string
+    {
+        return $this->mode;
+    }
+
+    public function setMode(string $mode): self
+    {
+        if (!\in_array($mode, [self::MODE_SERVICES, self::MODE_CONTENT], true)) {
+            throw new \InvalidArgumentException(sprintf('Режим сайту: services або content, отримано «%s».', $mode));
+        }
+        $this->mode = $mode;
+
+        return $this;
+    }
+
+    public function isContent(): bool
+    {
+        return $this->mode === self::MODE_CONTENT;
+    }
+
+    /** Англійська є лише в контентному режимі: каталог (послуги, ціни, райони) англійською не перекладено */
+    #[Assert\Callback]
+    public function validateEnglishIsContent(ExecutionContextInterface $context): void
+    {
+        if (\in_array('en', $this->locales ?? [], true) && !$this->isContent()) {
+            $context->buildViolation('Англійська мова доступна лише контентному сайту (режим «Контентний»).')->atPath('locales')->addViolation();
+        }
     }
 
     /** @return list<string>|null */

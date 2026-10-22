@@ -28,6 +28,17 @@ class ServiceLeadRepository extends ServiceEntityRepository
      * Захищає від подвійного натискання й повторної відправки після «назад»
      * (на першому сайті було по дві однакові заявки з інтервалом 1-3 с).
      */
+    /** Та сама адреса з форми зв'язку в цьому місті за останні $seconds секунд (подвійне натискання) */
+    public function findRecentDuplicateEmail(ServiceCity $city, string $email, int $seconds): ?ServiceLead
+    {
+        return $this->createQueryBuilder('l')
+            ->andWhere('l.city = :city')->setParameter('city', $city)
+            ->andWhere('l.email = :email')->setParameter('email', $email)
+            ->andWhere('l.createdAt >= :since')->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)))
+            ->setMaxResults(1)
+            ->getQuery()->getOneOrNullResult();
+    }
+
     public function findRecentDuplicate(ServiceCity $city, string $phone, int $seconds): ?ServiceLead
     {
         $digits = preg_replace('/\D/', '', $phone) ?? '';

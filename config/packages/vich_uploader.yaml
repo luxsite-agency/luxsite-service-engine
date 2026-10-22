@@ -24,6 +24,10 @@ vich_uploader:
             uri_prefix: /media/service_post
             upload_destination: '%kernel.project_dir%/public/media/service_post'
             namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
+        service_author_media:
+            uri_prefix: /media/service_author
+            upload_destination: '%kernel.project_dir%/public/media/service_author'
+            namer: Vich\UploaderBundle\Naming\SmartUniqueNamer
         service_work_media:
             uri_prefix: /media/service_work
             upload_destination: '%kernel.project_dir%/public/media/service_work'
