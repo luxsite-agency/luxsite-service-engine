@@ -40,6 +40,10 @@ parameters:
     # інший набір (сателіти: [en]) переписує їх при компіляції роутера (App\ServiceSite\LocalizedRoutes, Kernel::loadRoutes).
     # Бренд вмикає підмножину в адмінці (ServiceSite.locales; порожньо = усі). Адмінка лишається українською.
     app.locales: [uk, ru]
+    # Дизайн на бренд (22.10.2026, кілька брендів в одному розгортанні): { <slug>: { theme: {…ключі app.theme…} } } —
+    # тема бренду поверх app.theme (key за замовчуванням = slug: body.theme-<slug>, public/themes/<slug>/). Шаблони бренду —
+    # templates/site/brands/<slug>/ (App\Twig\BrandTemplateLoader). Порожньо — одна тема на розгортання, як було.
+    app.brands: {}
     # Коди мови для розмітки: hreflang, og:locale, inLanguage (JSON-LD), підпис у перемикачі мов. Пак перекриває лише
     # потрібне (напр. en: { og: en_GB }); мова без запису — код мови як є.
     app.locale_codes:
