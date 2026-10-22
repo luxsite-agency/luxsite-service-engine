@@ -75,7 +75,7 @@ final class LocalizedRoutesTest extends TestCase
         self::assertSame('/blog/x/', $gen->generate('sv_blog_post', ['slug' => 'x']));
 
         $matched = (new UrlMatcher($out, $context))->match('/de/blog/page/2/');
-        self::assertSame('sv_blog_page.de', $matched['_route']);
+        self::assertSame('sv_blog_page', $matched['_route'], 'матчер віддає канонічне ім\'я');
         self::assertSame('de', $matched['_locale']);
     }
 
