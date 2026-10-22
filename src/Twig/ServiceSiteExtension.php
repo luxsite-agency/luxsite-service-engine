@@ -17,6 +17,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -58,6 +59,7 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.page_meta%')]
         private readonly array $pageMeta = [],
         private readonly ?CustomFields $customFields = null,
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -76,6 +78,12 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
             new TwigFunction('custom_fields', $this->customFieldsOf(...)),
+            // мови розгортання й бренду (app.locales, ServiceSite.locales; 22.10.2026) — замість зашитих uk/ru
+            new TwigFunction('sv_locale', fn (): string => $this->locales()->current()),
+            new TwigFunction('sv_locales', fn (?ServiceSite $site = null): array => $this->locales()->enabled($site)),
+            new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
+            new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
+            new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
         ];
     }
 
@@ -243,7 +251,7 @@ final class ServiceSiteExtension extends AbstractExtension
             return null;
         }
         $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
-        $value = $this->pageMeta[$route][$field . '_' . ($request->getLocale() === 'ru' ? 'ru' : 'uk')] ?? null;
+        $value = $this->pageMeta[$route][$field . '_' . $this->locales()->current()] ?? null;
 
         return \is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
@@ -252,5 +260,10 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    private function locales(): SiteLocales
+    {
+        return $this->siteLocales ?? new SiteLocales($this->requests);
     }
 }

@@ -97,11 +97,7 @@ final class BlogController extends AbstractController
             ?? throw $this->createNotFoundException('Пост не знайдено.');
 
         $city = $this->serviceCity($request);
-        $altUrls = $this->altUrls(
-            'sv_blog_post',
-            ['slug' => $post->slug('uk')],
-            ['slug' => $post->slug('ru')],
-        );
+        $altUrls = $this->altUrls('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l)]);
 
         return $this->render('services/blog/show.html.twig', [
             'site' => $site,

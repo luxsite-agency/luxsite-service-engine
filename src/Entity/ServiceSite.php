@@ -64,6 +64,15 @@ class ServiceSite implements TimestampableInterface
     private bool $active = true;
 
     /**
+     * Мови бренду (22.10.2026): підмножина мов розгортання app.locales у їхньому порядку; null = усі мови розгортання
+     * (так працюють сайти, створені до цього поля). Мова не з набору → 404, hreflang/sitemap/перемикач — лише ці мови.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $locales = null;
+
+    /**
      * Ілюстрація хіро головної (шлях від кореня public, напр. /themes/<key>/hero.webp).
      * Векторна бренд-графіка живе в репо; фото-контент піде через Vich окремо.
      */
@@ -191,6 +200,37 @@ class ServiceSite implements TimestampableInterface
         $this->active = $active;
 
         return $this;
+    }
+
+    /** @return list<string>|null */
+    public function getLocales(): ?array
+    {
+        return $this->locales;
+    }
+
+    /** @param list<string>|null $locales порожній список = null (усі мови розгортання) */
+    public function setLocales(?array $locales): self
+    {
+        $locales = $locales === null ? [] : array_values(array_unique(array_filter($locales, 'is_string')));
+        $this->locales = $locales === [] ? null : $locales;
+
+        return $this;
+    }
+
+    /**
+     * Увімкнені мови бренду в порядку мов розгортання (перша — без префікса).
+     *
+     * @param list<string> $deployment app.locales
+     *
+     * @return list<string>
+     */
+    public function enabledLocales(array $deployment): array
+    {
+        if ($this->locales === null) {
+            return $deployment;
+        }
+
+        return array_values(array_intersect($deployment, $this->locales));
     }
 
     public function getHeroImagePath(): ?string
