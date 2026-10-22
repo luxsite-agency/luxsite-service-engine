@@ -124,10 +124,12 @@ final class ContentSiteTest extends HttpKernelTestCase
         self::assertStringNotContainsString('000 00 00', $page);
         self::assertSame(1, preg_match('/name="_token" value="([^"]+)"/', $page, $m), 'форма з CSRF');
 
-        $bad = $this->http('POST', $base . '/lead', ['_token' => html_entity_decode($m[1]), 'email' => 'not-an-email', 'message' => 'Привіт'], ['HTTP_REFERER' => $base . '/contacts/']);
+        // свій IP на прогін: ліміт заявок (LeadRateLimit) зберігається між прогонами в кеші var/
+        $ip = sprintf('198.51.100.%d', random_int(1, 254));
+        $bad = $this->http('POST', $base . '/lead', ['_token' => html_entity_decode($m[1]), 'email' => 'not-an-email', 'message' => 'Привіт'], ['HTTP_REFERER' => $base . '/contacts/', 'REMOTE_ADDR' => $ip]);
         self::assertTrue($bad->isRedirect($base . '/contacts/') || $bad->isRedirect('/contacts/'), 'невалідний email → назад на форму');
 
-        $ok = $this->http('POST', $base . '/lead', ['_token' => html_entity_decode($m[1]), 'name' => 'Ім’я', 'email' => 'reader@example.com', 'message' => 'Питання про статтю'], ['HTTP_REFERER' => $base . '/contacts/']);
+        $ok = $this->http('POST', $base . '/lead', ['_token' => html_entity_decode($m[1]), 'name' => 'Ім’я', 'email' => 'reader@example.com', 'message' => 'Питання про статтю'], ['HTTP_REFERER' => $base . '/contacts/', 'REMOTE_ADDR' => $ip]);
         self::assertTrue($ok->isRedirect(), 'успіх → «Дякуємо»');
         self::assertStringContainsString('/thank-you/', (string) $ok->headers->get('Location'));
 
