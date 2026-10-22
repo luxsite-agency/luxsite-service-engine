@@ -74,8 +74,21 @@ def check_registry(path):
         if runtime not in ("fastpanel", "docker"):
             err(f"{where}: server.runtime має бути fastpanel|docker")
         proxy = srv.get("proxy")
-        if proxy is not None and (runtime != "docker" or proxy not in ("traefik", "edge")):
-            err(f"{where}: server.proxy — лише для runtime docker: traefik (стенд) | edge (прод за зовнішнім nginx)")
+        if proxy is not None and (runtime != "docker" or proxy not in ("traefik", "edge", "traefik-ext")):
+            err(f"{where}: server.proxy — лише для runtime docker: traefik (стенд) | edge (прод за зовнішнім nginx) | traefik-ext (прод за чужим traefik)")
+        if proxy == "traefik-ext":
+            # прод за наявним traefik сервера (22.10.2026): мережа traefik і резолвер сертифікатів — обов'язкові; мітки — на кожен домен
+            for f in ("network", "certresolver"):
+                v = srv.get(f)
+                if not isinstance(v, str) or not re.match(r"^[A-Za-z0-9_.-]+$", v or ""):
+                    err(f"{where}: server.{f} — обов'язкове для proxy traefik-ext (ім'я docker-мережі traefik / certresolver)")
+            ep = srv.get("entrypoint", "websecure")
+            if not isinstance(ep, str) or not re.match(r"^[A-Za-z0-9_-]+$", ep):
+                err(f"{where}: server.entrypoint — ім'я entrypoint traefik (типово websecure)")
+            if not isinstance(srv.get("www_redirect", False), bool):
+                err(f"{where}: server.www_redirect — true|false (www.<домен> → <домен>; DNS www має існувати, інакше сертифікат не видасться)")
+            if not srv.get("user"):
+                warn(f"{where}: docker/traefik-ext без server.user — shared/.env.local (600) лишиться root-овим, а php у контейнері — www-data")
         compose = srv.get("compose")
         if compose is not None and (runtime != "docker" or not isinstance(compose, str) or not compose.strip()):
             err(f"{where}: server.compose — лише для runtime docker: ім'я compose-файлу в релізі або абсолютний шлях на сервері")

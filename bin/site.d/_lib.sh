@@ -106,6 +106,8 @@ def b(v): return ("yes" if v else "no") if isinstance(v, bool) else ("" if v is 
 vals = {
     "S_HOST": srv.get("host"), "S_USER": srv.get("user"), "S_PATH": srv.get("path"), "S_RUNTIME": srv.get("runtime", "fastpanel"),
     "S_PROXY": srv.get("proxy") or ("traefik" if srv.get("runtime") == "docker" else ""), "S_COMPOSE": srv.get("compose"),
+    "S_NETWORK": srv.get("network"), "S_ENTRYPOINT": srv.get("entrypoint", "websecure"), "S_CERTRESOLVER": srv.get("certresolver"),
+    "S_WWW": srv.get("www_redirect", False),
     "S_PHP": srv.get("php", "php"), "S_FPM_RELOAD": srv.get("fpm_reload"), "S_DOCROOT": srv.get("docroot"),
     "S_DOCROOT_EXTRA": " ".join(str(x) for x in (srv.get("docroot_extra") or [])),
     "S_LEGACY_APP": srv.get("legacy_app"), "S_CHECK_IP": srv.get("check_ip"),
@@ -122,8 +124,8 @@ PY
     S_KEY="$1"
     if [ -z "$S_HOST" ] || [ -z "$S_PATH" ]; then die "$S_KEY: у реєстрі нема server.host або server.path"; fi
     case "$S_RUNTIME" in fastpanel | docker) ;; *) die "$S_KEY: server.runtime має бути fastpanel|docker, а не '$S_RUNTIME'" ;; esac
-    case "$S_RUNTIME:$S_PROXY" in fastpanel: | docker:traefik | docker:edge) ;;
-        *) die "$S_KEY: server.proxy '$S_PROXY' — лише для runtime docker: traefik (стенд) | edge (прод за зовнішнім nginx)" ;;
+    case "$S_RUNTIME:$S_PROXY" in fastpanel: | docker:traefik | docker:edge | docker:traefik-ext) ;;
+        *) die "$S_KEY: server.proxy '$S_PROXY' — лише для runtime docker: traefik (стенд) | edge (прод за зовнішнім nginx) | traefik-ext (прод за чужим traefik)" ;;
     esac
     if [ -n "$S_COMPOSE" ] && [ "$S_RUNTIME" != docker ]; then die "$S_KEY: server.compose — лише для runtime docker"; fi
 }
@@ -152,7 +154,8 @@ remote() {
         SITE_SKIP_BACKUP="${SITE_SKIP_BACKUP:-0}" SITE_BACKUP_KEEP_DAYS="${SITE_BACKUP_KEEP_DAYS:-14}"
         SITE_RUNTIME="$S_RUNTIME" SITE_PROXY="$S_PROXY" SITE_COMPOSE_FILE="$S_COMPOSE" SITE_USER="$S_USER" SITE_PHP="$S_PHP" SITE_FPM_RELOAD="$S_FPM_RELOAD"
         SITE_DOCROOT="$S_DOCROOT" SITE_DOCROOT_EXTRA="$S_DOCROOT_EXTRA" SITE_LEGACY_APP="$S_LEGACY_APP" SITE_CHECK_IP="$S_CHECK_IP"
-        SITE_HOST="$S_SITE" SITE_ADMIN="$S_ADMIN" SITE_EXTRA="$S_EXTRA")
+        SITE_HOST="$S_SITE" SITE_ADMIN="$S_ADMIN" SITE_EXTRA="$S_EXTRA"
+        SITE_PROXY_NETWORK="$S_NETWORK" SITE_TRAEFIK_ENTRYPOINT="$S_ENTRYPOINT" SITE_TRAEFIK_CERTRESOLVER="$S_CERTRESOLVER" SITE_WWW_REDIRECT="$S_WWW")
     if is_local_host; then
         env "${envs[@]}" bash "$SITE_CMD_DIR/_remote.sh" "$action" "$S_KEY" "$S_PATH" "$@" </dev/null
         return

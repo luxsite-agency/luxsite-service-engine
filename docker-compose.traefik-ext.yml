@@ -1,0 +1,87 @@
+# Прод service-engine у Docker за наявним traefik сервера (рантайм `docker` + `proxy: traefik-ext` у sites.yaml, 22.10.2026).
+# Як docker-compose.edge.yml (php від www-data, opcache без перечитування, паролі MySQL у shared/db.env, ліміти пам'яті, без
+# mailpit і без портів), але вхід — чужий traefik: nginx у його docker-мережі (server.network → SITE_PROXY_NETWORK).
+# Роутерів тут НЕМА: мітки на кожен домен (свій сертифікат), www і адмінку генерує bin/site deploy у shared/traefik-labels.yml
+# і передає другим -f. traefik.enable=false на всіх контейнерах, крім nginx: traefik сервера може мати exposedByDefault=true.
+# Руками (діагностика): cd <root>/current && SITE=<key> SITE_ROOT=<root> SITE_PROXY_NETWORK=<мережа> \
+#   docker compose -p service-<key> -f docker-compose.traefik-ext.yml -f <root>/shared/traefik-labels.yml ps|logs|exec php …
+# Порядок — docs/site-ops.md («Прод у Docker за traefik сервера»).
+
+services:
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile.edge
+    image: service-engine-php:edge
+    container_name: service-${SITE:?SITE=<ключ сайту>}-php
+    restart: unless-stopped
+    mem_limit: 768m
+    volumes:
+      - ./:/app
+      - vendor:/app/vendor
+      - var:/app/var
+      - ${SITE_ROOT:?SITE_ROOT=<root сайту>}/shared/.env.local:/app/.env.local:ro
+      - ${SITE_ROOT}/shared/media:/app/public/media
+      - ${SITE_ROOT}/shared/log:/app/var/log
+    environment:
+      # не ${APP_ENV}: змінна оточення оператора не має перебивати APP_ENV=prod з .env.local
+      APP_ENV: prod
+      COMPOSER_HOME: /tmp/composer
+    networks: [internal]
+    labels:
+      - traefik.enable=false
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: service-${SITE}-nginx
+    restart: unless-stopped
+    mem_limit: 128m
+    volumes:
+      - ./docker/nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/app/public:ro
+      - ${SITE_ROOT}/shared/media:/app/public/media:ro
+    networks: [internal, proxy]
+    depends_on:
+      - php
+
+  mysql:
+    image: mysql:8.0
+    container_name: service-${SITE}-mysql
+    restart: unless-stopped
+    mem_limit: 1g
+    env_file:
+      - ${SITE_ROOT}/shared/db.env
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_allowed_packet=256M
+      --innodb-buffer-pool-size=256M
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # перший підйом на порожньому томі: *.sql.gz з db-init (дамп сайту)
+      - ${SITE_ROOT}/db-init:/docker-entrypoint-initdb.d:ro
+    networks: [internal]
+    labels:
+      - traefik.enable=false
+    # 127.0.0.1 (TCP), не localhost (сокет): поки entrypoint імпортує db-init, тимчасовий сервер слухає лише сокет —
+    # healthy раніше часу пустив би міграції на напівзалитий дамп
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+
+networks:
+  internal:
+  proxy:
+    external: true
+    name: ${SITE_PROXY_NETWORK:?SITE_PROXY_NETWORK=<docker-мережа traefik сервера>}
+
+volumes:
+  vendor:
+  var:
+  mysql-data:
