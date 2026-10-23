@@ -64,7 +64,8 @@ bin/site sync     --all | <key>… [--notify]
 ```
 
 Спільні змінні: `DRY_RUN=1` — лише показати дії; `SITES_FILE` — інший реєстр; `SITE_DEBUG=1` — `bash -x`;
-`SITE_SKIP_BACKUP=1`, `SITE_CRON=0`, `UNARCHIVE=1`, `SITE_NO_TLS=1` (doctor без перевірки сертифікатів).
+`SITE_SKIP_BACKUP=1`, `SITE_CRON=0`, `UNARCHIVE=1`, `SITE_NO_TLS=1` (doctor без перевірки сертифікатів), `SITE_NO_API=1`
+(doctor без перевірки адрес API).
 Запобіжники: команди, що змінюють сайт, відмовляють, якщо `server.path` не закінчується на `/site-<key>` (стара схема —
 робочі копії `<key>-app` з git checkout + post-receive — не обслуговується ніколи), для `status: archived` без
 `UNARCHIVE=1`, для `handed-over` завжди; на сервері з маркером `ARCHIVED` — так само.
@@ -104,6 +105,18 @@ bin/site deploy example --pack ~/site-example
 4. Жива перевірка сторінок, `/analytics-healthcheck`, запис у solutions-log. Старий bare-репо й post-receive більше не
    використовуються (лишити до наступного релізу як запасний шлях, потім прибрати).
 
+**Новий сайт: адмінка й API (23.10.2026).** REST `/api/admin/v1` і MCP `/mcp` працюють лише на хості адмінки, приймач
+студії `/api/studio` — лише на доменах міст (`docs/admin-api.md`, «Швидкий старт»). Щоб менеджер і його агент не впиралися
+в 404, при заведенні сайту:
+1. `domains.admin` у реєстрі = `ADMIN_HOST` у `shared/.env.local` (перший deploy пише його з реєстру; змінили хост — правити
+   обидва місця й `cache:clear`). Хост поза апексом сайту (`<сайт>-admin.<домен агенції>`) теж годиться, але тоді «свій»
+   сайт адмінки (назва, адреси студії в підказці й на сторінці токенів) визначається лише коли сайт у БД один.
+2. DNS хоста адмінки → той самий сервер; у панелі (FastPanel) — сайт/піддомен адмінки з docroot-симлінком (`server.docroot_extra`)
+   і SSL-сертифікатом; так само — для кожного домену міста (`ServiceCity.host` в адмінці).
+3. `bin/site doctor <key>` — рядки «API адмінки … → 401», «API на домені сайту: 404 wrong_host», «API студії … → 401» для
+   кожного домену міста (список доменів дає підказка `wrong_host` хоста адмінки). FAIL тут = агент клієнта не достукається.
+4. Менеджеру — посилання на адмінку → **API → API-токени** («Як підключити» показує справжні адреси), без пересилання токенів.
+
 ### rollback
 
 `bin/site rollback <key>` — `current` → `SITE_PREV_TAG`, скидання php-fpm (docker: контейнери з попереднього релізу),
@@ -122,8 +135,11 @@ bin/site deploy example --pack ~/site-example
 
 Читає стан: доступ, `ARCHIVED` проти `status`, версія рушія проти `engine` реєстру, docroot панелі (fastpanel) або
 контейнери (docker), `doctrine:migrations:up-to-date`, останній звичайний бекап (старший за 36 год або менший за 50K — WARN),
-cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), TLS сайту й адмінки (< 14 днів — WARN).
-Код виходу 1 при FAIL.
+cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), TLS сайту й адмінки (< 14 днів — WARN),
+адреси API з операторської машини без токена (`curl`, нічого не змінює): `https://<admin>/api/admin/v1/me` → 401 (інакше FAIL:
+`ADMIN_HOST`, DNS, SSL адмінки), `https://<site>/api/admin/v1/me` → 404 з `wrong_host` (404 без підказки — WARN «рушій до
+підказок», інший код — FAIL), `/api/studio/ping` на кожному домені міста → 401 (домени — з підказки `wrong_host` хоста
+адмінки; старий рушій — лише `domains.site`). `SITE_NO_API=1` — без цих перевірок. Код виходу 1 при FAIL.
 
 ### archive
 

@@ -68,26 +68,38 @@ final class ContentService
         private readonly ApiTokenContext $context,
         private readonly AuthorizationCheckerInterface $auth,
         private readonly LoggerInterface $logger,
+        private readonly ApiEndpoints $endpoints,
+        private readonly ApiCapabilities $capabilities,
     ) {
     }
 
-    /** @return array<string, mixed> користувач, токен, сайти з містами */
+    /**
+     * Користувач, токен, сайти з містами; `endpoints` — де що працює (REST і MCP лише на хості адмінки, студія — на доменах
+     * міст), `capabilities` — що цей токен реально може і що лише в адмінці. Нові ключі лише додаються (23.10.2026).
+     *
+     * @return array<string, mixed>
+     */
     public function me(?\App\Entity\User $user): array
     {
         $token = $this->context->current();
         $sites = [];
-        foreach ($this->sites->findAllActive() as $site) {
+        $active = $this->sites->findAllActive();
+        foreach ($active as $site) {
             $cities = [];
             foreach ($this->cities->findAllActiveBySite($site) as $city) {
-                $cities[] = ['id' => $city->getId(), 'slug' => $city->getSlug(), 'host' => $city->getHost(), 'apex' => $city->isApex(), 'noindex' => $city->isNoindex()];
+                $cities[] = ['id' => $city->getId(), 'slug' => $city->getSlug(), 'host' => $city->getHost(), 'apex' => $city->isApex(), 'noindex' => $city->isNoindex(),
+                    'studio_api_url' => 'https://' . $city->getHost() . ApiEndpoints::STUDIO_PATH];
             }
-            $sites[] = ['id' => $site->getId(), 'slug' => $site->getSlug(), 'name' => $site->getName(), 'apex' => $site->getApexDomain(), 'cities' => $cities, 'studio_api_url' => 'https://' . $site->getApexDomain() . '/api/studio'];
+            $sites[] = ['id' => $site->getId(), 'slug' => $site->getSlug(), 'name' => $site->getName(), 'apex' => $site->getApexDomain(), 'cities' => $cities,
+                'studio_api_url' => 'https://' . $site->getApexDomain() . ApiEndpoints::STUDIO_PATH, 'site_api_url' => $this->endpoints->adminApiUrl() . '/' . $site->getSlug()];
         }
 
         return [
             'user' => $user === null ? null : ['id' => $user->getId(), 'email' => $user->getEmail(), 'name' => $user->getDisplayName(), 'roles' => $user->getRoles()],
             'token' => $token === null ? null : ['id' => $token->getId(), 'name' => $token->getName(), 'prefix' => $token->getPrefix(), 'scopes' => $token->getScopeValues(), 'expires_at' => $token->getExpiresAt()->format(\DATE_ATOM)],
             'sites' => $sites,
+            'endpoints' => $this->endpoints->describe($active),
+            'capabilities' => $this->capabilities->forCurrentToken(),
         ];
     }
 
@@ -288,7 +300,7 @@ final class ContentService
         $fields = self::FIELDS[$kind];
         $unknown = array_diff(array_keys($data), array_keys($fields));
         if ($unknown !== []) {
-            throw new ApiProblem('Невідомі або заборонені поля: ' . implode(', ', $unknown) . '. Дозволені: ' . implode(', ', array_keys($fields)), 422);
+            throw new ApiProblem('Невідомі або заборонені поля: ' . implode(', ', $unknown) . '. Дозволені: ' . implode(', ', array_keys($fields)) . self::adminOnlyHint($unknown), 422);
         }
         $changed = [];
         foreach ($data as $key => $value) {
@@ -318,6 +330,22 @@ final class ContentService
         }
 
         return $changed;
+    }
+
+    /**
+     * Агент шукає поле для фото, slug чи порядку — підказати, що цього через API нема зовсім, а не «не те ім'я».
+     *
+     * @param list<string|int> $unknown
+     */
+    private static function adminOnlyHint(array $unknown): string
+    {
+        foreach ($unknown as $key) {
+            if (preg_match('/image|photo|img|picture|cover|logo|icon|media|file|slug|position|order|sort|city|cities|category/i', (string) $key) === 1) {
+                return '. Картинки й фото, slug, порядок, міста й категорія послуги змінюються лише в адмінці (' . ApiEndpoints::DOCS_URL . ', розділ «Що не через API»)';
+            }
+        }
+
+        return '';
     }
 
     private function getter(object $e, string $prop): string
