@@ -129,6 +129,27 @@ class ServicePostRepository extends ServiceEntityRepository
     }
 
     /**
+     * Скільки опублікованих статей мовою $locale у кожній рубриці сайту (лише рубрики, де є статті).
+     *
+     * @return array<int, int> id рубрики => кількість
+     */
+    public function countPublishedByCategory(ServiceSite $site, string $locale): array
+    {
+        $rows = $this->published($site, $locale)
+            ->select('IDENTITY(p.category) AS cat, COUNT(p.id) AS n')
+            ->andWhere('p.category IS NOT NULL')
+            ->groupBy('p.category')
+            ->getQuery()->getArrayResult();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['cat']] = (int) $row['n'];
+        }
+
+        return $out;
+    }
+
+    /**
      * «Обрані» статті для головної контентного сайту, свіжі першими.
      *
      * @return ServicePost[]
