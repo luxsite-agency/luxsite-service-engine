@@ -32,7 +32,7 @@ use Symfony\Component\Routing\RouterInterface;
  *
  * Матчер бере хост і метод з RequestContext роутера, а умови маршрутів (request.attributes.has('service_city')) — з
  * запиту: тому на час перевірки — власний запит GET https://<хост міста>/<шлях> з атрибутами тенанта й власний контекст,
- * потім попередній.
+ * потім попередній (параметри контексту, зокрема _functions для умов зі service(), — з попереднього).
  */
 final class SiteLiveUrls implements LiveUrls
 {
@@ -64,7 +64,9 @@ final class SiteLiveUrls implements LiveUrls
         $request->attributes->set(ServiceHostSubscriber::ATTR_SITE, $site);
         $request->attributes->set(ServiceHostSubscriber::ATTR_CITY, $city);
         $previous = $this->router->getContext();
-        $this->router->setContext((new RequestContext())->fromRequest($request));
+        // параметри контексту роутера — з собою: _functions (router.expression_language_provider) потрібен умовам
+        // маршрутів зі service(), напр. service('root_slugs') схеми slug і сторінок app.pages; без нього матчер — 500
+        $this->router->setContext((new RequestContext())->fromRequest($request)->setParameters($previous->getParameters()));
         try {
             $match = $this->router->matchRequest($request);
         } catch (RoutingException) {

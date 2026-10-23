@@ -53,6 +53,8 @@ final class ServicePageController extends AbstractController
             'site' => $site,
             'city' => $city,
             'page' => $page,
+            // батько окремою змінною: .parent у живій темі заборонено (LiveThemePolicy — loop.parent дав би весь контекст)
+            'parent_page' => $page->getParent(),
             'children' => $page->getParent() === null ? $this->pages->findLiveChildren($page, $city) : [],
             'altUrls' => $this->altUrls('sv_page', static fn (string $l): array => ['path' => $page->path($l)]),
         ]);

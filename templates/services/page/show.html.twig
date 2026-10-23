@@ -12,8 +12,8 @@
 {% block schema %}
     {% import 'services/partials/_schema.html.twig' as schema %}
     {% set _crumbs = [{'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})}] %}
-    {% if page.parent %}
-        {% set _crumbs = _crumbs|merge([{'name': page.parent.loc('title', locale), 'url': url('sv_page', {path: page.parent.path(locale), _locale: locale})}]) %}
+    {% if parent_page %}
+        {% set _crumbs = _crumbs|merge([{'name': parent_page.loc('title', locale), 'url': url('sv_page', {path: parent_page.path(locale), _locale: locale})}]) %}
     {% endif %}
     {{ schema.crumbs(_crumbs|merge([{'name': page.loc('title', locale)}])) }}
     {% set _ld = {
@@ -32,7 +32,7 @@
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {% if page.parent %}<a href="{{ path('sv_page', {path: page.parent.path(locale)}) }}">{{ page.parent.loc('title', locale) }}</a> →{% endif %}
+        {% if parent_page %}<a href="{{ path('sv_page', {path: parent_page.path(locale)}) }}">{{ parent_page.loc('title', locale) }}</a> →{% endif %}
         {{ page.loc('title', locale) }}
     </nav>
     <h1>{{ page.loc('title', locale) }}</h1>

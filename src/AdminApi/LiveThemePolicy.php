@@ -45,6 +45,9 @@ final class LiveThemePolicy
         // рушій сервісних сайтів
         'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
+        // сторінки app.pages, мови розгортання й бренду, контентний сайт (stage/satellites); sv_layout — лише ім'я шаблону
+        'footer_pages', 'sv_categories', 'sv_date', 'sv_default_locale', 'sv_layout', 'sv_locale', 'sv_locale_code', 'sv_locales',
+        'sv_path_locale',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -91,6 +94,8 @@ final class LiveThemePolicy
         'position', 'price', 'pricePerSqm', 'pricePrefix', 'primary', 'publishedAt', 'q', 'reviewedAt', 'revindex', 'revindex0',
         'rows', 'ru', 'runtime', 'runtimeJs', 'schemaType', 'shortName', 'skip', 'slug', 'slugUk', 'source', 'stars', 'tagKind',
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
+        // сторінки app.pages, мови й контентний сайт (stage/satellites); батька сторінки — змінною parent_page (parent заборонено)
+        'aboutFor', 'active', 'author', 'brandName', 'existsIn', 'images', 'path', 'urls',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
