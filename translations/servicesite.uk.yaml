@@ -215,3 +215,12 @@ footer.copyright: 'Усі матеріали сайту захищені зак�
 works.title: 'Наші роботи'
 works.before: 'До'
 works.after: 'Після'
+# Сторінки команди (app.team_prefix): список міста, сторінка людини, блок на сторінці послуги. Пак перекриває (лікарі, майстри)
+nav.team: Команда
+title.team: 'Наша команда - %cityNom%'
+meta.team: 'Наша команда %in% %city%: хто виконує роботи, досвід і спеціалізація.'
+team.h1: Наша команда
+team.more: Детальніше
+team.services_title: Послуги
+team.branches_title: Де працює
+team.item_title: Фахівці

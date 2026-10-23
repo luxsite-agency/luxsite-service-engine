@@ -15,6 +15,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServiceTeamMemberRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -35,6 +36,9 @@ final class ServiceSiteExtension extends AbstractExtension
 
     /** @var array<int, bool> те саме для калькулятора */
     private array $hasCalculator = [];
+
+    /** @var array<int, bool> те саме для сторінки команди міста */
+    private array $hasTeam = [];
 
     /** @var array<int, int> memo на запит: активних міст сайту (title і H1 відгуків) */
     private array $activeCityCount = [];
@@ -58,6 +62,10 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.page_meta%')]
         private readonly array $pageMeta = [],
         private readonly ?CustomFields $customFields = null,
+        private readonly ?ServiceTeamMemberRepository $team = null,
+        /** app.team_prefix: '' = сторінок команди нема */
+        #[Autowire('%app.team_prefix%')]
+        private readonly string $teamPrefix = '',
     ) {
     }
 
@@ -66,6 +74,7 @@ final class ServiceSiteExtension extends AbstractExtension
         return [
             new TwigFunction('site_has_blog', $this->siteHasBlog(...)),
             new TwigFunction('site_has_calculator', $this->siteHasCalculator(...)),
+            new TwigFunction('city_has_team', $this->cityHasTeam(...)),
             new TwigFunction('service_path', $this->servicePath(...)),
             new TwigFunction('city_switcher', $this->citySwitcher(...)),
             new TwigFunction('city_in', $this->cityIn(...)),
@@ -211,6 +220,19 @@ final class ServiceSiteExtension extends AbstractExtension
     public function siteHasBlog(ServiceSite $site): bool
     {
         return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site) > 0;
+    }
+
+    /**
+     * Сторінка команди міста (/<app.team_prefix>/) є, коли пак увімкнув сторінки команди і в місті хтось працює:
+     * інакше пункту меню нема (сторінка без людей віддає 404).
+     */
+    public function cityHasTeam(ServiceCity $city): bool
+    {
+        if ($this->teamPrefix === '' || $this->team === null) {
+            return false;
+        }
+
+        return $this->hasTeam[(int) $city->getId()] ??= $this->team->findActiveByCity($city) !== [];
     }
 
     /**

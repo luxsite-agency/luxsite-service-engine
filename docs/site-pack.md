@@ -102,7 +102,7 @@ live (токен) > пак > рушій.
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
 | `app.clarity_id` | `''` | id проєкту Microsoft Clarity — тег у `<head>` поруч із GTM на всіх хостах сайту (коли Clarity не в GTM). |
 | `app.theme` | `{}` | ключі `SiteTheme::DEFAULTS`: `key`, `colors{accent, accent2, accent_ink, dark, navy, footer_bg, footer_line, footer_text, footer_ink}`, `logo`, `favicon_ico`, `favicon_png`, `apple_touch_icon`, `og_image`, `hero_image`, `hero_srcset`, `hero_width`, `hero_height`, `stylesheet`, `stylesheet_inline` (true = CSS у `<style>` замість `<link>`, відносні `url(…)` переписуються від теки файлу), `options` (довільна мапа для шаблонів паку, `theme.option('ключ')`). Шляхи — від `public/`. `theme.url()` додає `?v=<хеш файлу>` (кеш статики на місяці). |
-| `app.schema` | порожні | `legal_name`, `founder`, `opening_hours` для JSON-LD бізнесу (LocalBusiness). |
+| `app.schema` | порожні; `item_type: auto`, `addresses: first` | `legal_name`, `founder`, `opening_hours` для JSON-LD бізнесу (LocalBusiness). `item_type` — тип розмітки сторінки послуги: `auto` (як було: є ціни — `Product` з `aggregateRating`, нема — `Service`), `Service` (завжди `Service`, ціни в `offers`, без зірок), `MedicalProcedure` (медичний сайт: `[MedicalProcedure, Service]` з постачальником `#business` міста й цінами, без `Product` і `aggregateRating` — послуга клініки не товар, а зірки з власних відгуків Google вважає self-serving). `addresses` — адреси бізнесу: `first` (як було, перший рядок адреси міста) або `all` (кожен рядок адреси міста — окремий `PostalAddress`: кілька філій в одному місті). Пак, що задає `app.schema`, може не повторювати нові ключі — беруться дефолти. |
 | `app.legacy_redirects` | `{}` | 301 зі старого сайту (`App\ServiceSite\LegacyUrls`, спрацьовує до роутингу). Ключ = старий шлях без слешів по краях (`старий-слаг`, `services/heating/old-slug`, `ru/services/x`), exact-match зі слешем і без. Значення: цільовий шлях рядком (`/services/heating/new-slug/`), `{ path: … }` або старий формат `{city, item, route, locale}`. Збирається з `seo/legacy-redirects.yaml` паку командою `app:site:redirects` (нижче). |
 | `app.gone_prefixes` | `[]` | Прибрані розділи старого сайту → 410 Gone (`['/n/']` — дорвеї зламу). |
 | `app.seo_not_found_limit`, `app.seo_not_found_days` | `10000`, `90` | Журнал 404 в адмінці (розділ «SEO → Журнал 404»): скільки адрес на сайт і скільки днів з останнього звернення зберігати; решта прибирається сама (див. «Редиректи зі старого сайту»). |
@@ -110,6 +110,8 @@ live (токен) > пак > рушій.
 | `app.home_faq_limit` | `8` | Скільки питань FAQ міста на головній (FAQPage теж); `0` = усі. |
 | `app.district_faq_fallback` | `false` | Район без власного FAQ показує FAQ міста (з FAQPage-розміткою). |
 | `app.team_pages` | `[about]` | Де показувати блок «Наша команда»: `about`, `contacts`, `home` (можна кілька; на головній — після відгуків). |
+| `app.team_prefix` | `''` | Сторінки команди (майстри, лікарі; 20.10.2026): сегмент розділу — `/<префікс>/` (команда міста) і `/<префікс>/<слаг>/` (людина зі слагом). Порожньо = сторінок нема, як було. Лише `[a-z0-9-]`, не зарезервований сегмент і не префікс блогу. Див. «Сторінки команди» нижче. |
+| `app.team_schema_type` | `Person` | JSON-LD сторінки людини: `Person` (майстри) або `IndividualPhysician` / `Physician` (медичний сайт) → `@type: [Person, <тип>]` з `worksFor` і `practicesAt` = філії, де людина працює. |
 | `app.gbp_reviews` | `{token: '', base: 'https://gbp-manager.app', cities: {}}` | Віджет відгуків gbp-manager на /reviews/: `token` — публічний токен віджета (gbp-manager → картка → «Відгуки на сайті» → Код вставки). Заданий — блок віджета (Google + відгуки з сайту, загальна оцінка з мікророзміткою, форма) замість власних форми й списку рушія, і власна оцінка рушія (рядок + `aggregateRating`/`review[]`) вимикається на всіх сторінках: на сторінці одна оцінка, розмітка = видима. Перед увімкненням імпортуйте відгуки сайту в gbp-manager (вкладка «Відгуки з сайту» → імпорт). Параметр один на весь пак, тобто на всі міста-піддомени: картка Google лише одного міста — не сюди, а перекриття `templates/services/page/reviews.html.twig` (`extends '@engine/…'`, віджет при `city.slug == '<місто>'`, інакше `parent()`). `cities: {slug-міста: токен}` — токен для окремого міста (мультиміський сайт, картка Google лише в одному місті): віджет на /reviews/ і загальна оцінка gbp-manager на головній і послугах лише в цих містах, решта міст — оцінка рушія. На головній біля рядка оцінки gbp-manager — посилання «Усі відгуки» на /reviews/. |
 | `app.reviews.own_rating` | `true` | Власна загальна оцінка рушія: рядок «Середня оцінка X з 5 за N відгуками» (/reviews/, головна) і `aggregateRating` + `review[]` у JSON-LD (LocalBusiness на головній і /reviews/, Product на сторінці послуги). `false` — коли оцінку з мікророзміткою дає віджет (gbp-manager, «Яку оцінку показувати»): на сторінці лишається одна оцінка, і розмітка збігається з видимою. Самі картки відгуків рушія це не ховає. |
 | `app.brand_name` | `{}` | Коротка назва бренду `{uk: …, ru: …}` для текстів, якщо в адмінці (Сайти-бренди → «Коротка назва бренду») порожньо; нема й тут — назва сайту. Підставляється як `%site%` у title/H1 сторінки відгуків: «Відгуки клієнтів про компанію %site%» (типово з 18.10.2026; інший шаблон — ключі `title.reviews` / `reviews.h1` у перекладах паку, доступні `%site%`, `%city%`, `%in%`). Загальне слово беріть у лапки: `'«Майстри»'`. |
@@ -119,12 +121,52 @@ live (токен) > пак > рушій.
 | `app.home_districts` | `{}` | Чипи районів на головній: `{kyiv: [pozniaky, obolon, …], chernivtsi: '*'}` — slug міста → список `slug_uk` у порядку показу або `'*'` (усі активні). Нема ключа = лише primary-райони. |
 | `app.blog_prefix` | `blog` | Сегмент розділу статей: `/blog/` або інший (`news` → `/news/`, `/ru/news/`). |
 | `app.page_meta` | `{}` | `<title>`/description фіксованих сторінок 1:1 зі старого сайту: `{ sv_blog: { title_uk, title_ru, desc_uk, desc_ru }, sv_about: {…}, sv_privacy: {…} }` (ключ — маршрут без локалі). Порожньо = як будує шаблон. |
-| `app.custom_fields` | `{}` | Додаткові поля записів без міграцій (рішення власника 13.10.2026): `{ item\|post\|category: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized, filter, categories: [slug_uk…] } ] }`. Значення — JSON-колонка `extra` запису; адмінка показує вкладку «Додаткові поля» сама; шаблони — `custom_fields(entity, locale)` → `[{key, label, value, raw, filter}]` (`filter: true` — для фільтра/групування списку, напр. група автопарку), сире значення — `entity.extraValue(key, locale)`. |
+| `app.custom_fields` | `{}` | Додаткові поля записів без міграцій (рішення власника 13.10.2026): `{ item\|post\|category\|team: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized, filter, categories: [slug_uk…] } ] }`. Значення — JSON-колонка `extra` запису; адмінка показує вкладку «Додаткові поля» сама; шаблони — `custom_fields(entity, locale)` → `[{key, label, value, raw, filter}]` (`filter: true` — для фільтра/групування списку, напр. група автопарку), сире значення — `entity.extraValue(key, locale)`. |
 | `app.blog_per_page` | `12` | Статей на сторінці списку блогу (`/blog/`, `/blog/page/N/`); `0` = усі на одній. У sitemap лише `/blog/`. |
 | `app.district_suburb_groups` | `[]` | `/districts/`: список `group_uk`, які є передмістям. Заданий → усі інші групи міста показуються акордеоном «Райони %cityGen%» з чипами місцевостей (назва групи веде на її primary-сторінку), а ці — розділом «Передмістя». Порожньо → стара схема (картки primary-районів + групи без primary у «передмісті»). |
 | `app.crm` | `{system: auto, bitrix24: {}}` | Куди йдуть заявки форм і калькулятора — див. «CRM сайту» нижче. `auto` = Pipedrive, якщо в `.env.local` є `PIPEDRIVE_API_TOKEN`, інакше без CRM. Пак задає мапу цілком. |
 | `app.pipedrive` | порожні | `title_prefix`, `fields{city, deal_type, source, utm_source, object}` (хеші кастомних полів), `source_option`, `city_options{host: id}`, `type_by_slug{slug: id}`. Порожні `fields` = у CRM ідуть лише контакт, лід і примітка. |
 | `env(PIPEDRIVE_OWNER_ID)` | `'0'` | id власника лідів (не секрет). |
+
+### Сторінки команди (`app.team_prefix`, 20.10.2026)
+
+Загальна функція рушія: «майстри» сервісних сайтів, «лікарі» медичного. Вимкнено за замовчуванням: без `app.team_prefix` маршрутів
+команди нема зовсім, блок «Наша команда» працює як раніше. Увімкнути на паку:
+
+```yaml
+# config/parameters.yaml паку
+parameters:
+    app.team_prefix: vrachi                 # /vrachi/ і /vrachi/<слаг>/ (+ /ru/vrachi/…)
+    app.team_schema_type: IndividualPhysician   # медичний сайт; майстри — Person (типово)
+    app.custom_fields:
+        team:                               # поля сторінки людини (адмінка → Команда → «Додаткові поля»)
+            - { key: experience, label: { uk: Стаж, ru: Стаж } }
+            - { key: education, label: { uk: Освіта, ru: Образование }, localized: true }
+            - { key: specialization, label: { uk: Спеціалізація, ru: Специализация }, localized: true }
+            - { key: schedule, label: { uk: Графік прийому, ru: График приёма }, localized: true }
+    app.schema: { item_type: MedicalProcedure, addresses: all }   # медична розмітка послуг, усі адреси філій міста
+```
+
+Переклади паку (тексти рушія — нейтральні «Наша команда» / «Фахівці»): `nav.team`, `title.team`, `meta.team` (`%city%`, `%in%`,
+`%cityNom%`, `%site%`), `team.h1`, `team.item_title` (блок на сторінці послуги), `team.services_title`, `team.branches_title`,
+`team.more`. Title/description списку 1:1 зі старого сайту — `app.page_meta.sv_team`; сторінки людини — поля Meta в адмінці.
+
+Як працює (адмінка → Команда):
+- **Основне місто** (`city`) — філія, де сторінка людини канонічна; **«Також працює в містах»** (`cities`) — інші міста сайту.
+  Людина є в блоці й списку команди кожного свого міста. Без «інших міст» — як було (лише основне).
+- `/<префікс>/` на хості міста — люди цього міста (основне або інше), canonical на себе; місто без людей — 404 і без пункту меню.
+- `/<префікс>/<слаг>/`: на хості основного міста — канонічна; на хості іншого міста людини — та сама сторінка (послуги цього міста),
+  canonical і hreflang ведуть на основне; на хості міста, де людина не працює, — 301 на основне (з query), невідомий слаг — 404.
+- Людина без слагу — лише картка в блоці й списку (без посилання). Слаг унікальний у межах сайту (uk і ru разом).
+- **Послуги** (`items`): на сторінці послуги блок «Фахівці» з людьми міста хоста, що її роблять (є й без `app.team_prefix`, але
+  тоді без посилань); на сторінці людини — «Послуги», що надаються в цьому місті.
+- sitemap хоста: `/<префікс>/` (якщо в місті хтось є) і сторінки людей, для яких це місто основне.
+- JSON-LD сторінки людини: `Person` або `[Person, IndividualPhysician]` з `jobTitle` (роль), `worksFor`/`practicesAt` — бізнес
+  кожного міста людини з тим самим `@id` (`https://<хост міста>/#business`), що й розмітка бізнесу на хостах міст; `knowsAbout` — послуги.
+- Seed (`app:site:seed`): `team: [{city, name_uk, slug, cities: [bila-tserkva], items: [slug-послуги], extra: {experience: 'з 2004 року'}}]`.
+
+У схемі `root` префікс команди зарезервований для слагів категорій (`CatalogUrls::reservedCategorySlugs`); маршрути команди
+імпортуються до маршрутів каталогу (`Kernel::configureRoutes`), тож `/<префікс>/` не перехоплює `/<категорія>/`.
 
 ### CRM сайту (`app.crm`, 13.10.2026)
 
