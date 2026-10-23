@@ -52,6 +52,8 @@ sites:
       domains:
           site: demo.example.com
           admin: demo-admin.example.com
+          # друге місто на окремому домені (ServiceCity.host): smoke, http-перевірка і TLS у doctor
+          extra: [north-demo.example.org]
       locales: [uk, ru]
       engine: main
       status: active

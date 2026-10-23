@@ -14,6 +14,7 @@ use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
@@ -58,6 +59,9 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.page_meta%')]
         private readonly array $pageMeta = [],
         private readonly ?CustomFields $customFields = null,
+        private readonly ?ServicePageRepository $pages = null,
+        #[Autowire('%app.pages%')]
+        private readonly bool $pagesEnabled = false,
     ) {
     }
 
@@ -72,6 +76,7 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('ov', $this->ov(...)),
             new TwigFunction('item_text', $this->itemText(...)),
             new TwigFunction('footer_catalog', $this->footerCatalog(...)),
+            new TwigFunction('footer_pages', $this->footerPages(...)),
             new TwigFunction('site_brand', $this->siteBrand(...)),
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
@@ -121,6 +126,27 @@ final class ServiceSiteExtension extends AbstractExtension
         }
 
         return array_values($groups);
+    }
+
+    /** @var array<int, list<\App\Entity\ServicePage>> memo: id міста → сторінки футера (smoke ганяє кілька хостів одним ядром) */
+    private array $footerPages = [];
+
+    /**
+     * Сторінки app.pages з позначкою «У футері», видимі в поточному місті, у порядку position; app.pages: false — [].
+     *
+     * @return list<\App\Entity\ServicePage>
+     */
+    public function footerPages(ServiceSite $site): array
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if (!$this->pagesEnabled || $this->pages === null || !$city instanceof ServiceCity) {
+            return [];
+        }
+
+        return $this->footerPages[(int) $city->getId()] ??= array_values(array_filter(
+            $this->pages->findLiveBySite($site, $city),
+            static fn (\App\Entity\ServicePage $p): bool => $p->isInFooter(),
+        ));
     }
 
     /** @var array<int, array<int, \App\Entity\ServiceItemCity>> кеш перевизначень на запит: id міста → (id послуги → тексти) */
