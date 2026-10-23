@@ -133,13 +133,15 @@ bin/site deploy example --pack ~/site-example
 
 ### doctor
 
+**Адреси API (з 23.10.2026)** — з операторської машини без токена (`curl`, нічого не змінює), як їх бачить агент менеджера:
+`https://<admin>/api/admin/v1/me` → 401 (інакше FAIL: `ADMIN_HOST`, DNS, SSL адмінки); `https://<site>/api/admin/v1/me` →
+404 з `wrong_host` (404 без підказки — WARN «рушій до підказок», інший код — FAIL); `/api/studio/ping` на кожному домені
+міста → 401 (домени — з підказки `wrong_host` хоста адмінки; старий рушій — лише `domains.site`). `SITE_NO_API=1` — пропуск.
+
 Читає стан: доступ, `ARCHIVED` проти `status`, версія рушія проти `engine` реєстру, docroot панелі (fastpanel) або
 контейнери (docker), `doctrine:migrations:up-to-date`, останній звичайний бекап (старший за 36 год або менший за 50K — WARN),
-cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), TLS сайту й адмінки (< 14 днів — WARN),
-адреси API з операторської машини без токена (`curl`, нічого не змінює): `https://<admin>/api/admin/v1/me` → 401 (інакше FAIL:
-`ADMIN_HOST`, DNS, SSL адмінки), `https://<site>/api/admin/v1/me` → 404 з `wrong_host` (404 без підказки — WARN «рушій до
-підказок», інший код — FAIL), `/api/studio/ping` на кожному домені міста → 401 (домени — з підказки `wrong_host` хоста
-адмінки; старий рушій — лише `domains.site`). `SITE_NO_API=1` — без цих перевірок. Код виходу 1 при FAIL.
+cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), TLS сайту й адмінки (< 14 днів — WARN).
+Код виходу 1 при FAIL.
 
 ### archive
 
