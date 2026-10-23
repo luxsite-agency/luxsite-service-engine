@@ -67,6 +67,37 @@ class ServicePostRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    /**
+     * «Related guides» під статтею: до $limit інших опублікованих статей сайту мовою $locale, спершу з тієї
+     * ж рубрики, решта місць добирається найсвіжішими з інших рубрик.
+     *
+     * @return ServicePost[]
+     */
+    public function findRelated(ServiceSite $site, ServicePost $post, string $locale, int $limit = 3): array
+    {
+        $base = fn () => $this->published($site, $locale)
+            ->andWhere('p.id != :self')->setParameter('self', $post->getId())
+            ->orderBy('p.publishedAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC');
+
+        $same = [];
+        if (null !== $post->getCategory()) {
+            $same = $base()->andWhere('p.category = :cat')->setParameter('cat', $post->getCategory())
+                ->setMaxResults($limit)->getQuery()->getResult();
+        }
+        if (\count($same) >= $limit) {
+            return $same;
+        }
+
+        $qb = $base()->setMaxResults($limit - \count($same));
+        if ([] !== $same) {
+            $qb->andWhere('p.id NOT IN (:taken)')
+                ->setParameter('taken', array_map(static fn (ServicePost $p): ?int => $p->getId(), $same));
+        }
+
+        return [...$same, ...$qb->getQuery()->getResult()];
+    }
+
     /** Чи є хоч одна опублікована стаття (меню й sitemap ховають порожній блог). */
     public function countPublishedBySite(ServiceSite $site, ?string $locale = null): int
     {
