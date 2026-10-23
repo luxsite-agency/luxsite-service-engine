@@ -8,10 +8,13 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\AdminApi\AdminApiTokens;
+use App\AdminApi\ApiCapabilities;
+use App\AdminApi\ApiEndpoints;
 use App\AdminApi\ApiScope;
 use App\Entity\AdminApiToken;
 use App\Entity\User;
 use App\Form\NewApiTokenType;
+use App\Repository\ServiceSiteRepository;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
@@ -37,6 +40,8 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  * API-токени: менеджер бачить і створює лише свої, адміністратор бачить усі й відкликає будь-який. Значення токена
  * показується один раз після створення (через сесію), далі — лише префікс. Стандартні new/edit/delete вимкнені:
  * створення — власна форма (issue), відкликання — POST з CSRF (revoke), рядки не видаляються (історія доступів).
+ * Над списком — «Як підключити» зі справжніми адресами цього встановлення (ApiEndpoints): REST і MCP хоста адмінки,
+ * приймач студії для кожного міста, slug сайту, що можна через API і що лише в адмінці (23.10.2026).
  *
  * @extends AbstractCrudController<AdminApiToken>
  */
@@ -45,8 +50,11 @@ final class AdminApiTokenCrudController extends AbstractCrudController
     public const string SESSION_PLAIN = 'api_token_plain';
     private const string REVOKE_CSRF = 'api-token-revoke';
 
-    public function __construct(private readonly AdminApiTokens $tokens)
-    {
+    public function __construct(
+        private readonly AdminApiTokens $tokens,
+        private readonly ApiEndpoints $endpoints,
+        private readonly ServiceSiteRepository $sites,
+    ) {
     }
 
     public static function getEntityFqcn(): string
@@ -113,6 +121,7 @@ final class AdminApiTokenCrudController extends AbstractCrudController
             $plain = $session->get(self::SESSION_PLAIN);
             $session->remove(self::SESSION_PLAIN);
             $responseParameters->set('token_plain', \is_string($plain) ? $plain : null);
+            $responseParameters->set('api_help', $this->apiHelp());
         }
 
         return $responseParameters;
@@ -180,6 +189,32 @@ final class AdminApiTokenCrudController extends AbstractCrudController
         $this->addFlash('success', sprintf('Токен «%s» відкликано', $token->getName()));
 
         return $this->redirect($this->indexUrl());
+    }
+
+    /**
+     * Адреси для блоку «Як підключити»: сайт хоста адмінки, а якщо його не визначити (кілька сайтів без збігу) — усі активні
+     * (модератор і так бачить їх у /me). Без значень токенів: команди — з плейсхолдером $SVC_TOKEN.
+     *
+     * @return array<string, mixed>
+     */
+    private function apiHelp(): array
+    {
+        $own = $this->endpoints->adminSite();
+        $sites = $own !== null && $own->isActive() ? [$own] : $this->sites->findAllActive();
+        $name = \count($sites) === 1 ? 'service-' . $sites[0]->getSlug() : 'service';
+
+        return [
+            'admin_api_url' => $this->endpoints->adminApiUrl(),
+            'me_url' => $this->endpoints->meUrl(),
+            'mcp_url' => $this->endpoints->mcpUrl(),
+            'docs_url' => ApiEndpoints::DOCS_URL,
+            'mcp_add' => $this->endpoints->claudeMcpCommand($name),
+            'mcp_add_ps' => $this->endpoints->claudeMcpCommand($name, true),
+            'curl_me' => sprintf('curl -sS -H "Authorization: Bearer $SVC_TOKEN" %s', $this->endpoints->meUrl()),
+            'sites' => array_map(fn ($s): array => $this->endpoints->forSite($s), $sites),
+            'recipes' => ApiCapabilities::recipes(),
+            'admin_only' => array_values(ApiCapabilities::ADMIN_ONLY),
+        ];
     }
 
     private function currentUser(): User

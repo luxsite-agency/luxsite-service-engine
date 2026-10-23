@@ -1,16 +1,88 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends '@EasyAdmin/crud/index.html.twig' %}
-{# API-токени (AdminApiTokenCrudController): над списком — щойно створений токен (token_plain із сесії), показується один раз. #}
+{# API-токени (AdminApiTokenCrudController): над списком — щойно створений токен (token_plain із сесії), показується один раз;
+   далі «Як підключити» (api_help) — справжні адреси цього встановлення: REST і MCP лише на хості адмінки, студія — на доменах міст. #}
+{% macro copy_row(id, label, value) %}
+    <div class="mb-2">
+        <label class="form-label small text-muted mb-1" for="{{ id }}">{{ label }}</label>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control font-monospace" id="{{ id }}" readonly value="{{ value }}" onclick="this.select()" autocomplete="off">
+            <button type="button" class="btn btn-secondary" data-copy="#{{ id }}" data-copied="Скопійовано">Копіювати</button>
+        </div>
+    </div>
+{% endmacro %}
 {% block main %}
+    {% import _self as m %}
     {% if token_plain is defined and token_plain %}
         <div class="alert alert-warning" id="api-token-plain" role="alert">
             <p class="mb-2"><strong>Новий токен.</strong> Скопіюйте зараз: удруге він не покажеться, у базі лише хеш.</p>
             <input type="text" class="form-control font-monospace" readonly value="{{ token_plain }}" onclick="this.select()" aria-label="Значення токена" autocomplete="off">
             <p class="text-muted small mt-2 mb-0">
-                content-studio: движок <code>service_sites</code>, адреса <code>https://&lt;сайт&gt;/api/studio</code>, токен — це значення (потрібен дозвіл studio:write).<br>
-                Claude Code / скрипт: <code>curl -H "Authorization: Bearer …" {{ app.request.schemeAndHttpHost }}/api/admin/v1/me</code> — опис: <a href="https://github.com/luxsite-agency/luxsite-service-engine/blob/main/docs/admin-api.md" target="_blank" rel="noopener">документація API (docs/admin-api.md)</a>.
+                Покладіть його в змінну оточення <code>SVC_TOKEN</code> чи в налаштування студії — не у файл проєкту, не в чат,
+                не скріншотом. Адреси для підключення — нижче, у розділі «Як підключити».
             </p>
         </div>
+    {% endif %}
+    {% if api_help is defined and api_help %}
+        <details class="card mb-3" id="api-help"{% if token_plain is defined and token_plain %} open{% endif %}>
+            <summary class="card-header" style="cursor:pointer"><strong>Як підключити Claude Code, скрипт або content-studio</strong> — адреси цього сайту</summary>
+            <div class="card-body">
+                <p class="small mb-3">
+                    REST <code>/api/admin/v1</code> і MCP <code>/mcp</code> працюють <strong>лише на хості адмінки</strong>, приймач студії
+                    <code>/api/studio</code> — <strong>лише на доменах сайту</strong> (по одному на місто). На «чужому» хості відповідь — 404
+                    <code>wrong_host</code> з правильною адресою. Агенту: <strong>спершу <code>GET /me</code></strong> (або інструмент MCP
+                    <code>me</code>) — там адреси, дозволи токена й поля, які можна змінювати; адреси брати звідти, не вгадувати.
+                </p>
+                {{ m.copy_row('api-rest', 'REST: базова адреса', api_help.admin_api_url) }}
+                {{ m.copy_row('api-me', 'Перевірка токена (bash/zsh; спершу export SVC_TOKEN=svc_…)', api_help.curl_me) }}
+                {{ m.copy_row('api-mcp', 'Claude Code (bash/zsh)', api_help.mcp_add) }}
+                {{ m.copy_row('api-mcp-ps', 'Claude Code (PowerShell; спершу $env:SVC_TOKEN = "svc_…")', api_help.mcp_add_ps) }}
+                {% for s in api_help.sites %}
+                    <h6 class="mt-3 mb-2">{{ s.name }} — slug <code data-api-site="{{ s.site }}">{{ s.site }}</code></h6>
+                    {{ m.copy_row('api-site-' ~ loop.index, 'REST цього сайту (далі /items, /categories, /theme…)', s.site_api_url) }}
+                    {% for c in s.studio %}
+                        {{ m.copy_row('api-studio-' ~ loop.parent.loop.index ~ '-' ~ loop.index, 'content-studio: ' ~ c.city ~ ' (движок service_sites, дозвіл studio:write)', c.studio_api_url) }}
+                    {% else %}
+                        <p class="small text-muted">Активних міст нема — приймача студії ще нема.</p>
+                    {% endfor %}
+                {% endfor %}
+                <div class="row mt-3">
+                    <div class="col-md-7">
+                        <h6>Що можна через API</h6>
+                        <ul class="small mb-2">
+                            {% for r in api_help.recipes|filter(r => r.scope) %}
+                                <li>{{ r.task }} — <code>{{ r.scope }}</code></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-5">
+                        <h6>Лише в адмінці</h6>
+                        <ul class="small mb-2" id="api-admin-only">
+                            {% for item in api_help.admin_only %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    Дозвіл діє, лише коли він є в токені <strong>і</strong> у вас є роль, що дає те саме в адмінці. Безпека: токен —
+                    як пароль; після передачі підряднику чи завершення роботи — «Відкликати». Детально:
+                    <a href="{{ api_help.docs_url }}" target="_blank" rel="noopener">документація API (docs/admin-api.md)</a>.
+                </p>
+            </div>
+        </details>
+        <script>
+            // «Копіювати» біля адрес і команд
+            document.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-copy]');
+                if (!b) { return; }
+                var input = document.querySelector(b.getAttribute('data-copy'));
+                if (!input) { return; }
+                input.select();
+                var done = function () { var t = b.textContent; b.textContent = b.getAttribute('data-copied'); setTimeout(function () { b.textContent = t; }, 1500); };
+                if (navigator.clipboard) { navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand('copy'); done(); }); } else { document.execCommand('copy'); done(); }
+            });
+        </script>
     {% endif %}
     {{ parent() }}
 {% endblock %}

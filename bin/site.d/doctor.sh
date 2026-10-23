@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE.
-# summary: стан сайту (реліз, docroot, міграції, бекап, TLS, диск): doctor <key>|--all
+# summary: стан сайту (реліз, docroot, міграції, бекап, TLS, диск, адреси API): doctor <key>|--all
 # bin/site doctor <key>     bin/site doctor --all
 #   Лише читає. Перевіряє: доступ, маркер ARCHIVED проти status, версію рушія (реліз на сервері проти engine у реєстрі),
 #   docroot панелі (fastpanel) / контейнери (docker), міграції (up-to-date), останній звичайний бекап (без pre-*;
@@ -26,6 +26,54 @@ cert_check() {
     if [ "$days" -lt 0 ]; then bad "TLS $host: прострочений ($end)"
     elif [ "$days" -lt 14 ]; then wrn "TLS $host: лишилось $days дн."
     else ok "TLS $host: ще $days дн."; fi
+}
+
+# http_get <url> — «код<TAB>тіло» без токена (тіло — до 64K, для розбору підказки wrong_host)
+http_get() {
+    local tmp code
+    tmp="$(mktemp)"
+    code="$(curl -sS -o "$tmp" -w '%{http_code}' --max-time 15 "$1" </dev/null 2>/dev/null)" || code="${code:-000}"
+    printf '%s\t%s' "${code:-000}" "$(head -c 65536 "$tmp" | tr -d '\r\n')"
+    rm -f "$tmp"
+}
+
+# api_check — адреси API, як їх бачить агент менеджера (23.10.2026: агент стукав на хост сайту, бачив 404 і вирішував, що API
+# не працює): REST адмінки на ADMIN_HOST без токена — 401; на домені сайту — 404 wrong_host з підказкою; приймач студії
+# /api/studio/ping на кожному домені міста — 401. Домени міст — з підказки wrong_host хоста адмінки (рушій з підказками),
+# інакше лише domains.site реєстру. Нічого не змінює, токен не потрібен. Пропуск: SITE_NO_API=1.
+api_check() {
+    command -v curl >/dev/null || { wrn "API: нема curl на цій машині"; return; }
+    local r code body hosts h
+    if [ -n "$S_ADMIN" ]; then
+        r="$(http_get "https://$S_ADMIN/api/admin/v1/me")"; code="${r%%$'\t'*}"
+        if [ "$code" = 401 ]; then ok "API адмінки: https://$S_ADMIN/api/admin/v1/me без токена → 401"
+        else bad "API адмінки: https://$S_ADMIN/api/admin/v1/me без токена → $code (очікується 401: ADMIN_HOST у shared/.env.local, DNS і SSL хоста адмінки)"; fi
+    fi
+    if [ -n "$S_SITE" ] && [ "$S_SITE" != "$S_ADMIN" ]; then
+        r="$(http_get "https://$S_SITE/api/admin/v1/me")"; code="${r%%$'\t'*}"; body="${r#*$'\t'}"
+        if [ "$code" = 404 ] && [[ "$body" == *'"wrong_host"'* ]]; then ok "API на домені сайту: 404 wrong_host з адресою адмінки"
+        elif [ "$code" = 404 ]; then wrn "API на домені сайту: 404 без підказки wrong_host (рушій до підказок адрес — оновити)"
+        else bad "API на домені сайту: https://$S_SITE/api/admin/v1/me → $code (очікується 404: REST має жити лише на хості адмінки)"; fi
+    fi
+    hosts=""
+    if [ -n "$S_ADMIN" ]; then
+        r="$(http_get "https://$S_ADMIN/api/studio/ping")"; body="${r#*$'\t'}"
+        if [[ "$body" == *'"studio_api_urls"'* ]]; then
+            hosts="$(printf '%s' "$body" | "${SITE_PYTHON:-python3}" -c 'import json,sys
+try:
+    d = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+except ValueError:
+    sys.exit(0)
+print(" ".join(u.get("host", "") for u in d.get("studio_api_urls") or [] if isinstance(u, dict)))' 2>/dev/null | tr -d '\r' || true)"
+        fi
+    fi
+    [ -n "$hosts" ] || hosts="$S_SITE"
+    for h in $hosts; do
+        case "$h" in *[!A-Za-z0-9.-]*) wrn "API студії: дивний хост «$h» у підказці — пропуск"; continue ;; esac
+        r="$(http_get "https://$h/api/studio/ping")"; code="${r%%$'\t'*}"
+        if [ "$code" = 401 ]; then ok "API студії: https://$h/api/studio/ping без токена → 401"
+        else bad "API студії: https://$h/api/studio/ping без токена → $code (очікується 401: місто активне, домен у ServiceCity.host, DNS/SSL)"; fi
+    done
 }
 
 doctor_one() {
@@ -101,6 +149,8 @@ doctor_one() {
     elif [ "$use" -ge 95 ]; then bad "диск: $disk"
     elif [ "$use" -ge 85 ]; then wrn "диск: $disk"
     else ok "диск: $disk"; fi
+    # адреси API так, як їх бачить агент менеджера (без токена; SITE_NO_API=1 — пропуск)
+    [ "${SITE_NO_API:-0}" = 1 ] || api_check
 
     if [ "${SITE_NO_TLS:-0}" != 1 ]; then
         [ -n "$S_SITE" ] && cert_check "$S_SITE"
