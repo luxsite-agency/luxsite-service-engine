@@ -100,12 +100,22 @@ compose_in() {
 # CT-логах і зв'язує домени між собою. www.<домен> — лише з server.www_redirect: true (редирект на домен; DNS www має бути,
 # інакше LE не видасть сертифікат і для самого домену). Адмінка — свій роутер з X-Robots-Tag: noindex. Конфіг traefik
 # сервера не змінюється — лише мітки контейнера nginx цього стека; решта контейнерів — traefik.enable=false (у compose).
+# server.origin_cf_only: true (23.10.2026) — домени сайту лише через Cloudflare: роутер домену матчить тільки IP Cloudflare
+# (ClientIP, traefik v3 — одне значення на матчер), тож прямий запит на IP сервера з SNI/Host домену дістає 404, як чужий хост,
+# і origin не зв'язується з доменом. TLS — дефолтний сертифікат traefik без назв (Cloudflare SSL «Full» його приймає), без LE:
+# сертифікат із назвою домену на IP сервера видає origin сканерам (Censys, Shodan). Адмінка — як була (LE, без обмеження).
+# Діапазони — https://www.cloudflare.com/ips-v4 і /ips-v6 (звірено 23.10.2026); Cloudflare додав мережу — оновити тут.
+CF_IPS="173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20
+    188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22
+    2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32"
+cf_ip_rule() { local c out=""; for c in $CF_IPS; do out="${out:+$out || }ClientIP(\`$c\`)"; done; printf '%s' "$out"; }
 traefik_labels() {
     [ "$PROXY" = traefik-ext ] || return 0
-    local net="${SITE_PROXY_NETWORK:-}" ep="${SITE_TRAEFIK_ENTRYPOINT:-websecure}" cr="${SITE_TRAEFIK_CERTRESOLVER:-}" r="service-$KEY" n=0 h hosts
+    local net="${SITE_PROXY_NETWORK:-}" ep="${SITE_TRAEFIK_ENTRYPOINT:-websecure}" cr="${SITE_TRAEFIK_CERTRESOLVER:-}" r="service-$KEY" n=0 h hosts host_rule cf=""
     if [ -z "$net" ] || [ -z "$cr" ]; then die "traefik-ext: потрібні server.network і server.certresolver у реєстрі"; fi
     hosts="${SITE_HOST:-} ${SITE_EXTRA:-}"
     if [ -z "${hosts// /}" ]; then die "traefik-ext: нема доменів (domains.site / domains.extra)"; fi
+    if [ "${SITE_ORIGIN_CF_ONLY:-}" = yes ]; then cf="$(cf_ip_rule)"; fi
     if [ "$DRY_RUN" = 1 ]; then log "[dry-run] згенерувати $LABELS_FILE: роутери на $hosts${SITE_ADMIN:+ і $SITE_ADMIN}"; return 0; fi
     {
         echo "# Згенеровано bin/site deploy $(date -u +%FT%TZ) з реєстру — не правити руками (перезапишеться)."
@@ -117,14 +127,19 @@ traefik_labels() {
         echo "      traefik.http.services.$r.loadbalancer.server.port: \"80\""
         for h in $hosts; do
             n=$((n + 1))
+            host_rule="Host(\`$h\`)"
             if [ "${SITE_WWW_REDIRECT:-}" = yes ]; then
-                echo "      traefik.http.routers.$r-$n.rule: \"Host(\`$h\`) || Host(\`www.$h\`)\""
+                host_rule="Host(\`$h\`) || Host(\`www.$h\`)"
                 echo "      traefik.http.routers.$r-$n.middlewares: \"$r-www\""
-            else
-                echo "      traefik.http.routers.$r-$n.rule: \"Host(\`$h\`)\""
             fi
+            if [ -n "$cf" ]; then host_rule="($host_rule) && ($cf)"; fi
+            echo "      traefik.http.routers.$r-$n.rule: \"$host_rule\""
             echo "      traefik.http.routers.$r-$n.entrypoints: \"$ep\""
-            echo "      traefik.http.routers.$r-$n.tls.certresolver: \"$cr\""
+            if [ -n "$cf" ]; then
+                echo "      traefik.http.routers.$r-$n.tls: \"true\""
+            else
+                echo "      traefik.http.routers.$r-$n.tls.certresolver: \"$cr\""
+            fi
             echo "      traefik.http.routers.$r-$n.service: \"$r\""
         done
         if [ -n "${SITE_ADMIN:-}" ]; then
@@ -141,7 +156,7 @@ traefik_labels() {
             echo "      traefik.http.middlewares.$r-www.redirectregex.permanent: \"true\""
         fi
     } > "$LABELS_FILE.tmp" && mv "$LABELS_FILE.tmp" "$LABELS_FILE"
-    log "traefik-ext: мітки $n домен(ів)${SITE_ADMIN:+ + адмінка} → shared/traefik-labels.yml"
+    log "traefik-ext: мітки $n домен(ів)${SITE_ADMIN:+ + адмінка}${cf:+, домени лише з IP Cloudflare} → shared/traefik-labels.yml"
 }
 # mysql_root <клієнт> <аргументи…> — mysql/mysqldump у контейнері mysql від root; пароль — зі змінної самого контейнера
 # (MYSQL_ROOT_PASSWORD: стенд traefik — «root» у compose, edge — shared/db.env), у командному рядку й лозі його нема.

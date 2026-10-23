@@ -332,6 +332,13 @@ domains: { site: <домен бренду>, admin: <хост адмінки>, ex
 - `www_redirect: true` — роутер ще й на `www.<домен>` з 301 на домен; DNS `www` має існувати, інакше LE не видасть
   сертифікат і для самого домену.
 - Адмінка — свій роутер із `X-Robots-Tag: noindex, nofollow`.
+- `origin_cf_only: true` — домени лише через Cloudflare (DNS proxied, SSL «Full»): роутер домену має ще
+  `ClientIP(<мережі Cloudflare>)`, тож прямий запит на IP сервера з SNI/Host домену дістає 404, як чужий хост; TLS —
+  дефолтний сертифікат traefik без назв (LE для доменів не замовляється: сертифікат з назвою домену на IP видає origin
+  сканерам). Адмінка — як була. Мережі Cloudflare — `CF_IPS` у `bin/site.d/_remote.sh`. Після першого вмикання — прибрати
+  старі LE-сертифікати доменів з acme.json traefik сервера (traefik віддає їх за SNI, навіть коли роутер без certresolver).
+  Перевірка: `curl -sk --resolve <домен>:443:<IP> https://<домен>/` → 404, `openssl s_client -connect <IP>:443 -servername <домен>`
+  → `CN=TRAEFIK DEFAULT CERT`, через Cloudflare — 200.
 - **Сусіди не зачіпаються:** конфіг traefik сервера не змінюється, у мережі traefik — лише nginx цього стека;
   `traefik.enable=false` на php і mysql (traefik сервера може мати `exposedByDefault=true`). Імена роутерів —
   `service-<key>-<n>`, `service-<key>-admin`.

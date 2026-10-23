@@ -85,6 +85,8 @@ def check_registry(path):
             ep = srv.get("entrypoint", "websecure")
             if not isinstance(ep, str) or not re.match(r"^[A-Za-z0-9_-]+$", ep):
                 err(f"{where}: server.entrypoint — ім'я entrypoint traefik (типово websecure)")
+            if not isinstance(srv.get("origin_cf_only", False), bool):
+                err(f"{where}: server.origin_cf_only — true|false (домени лише з IP Cloudflare, дефолтний сертифікат traefik; SSL Cloudflare «Full»)")
             if not isinstance(srv.get("www_redirect", False), bool):
                 err(f"{where}: server.www_redirect — true|false (www.<домен> → <домен>; DNS www має існувати, інакше сертифікат не видасться)")
             if not srv.get("user"):
