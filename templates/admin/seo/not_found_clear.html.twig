@@ -1,0 +1,18 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{# Підтвердження очищення журналу 404 сайту (ServiceNotFoundCrudController::clear) — лише POST з CSRF. #}
+{% block content_title %}Очистити журнал 404{% endblock %}
+{% block main %}
+    <p>Журнал сайту буде очищено повністю; адреси наповнюватимуться знову з нових звернень. Правил редиректів це не чіпає.</p>
+    <form method="post" id="seo-not-found-clear">
+        <input type="hidden" name="token" value="{{ csrf_token('seo-not-found-clear') }}">
+        <div class="mb-3">
+            <label class="form-label" for="clear-site">Сайт</label>
+            <select class="form-select" name="site" id="clear-site">
+                {% for site in sites %}<option value="{{ site.id }}"{% if current and current.id == site.id %} selected{% endif %}>{{ site.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-danger"><i class="fa fa-trash"></i> Очистити</button>
+        <a class="btn btn-secondary" href="{{ ea_url().setController('App\\Controller\\Admin\\ServiceNotFoundCrudController').setAction('index') }}">Скасувати</a>
+    </form>
+{% endblock %}

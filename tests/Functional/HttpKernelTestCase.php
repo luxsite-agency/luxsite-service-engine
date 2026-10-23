@@ -29,12 +29,13 @@ abstract class HttpKernelTestCase extends KernelTestCase
     /**
      * @param array<string, mixed>  $params
      * @param array<string, string> $server
+     * @param array<string, mixed>  $files  завантажені файли (UploadedFile у тестовому режимі), як $_FILES
      */
-    protected function http(string $method, string $url, array $params = [], array $server = []): Response
+    protected function http(string $method, string $url, array $params = [], array $server = [], array $files = []): Response
     {
         $host = strtolower((string) parse_url($url, \PHP_URL_HOST));
         $kernel = static::$kernel ?? throw new \LogicException('bootKernel() спершу');
-        $request = Request::create($url, $method, $params, $this->jars[$host] ?? [], [], $server);
+        $request = Request::create($url, $method, $params, $this->jars[$host] ?? [], $files, $server);
         $response = $kernel->handle($request);
         foreach ($response->headers->getCookies() as $cookie) {
             if ($cookie->isCleared()) {

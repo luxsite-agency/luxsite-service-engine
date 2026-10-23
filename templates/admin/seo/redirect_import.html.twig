@@ -1,0 +1,27 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{# Імпорт правил редиректів з CSV (ServiceRedirectCrudController::import) і звіт: створено, замінено, помилки з номерами рядків. #}
+{% block content_title %}Імпорт редиректів з CSV{% endblock %}
+{% block main %}
+    {% if report %}
+        <div class="alert {{ report.errors ? 'alert-warning' : 'alert-success' }}" data-import-report>
+            Створено: <strong data-created>{{ report.created }}</strong>, замінено: <strong data-updated>{{ report.updated }}</strong>, з помилками: <strong data-errors>{{ report.errors|length }}</strong>.
+        </div>
+        {% if report.errors %}
+            <table class="table datagrid">
+                <thead><tr><th>Рядок</th><th>Помилка</th></tr></thead>
+                <tbody>
+                {% for error in report.errors %}
+                    <tr data-error-line="{{ error.line }}"><td>{{ error.line }}</td><td>{{ error.message }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+    {{ form_start(form) }}
+        {{ form_row(form.site) }}
+        {{ form_row(form.file) }}
+        <button type="submit" class="btn btn-primary"><i class="fa fa-upload"></i> Імпортувати</button>
+        <a class="btn btn-secondary" href="{{ ea_url().setController('App\\Controller\\Admin\\ServiceRedirectCrudController').setAction('index') }}">До списку</a>
+    {{ form_end(form) }}
+{% endblock %}
