@@ -58,6 +58,7 @@ final class BrandTemplatesTest extends HttpKernelTestCase
                 $fs->dumpFile($root . $slug . '/services/content/contact.html.twig',
                     "{% extends '@engine/services/base.html.twig' %}"
                     . "{% block page %}<nav class=\"sections\">{% for c in sv_categories() %}[{{ c.loc('title', sv_locale()) }}]{% endfor %}</nav>"
+                    . "<nav class=\"filled\">{% for c in sv_categories(true) %}[{{ c.loc('title', sv_locale()) }}]{% endfor %}</nav>"
                     . "<div class=\"blocks\">{% for b in sv_category_posts(4, 1) %}({{ b.category.loc('title', sv_locale()) }}:{{ b.count }}:{% for p in b.posts %}{{ p.slugUk }}{% endfor %}){% endfor %}</div>{% endblock %}");
             }
             if ($name !== 'plain') {
@@ -109,6 +110,8 @@ final class BrandTemplatesTest extends HttpKernelTestCase
 
         self::assertStringContainsString('<nav class="sections">[Рубрика alpha][Друга]</nav>', $a, 'лише активні рубрики свого бренду, за позицією');
         self::assertStringContainsString('<nav class="sections">[Рубрика beta]</nav>', $b);
+        self::assertStringContainsString('<nav class="filled">[Рубрика alpha][Друга]</nav>', $a, 'sv_categories(true): рубрики зі статтями, за позицією');
+        self::assertStringContainsString('<nav class="filled"></nav>', $b, 'рубрика без статей у меню не показується');
         self::assertSame(200, $this->http('GET', 'https://' . $plain . '.example/contacts/')->getStatusCode());
     }
 
