@@ -23,7 +23,8 @@ use Vich\UploaderBundle\Handler\UploadHandler;
  * Джерело — multipart-файл, URL (ImageFetcher, без SSRF) або base64. Запис — через сутність і Vich (setImageFile),
  * тому імена, видалення старого файлу й кеш Liip працюють як з адмінки; межі (≤10 МБ, JPEG/PNG/WebP, ≤8000 px) —
  * Assert\Image сутності через валідатор. MIME — за вмістом (finfo + getimagesize), SVG/GIF/HEIC — 422. Ім'я файлу
- * з запиту в шлях не потрапляє: лише слаг як підказка для SmartUniqueNamer. Ліміт завантажень на токен
+ * з запиту в шлях не потрапляє: лише слаг як підказка для SmartUniqueNamer. Кеш Liip старого файлу прибирає
+ * VichLiipCacheSubscriber (vich_uploader.pre_remove — і для адмінки). Ліміт завантажень на токен
  * (limiter admin_api_image_token), кожна операція — у security_audit.
  */
 final class ImageService
@@ -115,7 +116,8 @@ final class ImageService
         [$siteEntity, $e] = $this->content->entity($site, $kind, $id);
         $old = $e->getImageName();
         if ($old === null || $old === '') {
-            throw new ApiProblem('Зображення й так нема', 200);
+            // ідемпотентно: бажаний стан уже є — звичайний результат, не помилка (у MCP це було б isError)
+            return ['site' => $siteEntity->getSlug(), 'kind' => $kind, 'id' => $id, 'image' => null, 'deleted' => null];
         }
         $this->uploads->remove($e, 'imageFile');
         $e->setImageAlt(null);

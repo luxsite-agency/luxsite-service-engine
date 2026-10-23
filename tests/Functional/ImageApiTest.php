@@ -14,7 +14,10 @@ use App\Entity\ServiceCategory;
 use App\Entity\ServiceCity;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePost;
+use App\Entity\ServiceReview;
 use App\Entity\ServiceSite;
+use App\Entity\ServiceTeamMember;
+use App\Entity\ServiceWork;
 use App\Entity\User;
 use App\Tests\Support\ImageFetchMock;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +37,13 @@ final class ImageApiTest extends HttpKernelTestCase
     private int $siteId;
     private int $itemId;
     private int $postId;
+    private int $workId;
+    private int $globalWorkId;
+    private int $teamId;
+    private int $reviewId;
+    private string $otherSlug;
+    private int $otherSiteId;
+    private int $otherItemId;
     private string $email;
     private string $bearer;
     private string $readOnly;
@@ -53,13 +63,31 @@ final class ImageApiTest extends HttpKernelTestCase
         $em = $this->em();
         $site = (new ServiceSite())->setSlug($this->slug)->setName('CI Image Site')->setApexDomain($apex);
         $em->persist($site);
-        $em->persist((new ServiceCity())->setSite($site)->setHost($apex)->setSlug('main')->setIsApex(true)->setNameNomUk('Головне'));
+        $city = (new ServiceCity())->setSite($site)->setHost($apex)->setSlug('main')->setIsApex(true)->setNameNomUk('Головне');
+        $em->persist($city);
         $category = (new ServiceCategory())->setSite($site)->setSlugUk('cat')->setTitleUk('Категорія');
         $em->persist($category);
         $item = (new ServiceItem())->setSite($site)->setCategory($category)->setSlugUk('svc')->setTitleUk('Послуга');
         $em->persist($item);
         $post = (new ServicePost())->setSite($site)->setSlugUk('post')->setTitleUk('Пост');
         $em->persist($post);
+        $work = (new ServiceWork())->setCity($city)->setItem($item)->setTitleUk('Робота');
+        $em->persist($work);
+        $globalWork = (new ServiceWork())->setTitleUk('Робота для всіх сайтів');
+        $em->persist($globalWork);
+        $team = (new ServiceTeamMember())->setCity($city)->setNameUk('Майстер');
+        $em->persist($team);
+        $review = (new ServiceReview())->setCity($city)->setAuthorUk('Автор')->setTextUk('Текст')->setStars(5);
+        $em->persist($review);
+        // чужий сайт тієї ж інсталяції: його записи через {site} першого — 404
+        $this->otherSlug = $this->slug . '-other';
+        $other = (new ServiceSite())->setSlug($this->otherSlug)->setName('CI Other Site')->setApexDomain($this->otherSlug . '.example');
+        $em->persist($other);
+        $em->persist((new ServiceCity())->setSite($other)->setHost($this->otherSlug . '.example')->setSlug('main')->setIsApex(true)->setNameNomUk('Інше'));
+        $otherCategory = (new ServiceCategory())->setSite($other)->setSlugUk('cat')->setTitleUk('Категорія');
+        $em->persist($otherCategory);
+        $otherItem = (new ServiceItem())->setSite($other)->setCategory($otherCategory)->setSlugUk('svc')->setTitleUk('Чужа послуга');
+        $em->persist($otherItem);
         $this->email = $this->slug . '@example.test';
         $user = (new User())->setEmail($this->email)->setRoles(['ROLE_MODERATOR'])->setPassword('!');
         $em->persist($user);
@@ -67,6 +95,12 @@ final class ImageApiTest extends HttpKernelTestCase
         $this->siteId = (int) $site->getId();
         $this->itemId = (int) $item->getId();
         $this->postId = (int) $post->getId();
+        $this->workId = (int) $work->getId();
+        $this->globalWorkId = (int) $globalWork->getId();
+        $this->teamId = (int) $team->getId();
+        $this->reviewId = (int) $review->getId();
+        $this->otherSiteId = (int) $other->getId();
+        $this->otherItemId = (int) $otherItem->getId();
         $tokens = static::getContainer()->get(AdminApiTokens::class);
         $this->bearer = $tokens->issue($user, 'ci image', [ApiScope::ContentRead, ApiScope::ContentWrite], 1, $user)->plain;
         $this->readOnly = $tokens->issue($user, 'ci image ro', [ApiScope::ContentRead], 1, $user)->plain;
@@ -77,15 +111,23 @@ final class ImageApiTest extends HttpKernelTestCase
     {
         $em = $this->em();
         $em->clear();
-        foreach ([ServiceItem::class => $this->itemId, ServicePost::class => $this->postId] as $class => $id) {
+        $rows = [[ServiceItem::class, $this->itemId, 'service_item'], [ServicePost::class, $this->postId, 'service_post'], [ServiceWork::class, $this->workId, 'service_work'],
+            [ServiceWork::class, $this->globalWorkId, 'service_work'], [ServiceTeamMember::class, $this->teamId, 'service_team'], [ServiceReview::class, $this->reviewId, 'service_review']];
+        foreach ($rows as [$class, $id, $dir]) {
             $e = $em->find($class, $id);
             if ($e?->getImageName() !== null) {
-                @unlink($this->mediaDir . '/' . ($class === ServiceItem::class ? 'service_item' : 'service_post') . '/' . $e->getImageName());
+                @unlink($this->mediaDir . '/' . $dir . '/' . $e->getImageName());
             }
         }
-        $site = $em->find(ServiceSite::class, $this->siteId);
-        if ($site !== null) {
-            $em->remove($site); // категорія, послуга, пост, місто — ON DELETE CASCADE
+        $globalWork = $em->find(ServiceWork::class, $this->globalWorkId);
+        if ($globalWork !== null) {
+            $em->remove($globalWork); // без міста й послуги — каскадом не піде
+        }
+        foreach ([$this->siteId, $this->otherSiteId] as $siteId) {
+            $site = $em->find(ServiceSite::class, $siteId);
+            if ($site !== null) {
+                $em->remove($site); // категорія, послуга, пост, місто, робота, команда, відгук — ON DELETE CASCADE
+            }
         }
         $user = $em->getRepository(User::class)->findOneBy(['email' => $this->email]);
         if ($user !== null) {
@@ -125,7 +167,8 @@ final class ImageApiTest extends HttpKernelTestCase
 
         $again = $this->api('DELETE', '/items/' . $this->itemId . '/image');
         self::assertSame(200, $again->getStatusCode());
-        self::assertStringContainsString('й так нема', (string) $this->json($again)['error']);
+        self::assertSame(['image' => null, 'deleted' => null], array_intersect_key($this->json($again), ['image' => 1, 'deleted' => 1]), 'DELETE ідемпотентний: звичайний результат, не помилка');
+        self::assertArrayNotHasKey('error', $this->json($again));
     }
 
     public function testUrlDownloadWithRedirectAndReplacesOldFile(): void
@@ -176,11 +219,14 @@ final class ImageApiTest extends HttpKernelTestCase
             'http://192.168.1.1/pic.png', 'http://169.254.169.254/latest/meta-data', 'http://[::1]/pic.png', 'http://[fc00::1]/pic.png', 'http://[fd12::1]/pic.png',
             'http://[fe80::1]/pic.png', 'http://[::ffff:10.0.0.1]/pic.png', 'http://0.0.0.0/pic.png', 'http://100.64.0.1/pic.png', 'http://localhost/pic.png',
             'http://db.internal/pic.png', 'http://mysql.local/pic.png',
+            // нерезолвний хост і hex-IP (dns_get_record/gethostbynamel → false): 422 «не резолвиться», не 500
+            'http://no-such-host.invalid/pic.png', 'http://0x7f000001/pic.png',
         ];
         foreach ($urls as $url) {
             $response = $this->api('PUT', '/items/' . $this->itemId . '/image', ['url' => $url]);
             self::assertSame(422, $response->getStatusCode(), $url . ': ' . (string) $response->getContent());
         }
+        self::assertStringContainsString('не резолвиться', (string) $this->json($this->api('PUT', '/items/' . $this->itemId . '/image', ['url' => 'http://no-such-host.invalid/pic.png']))['error']);
         self::assertSame([], ImageFetchMock::$calls, 'жодного мережевого запиту');
 
         // редирект на приватну адресу — другий хоп відхиляється
@@ -291,12 +337,114 @@ final class ImageApiTest extends HttpKernelTestCase
         self::assertFileDoesNotExist($this->mediaDir . '/service_item/' . $image['name']);
     }
 
+    public function testWorksTeamReviewsListGetPatchAndImages(): void
+    {
+        foreach (['works' => 2, 'team' => 1, 'reviews' => 1] as $kind => $count) {
+            $list = $this->json($this->api('GET', '/' . $kind));
+            self::assertSame($count, $list['count'], $kind);
+            self::assertFalse($list['items'][0]['has_image']);
+        }
+        self::assertSame(1, $this->json($this->api('GET', '/works?city=main&item=' . $this->itemId))['count']);
+
+        // валідатор сутності, як у формі адмінки: stars лише 1–5
+        foreach ([0, 6] as $stars) {
+            $response = $this->api('PATCH', '/reviews/' . $this->reviewId, ['stars' => $stars]);
+            self::assertSame(422, $response->getStatusCode(), (string) $response->getContent());
+            self::assertStringContainsString('stars', (string) $this->json($response)['error']);
+        }
+        self::assertSame(5, $this->json($this->api('GET', '/reviews/' . $this->reviewId))['stars'], 'не записано');
+        $patched = $this->json($this->api('PATCH', '/reviews/' . $this->reviewId, ['stars' => 4, 'image_alt' => 'Фото автора']));
+        self::assertSame([4, ['stars', 'image_alt']], [$patched['stars'], $patched['changed']]);
+        self::assertSame('Нова назва', $this->json($this->api('PATCH', '/works/' . $this->workId, ['title_uk' => 'Нова назва']))['title_uk']);
+
+        // фото трьома шляхами — у теки своїх мапінгів Vich
+        $work = $this->json($this->multipart('works', $this->workId, ImageFetchMock::jpeg(50, 40), 'before-after.jpg'))['image'];
+        $team = $this->json($this->api('PUT', '/team/' . $this->teamId . '/image', ['data' => base64_encode(ImageFetchMock::png(30, 30)), 'alt' => 'Майстер']))['image'];
+        $review = $this->json($this->api('PUT', '/review/' . $this->reviewId . '/image', ['url' => 'http://203.0.113.10/pic.png']))['image'];
+        self::assertFileExists($this->mediaDir . '/service_work/' . $work['name']);
+        self::assertFileExists($this->mediaDir . '/service_team/' . $team['name']);
+        self::assertFileExists($this->mediaDir . '/service_review/' . $review['name']);
+        self::assertStringContainsString('/media/service_team/', $team['url']);
+        self::assertSame('Майстер', $this->json($this->api('GET', '/team/' . $this->teamId))['image']['alt']);
+        self::assertTrue($this->json($this->api('GET', '/reviews'))['items'][0]['has_image']);
+        self::assertSame(422, $this->api('PUT', '/team/' . $this->teamId . '/image', ['data' => base64_encode(ImageFetchMock::png(5, 5)), 'alt_ru' => 'x'])->getStatusCode(), 'alt_ru лише posts');
+
+        foreach (['works' => $this->workId, 'team' => $this->teamId, 'reviews' => $this->reviewId] as $kind => $id) {
+            self::assertSame(200, $this->api('DELETE', '/' . $kind . '/' . $id . '/image')->getStatusCode(), $kind);
+            self::assertNull($this->json($this->api('GET', '/' . $kind . '/' . $id))['image'], $kind);
+        }
+        foreach (['service_work', 'service_team', 'service_review'] as $dir) {
+            self::assertSame([], glob($this->mediaDir . '/' . $dir . '/*') ?: [], $dir);
+        }
+    }
+
+    public function testRecordsOfAnotherSiteAre404AndGlobalWorkIsSharedByDesign(): void
+    {
+        $png = base64_encode(ImageFetchMock::png(6, 6));
+        self::assertSame(404, $this->api('GET', '/items/' . $this->otherItemId)->getStatusCode());
+        self::assertSame(404, $this->api('PATCH', '/items/' . $this->otherItemId, ['title_uk' => 'x'])->getStatusCode());
+        self::assertSame(404, $this->api('PUT', '/items/' . $this->otherItemId . '/image', ['data' => $png])->getStatusCode());
+        self::assertSame(404, $this->api('DELETE', '/items/' . $this->otherItemId . '/image')->getStatusCode());
+        self::assertSame([], glob($this->mediaDir . '/service_item/*') ?: []);
+        // робота, прив'язана до міста першого сайту, через другий сайт — 404; глобальна (без міста й послуги) — видна обом
+        self::assertSame(404, $this->api('GET', '/works/' . $this->workId, [], null, null, $this->otherSlug)->getStatusCode());
+        self::assertSame(404, $this->api('PUT', '/works/' . $this->workId . '/image', ['data' => $png], null, null, $this->otherSlug)->getStatusCode());
+        self::assertSame(200, $this->api('GET', '/works/' . $this->globalWorkId, [], null, null, $this->otherSlug)->getStatusCode());
+        self::assertSame(200, $this->api('GET', '/works/' . $this->globalWorkId)->getStatusCode());
+        self::assertSame([$this->globalWorkId], array_column($this->json($this->api('GET', '/works', [], null, null, $this->otherSlug))['items'], 'id'));
+        $image = $this->json($this->api('PUT', '/works/' . $this->globalWorkId . '/image', ['data' => $png], null, null, $this->otherSlug))['image'];
+        self::assertStringStartsWith('https://' . $this->otherSlug . '.example/media/service_work/', $image['url']);
+        self::assertSame($image['name'], $this->json($this->api('GET', '/works/' . $this->globalWorkId))['image']['name']);
+        self::assertSame(200, $this->api('DELETE', '/works/' . $this->globalWorkId . '/image')->getStatusCode());
+        self::assertSame([], glob($this->mediaDir . '/service_work/*') ?: []);
+    }
+
+    public function testLiipCacheOfOldFileIsRemovedOnReplaceAndDelete(): void
+    {
+        $data = base64_encode(ImageFetchMock::png(12, 12));
+        $first = $this->json($this->api('PUT', '/items/' . $this->itemId . '/image', ['data' => $data]))['image']['name'];
+        $cached = [];
+        foreach (['item_hero', 'item_hero_sm', 'teaser'] as $filter) {
+            $dir = $this->mediaDir . '/cache/' . $filter . '/media/service_item';
+            @mkdir($dir, 0775, true);
+            file_put_contents($cached[] = $dir . '/' . $first, 'variant');
+        }
+        $second = $this->json($this->api('PUT', '/items/' . $this->itemId . '/image', ['data' => $data]))['image']['name'];
+        self::assertNotSame($first, $second);
+        foreach ($cached as $file) {
+            self::assertFileDoesNotExist($file, 'кеш старого файлу прибрано при заміні');
+        }
+        $dir = $this->mediaDir . '/cache/item_hero/media/service_item';
+        file_put_contents($dir . '/' . $second, 'variant');
+        self::assertSame(200, $this->api('DELETE', '/items/' . $this->itemId . '/image')->getStatusCode());
+        self::assertFileDoesNotExist($dir . '/' . $second, 'кеш прибрано при DELETE');
+    }
+
+    public function testMultipartBeyondPostMaxSizeGives413NotMissingFile(): void
+    {
+        // PHP понад post_max_size мовчки викидає $_FILES — контролер бачить multipart без файлів і Content-Length
+        $request = Request::create('https://' . $this->adminHost . '/api/admin/v1/' . $this->slug . '/items/' . $this->itemId . '/image', 'POST', [], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->bearer, 'CONTENT_TYPE' => 'multipart/form-data; boundary=ci', 'CONTENT_LENGTH' => '99999999',
+        ]);
+        $response = $this->send($request);
+        self::assertSame(413, $response->getStatusCode(), (string) $response->getContent());
+        self::assertStringContainsString('post_max_size', (string) $this->json($response)['error']);
+        self::assertSame(400, $this->multipartWithoutFile()->getStatusCode(), 'малий multipart без file — як і було, 400');
+    }
+
+    private function multipartWithoutFile(): Response
+    {
+        return $this->send(Request::create('https://' . $this->adminHost . '/api/admin/v1/' . $this->slug . '/items/' . $this->itemId . '/image', 'POST', ['alt' => 'x'], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->bearer, 'CONTENT_TYPE' => 'multipart/form-data; boundary=ci', 'CONTENT_LENGTH' => '120',
+        ]));
+    }
+
     /** @param array<string, mixed> $json */
-    private function api(string $method, string $path, array $json = [], ?string $raw = null, ?string $bearer = null): Response
+    private function api(string $method, string $path, array $json = [], ?string $raw = null, ?string $bearer = null, ?string $site = null): Response
     {
         $body = $raw ?? ($json === [] ? '' : (string) json_encode($json));
 
-        return $this->send(Request::create('https://' . $this->adminHost . '/api/admin/v1/' . $this->slug . $path, $method, [], [], [], [
+        return $this->send(Request::create('https://' . $this->adminHost . '/api/admin/v1/' . ($site ?? $this->slug) . $path, $method, [], [], [], [
             'HTTP_AUTHORIZATION' => 'Bearer ' . ($bearer ?? $this->bearer),
             'CONTENT_TYPE' => 'application/json',
         ], $body));

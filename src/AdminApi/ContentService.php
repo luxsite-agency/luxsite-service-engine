@@ -25,6 +25,7 @@ use App\Repository\ServiceSiteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Операції контенту для менеджерів — одне ядро для REST (/api/admin/v1) і MCP (/mcp). Лише те, що менеджер і так
@@ -78,6 +79,7 @@ final class ContentService
         private readonly AuthorizationCheckerInterface $auth,
         private readonly LoggerInterface $logger,
         private readonly ImageInfo $images,
+        private readonly ValidatorInterface $validator,
     ) {
     }
 
@@ -157,6 +159,7 @@ final class ContentService
         $site = $this->site($siteSlug);
         $e = $this->find($site, $kind, $id);
         $changed = $this->apply($kind, $e, $data);
+        $this->validate($e);
         $this->em->flush();
         $this->audit('update', $kind, $e, $changed);
 
@@ -192,6 +195,7 @@ final class ContentService
         }
         unset($data['item_id'], $data['category_id'], $data['city_id']);
         $changed = $this->apply($kind, $e, $data);
+        $this->validate($e);
         $created = $e->getId() === null;
         $this->em->persist($e);
         $this->em->flush();
@@ -369,6 +373,20 @@ final class ContentService
         }
 
         return $changed;
+    }
+
+    /** Ті самі обмеження, що у формі адмінки (Assert сутності: stars 1–5 тощо) — інакше 422 без запису. */
+    private function validate(object $e): void
+    {
+        $violations = $this->validator->validate($e);
+        if (\count($violations) === 0) {
+            return;
+        }
+        $messages = [];
+        foreach ($violations as $v) {
+            $messages[] = ($v->getPropertyPath() !== '' ? $v->getPropertyPath() . ': ' : '') . $v->getMessage();
+        }
+        throw new ApiProblem('Значення не проходять перевірку: ' . implode('; ', array_unique($messages)), 422);
     }
 
     private function getter(object $e, string $prop): string

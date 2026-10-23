@@ -177,15 +177,22 @@ curl -sS -H "$A" -X DELETE "$API/items/42/image"
 ```
 
 Відповідь: `{"site","kind","id","image":{"url","name","alt","alt_ru","width","height","bytes"}}`; після `DELETE` —
-`"image": null` і `"deleted": "<старе ім'я>"`. Той самий блок `image` є в `GET /{site}/{kind}/{id}`.
+`"image": null` і `"deleted": "<старе ім'я>"` (фото й так не було — `"deleted": null`, теж 200: DELETE ідемпотентний).
+Той самий блок `image` є в `GET /{site}/{kind}/{id}`.
 
 Межі й відмови (ті самі, що `Assert\Image` сутностей, перевіряє валідатор): до 10 МБ, JPEG/PNG/WebP **за вмістом**
 (finfo + getimagesize; розширення й `Content-Type` не враховуються), до 8000×8000. SVG, GIF, HEIC/HEIF, AVIF — 422 з
 поясненням; завеликий файл, base64 чи відповідь URL — 413 (base64 міряється до декодування, URL читається потоком і
 обривається); понад `app.admin_api_image_rate_limit` (30) завантажень за хвилину на токен — 429 + `Retry-After`;
 без `content:write` — 403. Кожна операція — у `var/log/security_audit.log` (`admin_api.image.put|delete`: хто, токен,
-вид, id, джерело, MIME, розмір, яке ім'я замінено). Ліміт тіла запиту на nginx (`client_max_body_size`) має бути ≥ 16 МБ
-(base64 + JSON).
+вид, id, джерело, MIME, розмір, яке ім'я замінено). Кеш варіантів Liip старого файлу прибирається (`VichLiipCacheSubscriber`,
+і для адмінки). Межа 10 МБ діє з образів рушія цієї версії: `docker/php/*.ini` задають `upload_max_filesize = 10M`,
+`post_max_size = 16M` (до того PHP-дефолт 2M/8M обмежував multipart в адмінці й API); nginx образів — `client_max_body_size 32m`.
+На сторонньому хостингу перевірити ті самі значення. Multipart понад `post_max_size` → 413 з поясненням (JSON з base64
+цей ліміт не зачіпає).
+
+`PATCH` записів (усіх kind) проходить валідатор сутності, як форма адмінки: `stars` поза 1–5, від'ємна `position` тощо → 422
+без запису.
 
 Через MCP у Claude Code (після `claude mcp add … /mcp`): «Постав послузі 42 на сайті example фото з
 https://images.example.com/kitchen.jpg, alt "Кухня після прибирання"» → модель викликає

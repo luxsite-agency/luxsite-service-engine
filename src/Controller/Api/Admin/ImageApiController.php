@@ -38,7 +38,16 @@ final class ImageApiController extends AbstractController
     {
         return $this->run(function () use ($request, $site, $kind, $id) {
             $file = $request->files->get('file');
-            if ($file instanceof UploadedFile || $request->files->count() > 0 || str_starts_with((string) $request->headers->get('Content-Type'), 'multipart/')) {
+            $multipart = str_starts_with((string) $request->headers->get('Content-Type'), 'multipart/');
+            if ($multipart && !$file instanceof UploadedFile) {
+                // понад post_max_size PHP мовчки викидає $_POST і $_FILES — без цієї перевірки було б 400 «нема поля file»
+                $length = (int) $request->headers->get('Content-Length', '0');
+                $max = self::iniBytes((string) ini_get('post_max_size'));
+                if ($max > 0 && $length > $max) {
+                    throw new ApiProblem(sprintf('Тіло запиту %d байт понад post_max_size PHP (%s): файл до %d МБ, або передайте url чи base64 у JSON', $length, ini_get('post_max_size'), intdiv(ImageService::MAX_BYTES, 1_000_000)), 413);
+                }
+            }
+            if ($file instanceof UploadedFile || $request->files->count() > 0 || $multipart) {
                 return $this->images->putUpload($site, $kind, $id, $file instanceof UploadedFile ? $file : null, $this->text($request->request->get('alt')), $this->text($request->request->get('alt_ru')));
             }
             $body = json_decode($request->getContent(), true);
@@ -61,6 +70,21 @@ final class ImageApiController extends AbstractController
     public function delete(string $site, string $kind, int $id): JsonResponse
     {
         return $this->run(fn () => $this->images->delete($site, $kind, $id));
+    }
+
+    /** 16M / 512K / 1G → байти (запис php.ini); 0 = без межі */
+    public static function iniBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+        $unit = strtolower(substr($value, -1));
+        $n = (int) $value;
+
+        return match ($unit) {
+            'g' => $n * 1024 ** 3, 'm' => $n * 1024 ** 2, 'k' => $n * 1024, default => $n,
+        };
     }
 
     private function text(mixed $value): ?string

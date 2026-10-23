@@ -144,7 +144,8 @@ final class ImageFetcher
     private function resolveHost(string $host): array
     {
         $ips = [];
-        foreach ((array) @dns_get_record($host, \DNS_A | \DNS_AAAA) as $rec) {
+        // на невдачі обидві функції віддають false ((array) false = [false] → TypeError), тому ?: []
+        foreach (@dns_get_record($host, \DNS_A | \DNS_AAAA) ?: [] as $rec) {
             if (isset($rec['ip'])) {
                 $ips[] = $rec['ip'];
             } elseif (isset($rec['ipv6'])) {
@@ -152,7 +153,7 @@ final class ImageFetcher
             }
         }
         if ($ips === []) {
-            foreach ((array) @gethostbynamel($host) as $ip) {
+            foreach (@gethostbynamel($host) ?: [] as $ip) {
                 $ips[] = $ip;
             }
         }
