@@ -44,23 +44,30 @@ final class ValidRedirectValidator extends ConstraintValidator
 
             return;
         }
-        $code = $value->getCode();
-        if (!$code->isRedirect()) {
-            return;
-        }
-        if ($value->getTarget() === null && trim((string) $value->getRawTarget()) !== '') {
-            $this->context->buildViolation('Невалідна ціль: шлях від кореня (/…) або повний URL https://…')->atPath('target')->addViolation();
+        // жива адреса — відмова для будь-якого коду (410/404 теж спрацьовують лише на 404)
+        if (($error = $this->redirects->liveMessage($site, $city, $value->getSource())) !== null) {
+            $this->context->buildViolation($error)->atPath('source')->addViolation();
 
             return;
         }
-        $target = $value->getTarget() === null ? null : $this->redirects->localize($site, $value->getTarget());
-        if ($target !== null && RedirectPath::isAbsoluteUrl($target) && !$this->security->isGranted('ROLE_ADMIN')) {
+        if (!$value->getCode()->isRedirect()) {
+            return;
+        }
+        if ($value->getTarget() === null) {
+            $this->context->buildViolation(trim((string) $value->getRawTarget()) !== '' ? 'Невалідна ціль: шлях від кореня (/…) або повний URL https://…' : RedirectManager::TARGET_REQUIRED)->atPath('target')->addViolation();
+
+            return;
+        }
+        $target = $this->redirects->localize($site, $value->getTarget());
+        if (RedirectPath::isAbsoluteUrl($target) && !$this->security->isGranted('ROLE_ADMIN')) {
             $this->context->buildViolation(RedirectManager::EXTERNAL_DENIED)->atPath('target')->addViolation();
 
             return;
         }
-        if (($error = $this->redirects->check($site, $city, $value->getSource(), $code, $target)) !== null) {
-            $this->context->buildViolation($error)->atPath('target')->addViolation();
+        try {
+            $this->redirects->resolve($site, $city, $value->getSource(), $target);
+        } catch (InvalidRedirect $e) {
+            $this->context->buildViolation($e->getMessage())->atPath('target')->addViolation();
         }
     }
 }

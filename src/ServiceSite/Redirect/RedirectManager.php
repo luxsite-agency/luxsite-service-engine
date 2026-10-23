@@ -28,15 +28,18 @@ use Symfony\Component\Lock\LockFactory;
  * самої області. Тримається злиттям: нове правило A→B бере кінцеву ціль B (B→C ⇒ A→C), а правила X→A переписуються на
  * ту саму ціль (індекс target_path). Правило сайту переписує й правила міст, у яких для A нема власного правила;
  * правило міста — лише правила свого міста (правила сайту на інших хостах лишаються чинними). Цикл (A→B при B→…→A) і
- * редирект на себе — відмова для ручних правил; авто-301 циклів не дає, бо нові адреси живі й правила з таким джерелом
- * видаляються. Абсолютна ціль на хості будь-якого міста сайту — це шлях (інакше A→https://site/B і B→A обходили б
- * перевірку циклу). Ручні правила пишуться під блокуванням (locked()): дві паралельні форми A→B і B→A не дадуть циклу.
+ * редирект на себе — відмова для ручних правил; правило сайту діє на кожному хості поверх правил міста, тому цикл
+ * шукається і через правила кожного міста (місто B→A + сайт A→B — цикл на хості B). Авто-301 циклів не дає, бо нові
+ * адреси живі й правила з таким джерелом видаляються. Абсолютна ціль на хості будь-якого міста сайту — це шлях (інакше
+ * A→https://site/B і B→A обходили б перевірку циклу). Ручні правила пишуться під блокуванням (locked()): дві паралельні
+ * форми A→B і B→A не дадуть циклу.
  */
 final class RedirectManager
 {
     private const int MAX_CHAIN = 20;
     private const int CHUNK = 500;
     public const string EXTERNAL_DENIED = 'Ціль на іншому сайті може задати лише адміністратор; менеджеру — шлях від кореня (/…)';
+    public const string TARGET_REQUIRED = 'Для 301/302 вкажіть ціль: шлях від кореня (/…) або повний URL https://…';
 
     private const string LOCK = 'seo-redirect-rules';
 
@@ -111,14 +114,14 @@ final class RedirectManager
      */
     public function check(ServiceSite $site, ?ServiceCity $city, string $source, RedirectCode $code, ?string $target): ?string
     {
-        if ($this->live->isLive($site, $city, $source)) {
-            return sprintf('Адреса %s зараз відкривається на сайті%s — правило спрацьовує лише на 404. Спершу зніміть сторінку з публікації або змініть її адресу (тоді 301 запишеться сам).', $source, $city === null ? ' (хоча б в одному місті)' : '');
+        if (($live = $this->liveMessage($site, $city, $source)) !== null) {
+            return $live;
         }
         if (!$code->isRedirect()) {
             return null;
         }
         if ($target === null) {
-            return 'Для 301/302 вкажіть ціль: шлях від кореня (/…) або повний URL https://…';
+            return self::TARGET_REQUIRED;
         }
         try {
             $this->resolve($site, $city, $source, $target);
@@ -129,16 +132,58 @@ final class RedirectManager
         return null;
     }
 
+    /** Повідомлення, чому для $source не можна завести правило жодного коду (адреса жива), або null. */
+    public function liveMessage(ServiceSite $site, ?ServiceCity $city, string $source): ?string
+    {
+        if (!$this->live->isLive($site, $city, $source)) {
+            return null;
+        }
+
+        return sprintf('Адреса %s зараз відкривається на сайті%s — правило спрацьовує лише на 404. Спершу зніміть сторінку з публікації або змініть її адресу (тоді 301 запишеться сам).', $source, $city === null ? ' (хоча б в одному місті)' : '');
+    }
+
     /**
      * Кінцева ціль правила $source → $target в області (місто → сайт): якщо ціль — джерело іншого 301/302, береться його
-     * ціль (і так далі).
+     * ціль (і так далі). Для правила сайту кінцева ціль — з ланцюга правил сайту (вона має бути чинною на всіх хостах),
+     * а цикл перевіряється ще й на кожному хості, де є правила міста й нема власного правила для $source: там правило
+     * сайту діє поверх правил міста (місто B→A + сайт A→B = цикл на хості B).
      *
      * @throws InvalidRedirect редирект на себе або цикл
      */
     public function resolve(ServiceSite $site, ?ServiceCity $city, string $source, string $target): string
     {
+        $siteId = (int) $site->getId();
+        $target = $this->localize($site, $target);
+        $final = $this->walk($siteId, self::key($city), $source, $target);
+        if ($city !== null) {
+            return $final;
+        }
+        $cityKeys = $this->db->fetchFirstColumn(
+            'SELECT DISTINCT city_key FROM service_redirect WHERE site_id = ? AND city_key <> 0
+             AND city_key NOT IN (SELECT city_key FROM service_redirect WHERE site_id = ? AND city_key <> 0 AND source = ?)',
+            [$siteId, $siteId, $source],
+        );
+        foreach ($cityKeys as $cityKey) {
+            try {
+                $this->walk($siteId, (int) $cityKey, $source, $target);
+            } catch (InvalidRedirect $e) {
+                $host = (string) $this->db->fetchOne('SELECT host FROM service_city WHERE id = ?', [(int) $cityKey]);
+                throw new InvalidRedirect(sprintf('%s (через правило міста %s)', $e->getMessage(), $host !== '' ? $host : '#' . $cityKey), 0, $e);
+            }
+        }
+
+        return $final;
+    }
+
+    /**
+     * Ланцюг від $target в області (правило міста $cityKey → правило сайту) до кінцевої цілі.
+     *
+     * @throws InvalidRedirect редирект на себе або цикл
+     */
+    private function walk(int $siteId, int $cityKey, string $source, string $target): string
+    {
         $seen = [$source => true];
-        $current = $this->localize($site, $target);
+        $current = $target;
         for ($i = 0; $i < self::MAX_CHAIN; ++$i) {
             $path = RedirectPath::targetPath($current);
             if ($path === null) {
@@ -150,7 +195,7 @@ final class RedirectManager
             $seen[$path] = true;
             $row = $this->db->fetchAssociative(
                 'SELECT code, target FROM service_redirect WHERE site_id = ? AND city_key IN (?, 0) AND source = ? ORDER BY city_key DESC LIMIT 1',
-                [$site->getId(), self::key($city), $path],
+                [$siteId, $cityKey, $path],
             );
             if ($row === false || $row['target'] === null || !RedirectCode::from((int) $row['code'])->isRedirect()) {
                 return $current;
@@ -279,12 +324,17 @@ final class RedirectManager
         return (int) ($city?->getId() ?? 0);
     }
 
-    /** X→$from ⇒ X→$to; правило, що стало б «на себе» ($to→$from), видаляється. */
+    /**
+     * X→$from ⇒ X→$to; правило, що стало б «на себе» ($to→$from), видаляється: в області міста — лише його, для правила
+     * сайту — в усіх областях (воно діє на кожному хості; ручні правила сюди не доходять — resolve() дав би цикл).
+     */
     private function repoint(int $siteId, int $cityKey, string $from, string $to): void
     {
         $toPath = RedirectPath::targetPath($to);
-        if ($toPath !== null) {
+        if ($toPath !== null && $cityKey !== 0) {
             $this->db->executeStatement('DELETE FROM service_redirect WHERE site_id = ? AND city_key = ? AND target_path = ? AND source = ?', [$siteId, $cityKey, $from, $toPath]);
+        } elseif ($toPath !== null) {
+            $this->db->executeStatement('DELETE FROM service_redirect WHERE site_id = ? AND target_path = ? AND source = ?', [$siteId, $from, $toPath]);
         }
         if ($cityKey !== 0) {
             $this->db->executeStatement('UPDATE service_redirect SET target = ?, target_path = ? WHERE site_id = ? AND city_key = ? AND target_path = ? AND source <> ?', [$to, $toPath, $siteId, $cityKey, $from, $from]);

@@ -14,6 +14,7 @@ use App\Entity\ServicePost;
 use App\ServiceSite\LegacyUrls;
 use App\ServiceSite\Redirect\InvalidRedirect;
 use App\ServiceSite\Redirect\NotFoundLog;
+use App\ServiceSite\Redirect\LiveUrls;
 use App\ServiceSite\Redirect\PackRedirects;
 use App\ServiceSite\Redirect\RedirectCode;
 use App\ServiceSite\Redirect\RedirectCsv;
@@ -249,6 +250,43 @@ final class RedirectsTest extends SeoTestCase
         self::assertSame("/yy-$s/", $this->target("/ca-$s/", $this->branchCityId));
     }
 
+    /** Рев'ю PR #18, п. 1: правило сайту діє на хості міста поверх його правил — цикл через правило міста теж відмова. */
+    public function testSiteRuleSeesCityRulesWhenCheckingCycles(): void
+    {
+        $s = $this->s;
+        $m = static::getContainer()->get(RedirectManager::class);
+        $site = $this->site();
+        $branch = $this->city($this->branchCityId);
+        [$a, $b, $c] = ["/pa-$s/", "/pb-$s/", "/pc-$s/"];
+        $m->save($site, $branch, $b, RedirectCode::Permanent, $a); // місто B→A
+        $this->assertInvalid('Цикл', fn () => $m->save($site, null, $a, RedirectCode::Permanent, $b), 'сайт A→B — цикл на хості філії');
+        $this->assertInvalid($this->branch, fn () => $m->save($site, null, $a, RedirectCode::Permanent, $b), 'у повідомленні — хост міста');
+        self::assertSame($a, $this->target($b, $this->branchCityId), 'правило міста не змінилось');
+        self::assertNull($this->target($a), 'правило сайту не записано');
+        self::assertSame(404, $this->http('GET', 'https://' . $this->branch . $a)->getStatusCode());
+        self::assertTrue($m->save($site, null, $a, RedirectCode::Permanent, $c), 'сайт A→C — не цикл; правило міста B→A злито в B→C');
+        self::assertSame($c, $this->target($b, $this->branchCityId));
+        $this->assertInvalid('Цикл', fn () => $m->save($site, null, $c, RedirectCode::Permanent, $b), 'сайт C→B: на філії C→B→C');
+        self::assertNull($this->target($c));
+        self::assertSame(0, (int) $this->db()->fetchOne('SELECT COUNT(*) FROM service_redirect WHERE site_id = ? AND source = target_path', [$this->siteId]));
+        self::assertSame('https://' . $this->branch . $c, $this->http('GET', 'https://' . $this->branch . $b)->headers->get('Location'));
+        self::assertSame('https://' . $this->branch . $c, $this->http('GET', 'https://' . $this->branch . $a)->headers->get('Location'));
+        self::assertSame(404, $this->http('GET', 'https://' . $this->branch . $c)->getStatusCode());
+
+        // ланцюг через правило міста кінцевої цілі правила сайту не міняє (ціль має бути чинною на всіх хостах)
+        $m->save($site, $branch, $c, RedirectCode::Permanent, "/pd-$s/"); // місто C→D
+        $m->save($site, null, "/pe-$s/", RedirectCode::Permanent, $c);    // сайт E→C: на філії E→C→D (два стрибки), на апексі E→C
+        self::assertSame($c, $this->target("/pe-$s/"));
+        self::assertSame('https://' . $this->apex . $c, $this->http('GET', 'https://' . $this->apex . "/pe-$s/")->headers->get('Location'));
+
+        // цикл через злите правило міста: F→G, H→F ⇒ H→G; сайт G→H — на філії G→H→G
+        $m->save($site, $branch, "/pf-$s/", RedirectCode::Permanent, "/pg-$s/");
+        $m->save($site, $branch, "/ph-$s/", RedirectCode::Permanent, "/pf-$s/");
+        self::assertSame("/pg-$s/", $this->target("/ph-$s/", $this->branchCityId));
+        $this->assertInvalid('Цикл', fn () => $m->save($site, null, "/pg-$s/", RedirectCode::Permanent, "/ph-$s/"));
+        self::assertTrue($m->save($site, null, "/pg-$s/", RedirectCode::Permanent, "/pi-$s/"), 'а на іншу адресу — можна');
+    }
+
     public function testCsvImportReportsErrorsAndExportRoundTrips(): void
     {
         $s = $this->s;
@@ -318,6 +356,36 @@ final class RedirectsTest extends SeoTestCase
         $again = $pack->import($site);
         self::assertSame(0, $again['created']);
         self::assertSame(4, (int) $this->db()->fetchOne('SELECT COUNT(*) FROM service_redirect WHERE site_id = ? AND kind = ?', [$this->siteId, 'pack']));
+    }
+
+    /**
+     * Рев'ю PR #18, п. 3: адреса, для якої є лише правило паку (when@test: app.legacy_redirects {ci-pack-old: /ci-pack-new/}),
+     * не «жива»: «Перенести з паку» і ручне правило для неї працюють, а пак, доки адреса в мапі, спрацьовує першим (резерв).
+     */
+    public function testPackMappedAddressIsNotLiveSoRulesForItSaveAndStandInReserve(): void
+    {
+        $s = $this->s;
+        $site = $this->site();
+        $m = static::getContainer()->get(RedirectManager::class);
+        $live = static::getContainer()->get(LiveUrls::class);
+
+        $r = $this->http('GET', 'https://' . $this->apex . '/ci-pack-old/');
+        self::assertSame(301, $r->getStatusCode(), 'пак спрацьовує до роутингу');
+        self::assertSame('https://' . $this->apex . '/ci-pack-new/', $r->headers->get('Location'));
+        self::assertFalse($live->isLive($site, null, '/ci-pack-old/'), 'збіг лише з мапою паку — не жива адреса');
+        self::assertFalse($live->isLive($site, $this->city($this->branchCityId), '/ci-pack-old'));
+        self::assertTrue($live->isLive($site, null, '/contacts/'));
+
+        $report = static::getContainer()->get(PackRedirects::class)->import($site);
+        self::assertSame([], $report['errors'], json_encode($report, \JSON_UNESCAPED_UNICODE) ?: '');
+        self::assertSame(1, $report['created']);
+        self::assertSame('/ci-pack-new/', $this->target('/ci-pack-old/'));
+        self::assertSame('pack', $this->db()->fetchOne('SELECT kind FROM service_redirect WHERE site_id = ? AND source = ?', [$this->siteId, '/ci-pack-old/']));
+
+        self::assertFalse($m->save($site, null, '/ci-pack-old/', RedirectCode::Permanent, "/manual-$s/"), 'ручне правило на адресу з мапи — заміна правила паку');
+        self::assertSame("/manual-$s/", $this->target('/ci-pack-old/'));
+        self::assertSame('https://' . $this->apex . '/ci-pack-new/', $this->http('GET', 'https://' . $this->apex . '/ci-pack-old/')->headers->get('Location'), 'доки адреса в паку — пак перший, правило БД у резерві');
+        self::assertFalse($this->logged('/ci-pack-old/'));
     }
 
     public function testNotFoundLogAggregatesWithoutPersonalDataAndPrunesPerSite(): void

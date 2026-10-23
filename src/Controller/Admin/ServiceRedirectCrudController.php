@@ -24,6 +24,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
+use EasyCorp\Bundle\EasyAdminBundle\Config\KeyValueStore;
+use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
@@ -154,6 +156,32 @@ final class ServiceRedirectCrudController extends AbstractCrudController
         $city = $cityId > 0 ? $this->container->get('doctrine')->getRepository(ServiceCity::class)->find($cityId) : null;
 
         return new ServiceRedirect($site, (string) ($request?->query->get('source') ?? ''), RedirectCode::Permanent, null, $city instanceof ServiceCity && $city->getSite()?->getId() === $site?->getId() ? $city : null);
+    }
+
+    public function new(AdminContext $context): KeyValueStore|Response
+    {
+        try {
+            return parent::new($context);
+        } catch (InvalidRedirect $e) {
+            return $this->backToForm($context, $e);
+        }
+    }
+
+    public function edit(AdminContext $context): KeyValueStore|Response
+    {
+        try {
+            return parent::edit($context);
+        } catch (InvalidRedirect $e) {
+            return $this->backToForm($context, $e);
+        }
+    }
+
+    /** Відмова під блокуванням уже після валідації форми (гонка двох форм): повідомлення у флеш і назад на форму, не 500. */
+    private function backToForm(AdminContext $context, InvalidRedirect $e): Response
+    {
+        $this->addFlash('danger', 'Правило не збережено: ' . htmlspecialchars($e->getMessage(), \ENT_QUOTES)); // флеші EasyAdmin — |raw
+
+        return $this->redirect($context->getRequest()->getUri());
     }
 
     public function persistEntity(EntityManagerInterface $entityManager, $entityInstance): void

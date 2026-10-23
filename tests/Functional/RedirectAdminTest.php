@@ -50,6 +50,17 @@ final class RedirectAdminTest extends SeoTestCase
             self::assertSame(422, $r->getStatusCode(), $live);
             self::assertStringContainsString('відкривається на сайті', (string) $r->getContent(), $live);
         }
+        // рев'ю PR #18, п. 2: 410/404 на живу адресу — повідомлення у формі, не 500
+        foreach (['410', '404'] as $code) {
+            $r = $this->submitNew(['ServiceRedirect[source]' => "/services/item-$s/", 'ServiceRedirect[code]' => $code, 'ServiceRedirect[target]' => '']);
+            self::assertSame(422, $r->getStatusCode(), $code . ' на живу адресу');
+            self::assertStringContainsString('відкривається на сайті', (string) $r->getContent());
+            self::assertFalse($this->db()->fetchOne('SELECT 1 FROM service_redirect WHERE site_id = ? AND source = ?', [$this->siteId, "/services/item-$s/"]), 'правило не записано');
+        }
+        $r = $this->submitNew(['ServiceRedirect[source]' => "/e-$s/", 'ServiceRedirect[code]' => '301', 'ServiceRedirect[target]' => '']);
+        self::assertSame(422, $r->getStatusCode(), '301 без цілі');
+        self::assertStringContainsString('вкажіть ціль', (string) $r->getContent());
+
         $r = $this->submitNew(['ServiceRedirect[source]' => "/districts/district-$s/", 'ServiceRedirect[code]' => '410', 'ServiceRedirect[target]' => '', 'ServiceRedirect[city]' => (string) $this->branchCityId]);
         self::assertTrue($r->isRedirect(), 'район апекса на хості філії — 404, правило міста можна');
         self::assertSame(RedirectCode::Gone, static::getContainer()->get(RedirectManager::class)->find($this->siteId, $this->branchCityId, "/districts/district-$s/")['code'] ?? null);
@@ -138,10 +149,13 @@ final class RedirectAdminTest extends SeoTestCase
 
         $page = (string) $this->http('GET', 'https://' . $this->adminHost . '/admin/service-redirect/from-pack?site=' . $this->siteId)->getContent();
         self::assertSame(1, preg_match('/name="token" value="([^"]+)"/', $page, $m));
-        self::assertStringContainsString('data-pack-redirects>0<', $page, 'у тестовому середовищі пак порожній');
+        self::assertStringContainsString('data-pack-redirects>1<', $page, 'пак тестового середовища: одне правило (when@test у services.yaml)');
         $r = $this->http('POST', 'https://' . $this->adminHost . '/admin/service-redirect/from-pack', ['token' => html_entity_decode($m[1]), 'site' => (string) $this->siteId]);
         self::assertSame(200, $r->getStatusCode());
-        self::assertStringContainsString('створено 0', (string) $r->getContent());
+        self::assertStringContainsString('створено 1, оновлено 0, пропущено 0, з помилками 0', (string) $r->getContent());
+        self::assertSame('/ci-pack-new/', $this->target('/ci-pack-old/'), 'однорівневий ключ паку перенесено');
+        $r = $this->http('POST', 'https://' . $this->adminHost . '/admin/service-redirect/from-pack', ['token' => html_entity_decode($m[1]), 'site' => (string) $this->siteId]);
+        self::assertStringContainsString('створено 0, оновлено ', (string) $r->getContent(), 'повторно — ідемпотентно');
     }
 
     /** @param array<string, string> $values */
