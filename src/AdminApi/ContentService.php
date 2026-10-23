@@ -16,21 +16,26 @@ use App\Entity\ServiceItem;
 use App\Entity\ServiceItemCity;
 use App\Entity\ServicePost;
 use App\Entity\ServicePrice;
+use App\Entity\ServiceReview;
 use App\Entity\ServiceSite;
+use App\Entity\ServiceTeamMember;
+use App\Entity\ServiceWork;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceSiteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Операції контенту для менеджерів — одне ядро для REST (/api/admin/v1) і MCP (/mcp). Лише те, що менеджер і так
- * править в адмінці: тексти, SEO, FAQ, активність послуг/категорій/районів/постів, тексти по містах, прайс. Жодних
- * заявок, користувачів, сайтів, міст, медіа, slug. Дозволи перевіряються тут (ScopeVoter), зміни — одразу в БД з логом.
+ * править в адмінці: тексти, SEO, FAQ, активність послуг/категорій/районів/постів/робіт/команди/відгуків, тексти по
+ * містах, прайс. Жодних заявок, користувачів, сайтів, міст, slug. Фото — ImageService (окремі маршрути …/image), у GET
+ * записів з фото є блок image (ImageInfo). Дозволи перевіряються тут (ScopeVoter), зміни — одразу в БД з логом.
  */
 final class ContentService
 {
-    public const string KINDS = 'items|categories|districts|posts|prices|item-texts|category-texts';
+    public const string KINDS = 'items|categories|districts|posts|prices|item-texts|category-texts|works|team|reviews';
 
     /** Поля, які можна читати й правити, за видом запису (ключ JSON → властивість сутності). */
     public const array FIELDS = [
@@ -54,10 +59,15 @@ final class ContentService
             'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu'],
         'category-texts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru',
             'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu'],
+        'works' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'caption_uk' => 'captionUk', 'caption_ru' => 'captionRu', 'image_alt' => 'imageAlt', 'position' => 'position', 'active' => 'active'],
+        'team' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'role_uk' => 'roleUk', 'role_ru' => 'roleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'image_alt' => 'imageAlt',
+            'position' => 'position', 'active' => 'active'],
+        'reviews' => ['author_uk' => 'authorUk', 'author_ru' => 'authorRu', 'text_uk' => 'textUk', 'text_ru' => 'textRu', 'location' => 'location', 'stars' => 'stars', 'image_alt' => 'imageAlt', 'active' => 'active'],
     ];
     private const array ENTITY = [
         'items' => ServiceItem::class, 'categories' => ServiceCategory::class, 'districts' => ServiceDistrict::class, 'posts' => ServicePost::class,
         'prices' => ServicePrice::class, 'item-texts' => ServiceItemCity::class, 'category-texts' => ServiceCategoryCity::class,
+        'works' => ServiceWork::class, 'team' => ServiceTeamMember::class, 'reviews' => ServiceReview::class,
     ];
     private const array WRITE_SCOPE = ['prices' => 'scope:prices:write'];
 
@@ -68,6 +78,8 @@ final class ContentService
         private readonly ApiTokenContext $context,
         private readonly AuthorizationCheckerInterface $auth,
         private readonly LoggerInterface $logger,
+        private readonly ImageInfo $images,
+        private readonly ValidatorInterface $validator,
     ) {
     }
 
@@ -114,8 +126,22 @@ final class ContentService
     {
         $this->requireScope('scope:content:read');
         $kind = $this->kind($kind);
+        $site = $this->site($siteSlug);
 
-        return $this->full($kind, $this->find($this->site($siteSlug), $kind, $id));
+        return $this->full($kind, $this->find($site, $kind, $id), $site);
+    }
+
+    /**
+     * Запис сайту для інших сервісів (ImageService): без перевірки скоупу — її робить викликач.
+     *
+     * @return array{0: ServiceSite, 1: object}
+     */
+    public function entity(string $siteSlug, string $kind, int $id): array
+    {
+        $kind = $this->kind($kind);
+        $site = $this->site($siteSlug);
+
+        return [$site, $this->find($site, $kind, $id)];
     }
 
     /**
@@ -130,12 +156,14 @@ final class ContentService
         if (isset(self::WRITE_SCOPE[$kind])) {
             $this->requireScope(self::WRITE_SCOPE[$kind]);
         }
-        $e = $this->find($this->site($siteSlug), $kind, $id);
+        $site = $this->site($siteSlug);
+        $e = $this->find($site, $kind, $id);
         $changed = $this->apply($kind, $e, $data);
+        $this->validate($e);
         $this->em->flush();
         $this->audit('update', $kind, $e, $changed);
 
-        return $this->full($kind, $e) + ['changed' => array_keys($changed)];
+        return $this->full($kind, $e, $site) + ['changed' => array_keys($changed)];
     }
 
     /**
@@ -167,12 +195,13 @@ final class ContentService
         }
         unset($data['item_id'], $data['category_id'], $data['city_id']);
         $changed = $this->apply($kind, $e, $data);
+        $this->validate($e);
         $created = $e->getId() === null;
         $this->em->persist($e);
         $this->em->flush();
         $this->audit($created ? 'create' : 'update', $kind, $e, $changed);
 
-        return [$this->full($kind, $e) + ['changed' => array_keys($changed)], $created];
+        return [$this->full($kind, $e, $site) + ['changed' => array_keys($changed)], $created];
     }
 
     /** @return list<string> */
@@ -256,6 +285,30 @@ final class ContentService
                     $qb->andWhere('e.city = :city')->setParameter('city', $city);
                 }
                 break;
+            case 'works':
+                // робота без міста й послуги показується на всіх сайтах інсталяції — у списку кожного
+                $qb->leftJoin('e.city', 'c')->leftJoin('e.item', 'i')->where('c.site = :site OR i.site = :site OR (e.city IS NULL AND e.item IS NULL)')
+                    ->setParameter('site', $site)->orderBy('e.position', 'ASC')->addOrderBy('e.id', 'ASC');
+                if ($city !== null) {
+                    $qb->andWhere('e.city = :city OR e.city IS NULL')->setParameter('city', $city);
+                }
+                if (!empty($f['item'])) {
+                    $qb->andWhere('e.item = :item')->setParameter('item', (int) $f['item']);
+                }
+                if ($q !== '') {
+                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q')->setParameter('q', '%' . $q . '%');
+                }
+                break;
+            case 'team':
+            case 'reviews':
+                $qb->join('e.city', 'c')->where('c.site = :site')->setParameter('site', $site)->orderBy('e.id', 'ASC');
+                if ($city !== null) {
+                    $qb->andWhere('e.city = :city')->setParameter('city', $city);
+                }
+                if ($q !== '') {
+                    $qb->andWhere($kind === 'team' ? 'e.nameUk LIKE :q OR e.nameRu LIKE :q' : 'e.authorUk LIKE :q OR e.authorRu LIKE :q')->setParameter('q', '%' . $q . '%');
+                }
+                break;
         }
 
         return $qb->getQuery()->getResult();
@@ -266,6 +319,8 @@ final class ContentService
         $e = $this->em->getRepository(self::ENTITY[$kind])->find($id);
         $ok = $e !== null && match ($kind) {
             'items', 'categories', 'posts' => $e->getSite()?->getId() === $site->getId(),
+            'works' => ($e->getCity() === null && $e->getItem() === null)
+                || $e->getCity()?->getSite()?->getId() === $site->getId() || $e->getItem()?->getSite()?->getId() === $site->getId(),
             default => $e->getCity()?->getSite()?->getId() === $site->getId(),
         };
         if (!$ok) {
@@ -320,6 +375,20 @@ final class ContentService
         return $changed;
     }
 
+    /** Ті самі обмеження, що у формі адмінки (Assert сутності: stars 1–5 тощо) — інакше 422 без запису. */
+    private function validate(object $e): void
+    {
+        $violations = $this->validator->validate($e);
+        if (\count($violations) === 0) {
+            return;
+        }
+        $messages = [];
+        foreach ($violations as $v) {
+            $messages[] = ($v->getPropertyPath() !== '' ? $v->getPropertyPath() . ': ' : '') . $v->getMessage();
+        }
+        throw new ApiProblem('Значення не проходять перевірку: ' . implode('; ', array_unique($messages)), 422);
+    }
+
     private function getter(object $e, string $prop): string
     {
         foreach (['get', 'is'] as $p) {
@@ -356,17 +425,29 @@ final class ContentService
             case 'category-texts':
                 $row += ['category_id' => $e->getCategory()?->getId(), 'city' => $e->getCity()?->getSlug(), 'title_uk' => $e->getTitleUk()];
                 break;
+            case 'works':
+                $row += ['title_uk' => $e->getTitleUk(), 'title_ru' => $e->getTitleRu(), 'city' => $e->getCity()?->getSlug(), 'item_id' => $e->getItem()?->getId(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];
+                break;
+            case 'team':
+                $row += ['name_uk' => $e->getNameUk(), 'name_ru' => $e->getNameRu(), 'city' => $e->getCity()?->getSlug(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];
+                break;
+            case 'reviews':
+                $row += ['author_uk' => $e->getAuthorUk(), 'city' => $e->getCity()?->getSlug(), 'stars' => $e->getStars(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];
+                break;
         }
 
         return $row;
     }
 
     /** @return array<string, mixed> */
-    private function full(string $kind, object $e): array
+    private function full(string $kind, object $e, ServiceSite $site): array
     {
         $row = $this->summary($kind, $e);
         foreach (self::FIELDS[$kind] as $key => $prop) {
             $row[$key] = $e->{$this->getter($e, $prop)}();
+        }
+        if (ImageInfo::hasImage($kind)) {
+            $row['image'] = $this->images->describe($kind, $e, $site);
         }
 
         return $row;

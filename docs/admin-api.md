@@ -55,7 +55,8 @@
 
 JSON-RPC 2.0 поверх POST (Streamable HTTP без потоку подій: GET → 405). Методи `initialize`, `ping`, `tools/list`,
 `tools/call`; інструменти — обгортка `ContentService` (спільне ядро з REST): `me`, `list(site, kind, q|city|category|item)`,
-`get(site, kind, id)`, `update(site, kind, id, fields)`, `upsert_city_texts(site, kind, item_id|category_id, city_id, fields)`.
+`get(site, kind, id)`, `update(site, kind, id, fields)`, `upsert_city_texts(site, kind, item_id|category_id, city_id, fields)`,
+фото — `image_put(site, kind, id, url|data+filename, alt, alt_ru)` і `image_delete(site, kind, id)` (розділ «Зображення»).
 SEO (23.10.2026): `redirects_list(site, city|code|kind|q)`, `redirect_create(site, source, code?, target?, city?)`,
 `redirect_delete(site, id)`, `not_found_list(site, city|q|limit)` — обгортка `RedirectService`, ті самі перевірки й
 дозволи, що в REST (`content:read` / `content:write`).
@@ -128,8 +129,8 @@ request), тож будь-який контролер ішов би без вх�
 | Метод і шлях | Що |
 |---|---|
 | `GET /me` | користувач, токен (без значення), дозволи, активні сайти з містами і `studio_api_url` |
-| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`. Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти), `?item=<id>` (prices) |
-| `GET /{site}/{kind}/{id}` | запис з усіма дозволеними полями |
+| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`, `works` (роботи), `team` (команда), `reviews` (відгуки). Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти, works, team, reviews), `?item=<id>` (prices, works) |
+| `GET /{site}/{kind}/{id}` | запис з усіма дозволеними полями; у items, categories, posts, works, team, reviews — ще блок `image` (див. «Зображення») |
 | `PATCH /{site}/{kind}/{id}` | JSON `{поле: значення}` лише з дозволених полів (перелік у 422 на невідоме поле); FAQ — `[{"q":"…","a":"…"}]`; відповідь — запис після змін + `changed` |
 | `POST /{site}/item-texts` | `{item_id, city_id, …поля}` — створити/оновити тексти послуги для міста (upsert) |
 | `POST /{site}/category-texts` | `{category_id, city_id, …поля}` |
@@ -137,19 +138,73 @@ request), тож будь-який контролер ішов би без вх�
 | `POST /{site}/redirects` | JSON `{source, code?, target?, city?}` → 201 нове / 200 замінене. Ті самі перевірки, що в адмінці: жива адреса, цикл, редирект на себе — 422 з поясненням; ціль, що сама переадресовується, замінюється кінцевою; чужий домен у цілі — лише власнику з `ROLE_ADMIN`. Потрібен `content:write` |
 | `DELETE /{site}/redirects/{id}` | → 204 |
 | `GET /{site}/not-found` | журнал 404 (найчастіші першими): `path, city, host, hits, first_seen_at, last_hit_at, referer`. Фільтри `?city=`, `?q=`, `?limit=` (до 1000). Для звірки з GSC перед масовим створенням правил |
+| `PUT\|POST /{site}/{kind}/{id}/image` | фото запису: multipart `file` (лише POST), JSON `{url}` або `{data, filename}`; `alt`, `alt_ru` — див. «Зображення» |
+| `DELETE /{site}/{kind}/{id}/image` | прибрати фото й alt |
 
-`{site}` — slug сайту з `/me`. Зміни пишуться одразу (як збереження в адмінці); slug, категорія послуги, картинки, порядок
-послуг і міста (де надається, де ціни) — лише в адмінці.
+`{site}` — slug сайту з `/me`. Зміни пишуться одразу (як збереження в адмінці); slug, категорія послуги, порядок послуг,
+фото «до» у роботах і міста (де надається, де ціни) — лише в адмінці. Робота без міста й послуги (показується всюди)
+доступна через будь-який сайт інсталяції.
 
 Відповіді за RFC 6750: 401 `invalid_token` (`WWW-Authenticate: Bearer realm="service-admin-api", error=…`), 403
 `insufficient_scope` зі `scope=`, 429 `too_many_requests` + `Retry-After` (понад `app.admin_api_auth_rate_limit` невдалих
 автентифікацій з IP за хвилину), 404 на хостах сайтів (`/api/admin` там нема — `AdminHostSubscriber`).
+
+## Зображення (`content:write`, 23.10.2026)
+
+Фото послуги, категорії, поста, роботи, члена команди, відгуку — ті самі поля, що в адмінці (`imageName`, `imageAlt`,
+у постів ще `imageAltRu`): запис іде через сутність і Vich, тому ім'я генерує `SmartUniqueNamer`, старий оригінал
+видаляється, розміри для шаблонів (`item_hero`, `teaser`, …) LiipImagine будує на першому показі. Міграцій нема.
+
+`kind` — `items`, `categories`, `posts`, `works`, `team`, `reviews` (можна в однині: `item`, `category`, `post`, `work`,
+`team`, `review`). Три джерела, одна адреса `/api/admin/v1/{site}/{kind}/{id}/image`:
+
+```bash
+A="Authorization: Bearer $SVC_TOKEN"; API="https://$ADMIN_HOST/api/admin/v1/example"
+
+# 1. multipart — лише POST (PHP не розбирає multipart у PUT); поле file, необов'язкові alt, alt_ru (alt_ru — лише posts)
+curl -sS -H "$A" -F file=@kitchen.jpg -F alt='Кухня після прибирання' "$API/items/42/image"
+
+# 2. JSON з публічним URL (http/https; приватні, локальні, 169.254.x адреси — 422; до 3 редиректів, таймаут 10 с)
+curl -sS -H "$A" -X PUT -H 'Content-Type: application/json' \
+  -d '{"url":"https://images.example.com/kitchen.jpg","alt":"Кухня"}' "$API/items/42/image"
+
+# 3. JSON з base64 (можна з префіксом data:image/jpeg;base64,); filename — лише підказка для імені, у шлях не потрапляє
+curl -sS -H "$A" -X PUT -H 'Content-Type: application/json' \
+  -d "{\"data\":\"$(base64 -w0 kitchen.jpg)\",\"filename\":\"kitchen.jpg\"}" "$API/posts/7/image"
+
+# прибрати
+curl -sS -H "$A" -X DELETE "$API/items/42/image"
+```
+
+Відповідь: `{"site","kind","id","image":{"url","name","alt","alt_ru","width","height","bytes"}}`; після `DELETE` —
+`"image": null` і `"deleted": "<старе ім'я>"` (фото й так не було — `"deleted": null`, теж 200: DELETE ідемпотентний).
+Той самий блок `image` є в `GET /{site}/{kind}/{id}`.
+
+Межі й відмови (ті самі, що `Assert\Image` сутностей, перевіряє валідатор): до 10 МБ, JPEG/PNG/WebP **за вмістом**
+(finfo + getimagesize; розширення й `Content-Type` не враховуються), до 8000×8000. SVG, GIF, HEIC/HEIF, AVIF — 422 з
+поясненням; завеликий файл, base64 чи відповідь URL — 413 (base64 міряється до декодування, URL читається потоком і
+обривається); понад `app.admin_api_image_rate_limit` (30) завантажень за хвилину на токен — 429 + `Retry-After`;
+без `content:write` — 403. Кожна операція — у `var/log/security_audit.log` (`admin_api.image.put|delete`: хто, токен,
+вид, id, джерело, MIME, розмір, яке ім'я замінено). Кеш варіантів Liip старого файлу прибирається (`VichLiipCacheSubscriber`,
+і для адмінки). Межа 10 МБ діє з образів рушія цієї версії: `docker/php/*.ini` задають `upload_max_filesize = 10M`,
+`post_max_size = 16M` (до того PHP-дефолт 2M/8M обмежував multipart в адмінці й API); nginx образів — `client_max_body_size 32m`.
+На сторонньому хостингу перевірити ті самі значення. Multipart понад `post_max_size` → 413 з поясненням (JSON з base64
+цей ліміт не зачіпає).
+
+`PATCH` записів (усіх kind) проходить валідатор сутності, як форма адмінки: `stars` поза 1–5, від'ємна `position` тощо → 422
+без запису.
+
+Через MCP у Claude Code (після `claude mcp add … /mcp`): «Постав послузі 42 на сайті example фото з
+https://images.example.com/kitchen.jpg, alt "Кухня після прибирання"» → модель викликає
+`image_put {site: "example", kind: "items", id: 42, url: "…", alt: "…"}` і отримує `image.url` з розмірами; локальний
+файл — `image_put` з `data` (base64) і `filename`; прибрати — `image_delete {site, kind, id}`.
 
 ## Параметри (`config/services.yaml`, пак — `config/parameters.yaml`)
 
 ```yaml
 app.admin_api_token_max_days: 90      # найдовший строк токена
 app.admin_api_auth_rate_limit: 30     # невдалих автентифікацій з IP за хвилину
+app.admin_api_image_rate_limit: 30    # завантажень фото через API на токен за хвилину
 ```
 
 ## Експлуатація
