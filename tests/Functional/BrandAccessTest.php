@@ -83,6 +83,11 @@ final class BrandAccessTest extends HttpKernelTestCase
         ]);
         $ok = $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . $this->slugs['a'] . '/articles/x1', $body, $auth);
         self::assertSame(201, $ok->getStatusCode(), (string) $ok->getContent());
+        // довгий slug старого сайту (≤ 160, як колонка) приймається, довший — 422
+        $long = static fn (string $slug, string $group): string => (string) json_encode(['lang' => 'uk', 'group_id' => $group, 'title' => 'Довга', 'slug' => $slug, 'body_html' => '<p>текст</p>']);
+        $ok120 = $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . $this->slugs['a'] . '/articles/x2', $long(str_repeat('a', 120), '00000000-0000-4000-8000-000000000002'), $auth);
+        self::assertSame(201, $ok120->getStatusCode(), (string) $ok120->getContent());
+        self::assertSame(422, $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . $this->slugs['a'] . '/articles/x3', $long(str_repeat('a', 161), '00000000-0000-4000-8000-000000000003'), $auth)->getStatusCode());
         $denied = $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . $this->slugs['b'] . '/articles/x1', $body, $auth);
         self::assertSame(403, $denied->getStatusCode(), 'чужий бренд — 403');
         self::assertSame(404, $this->send('GET', 'https://' . $this->admin . '/api/studio/ci-nema/ping', '', $auth)->getStatusCode());

@@ -45,7 +45,8 @@ final class StudioArticleController extends AbstractController
         'related' => ['uk' => 'Читайте також', 'ru' => 'Читайте также', 'en' => 'Read also'],
         'sources' => ['uk' => 'Джерела', 'ru' => 'Источники', 'en' => 'Sources'],
     ];
-    private const SLUG_MAX = 64;
+    /** = довжина колонок slug_uk/ru/en: slug-и старих новинних сайтів (транслітерований заголовок) бувають до ~120 */
+    private const SLUG_MAX = 160;
     private const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
     /** Атрибут запиту: прийшов через адмін-хост /api/studio/<slug>/… (StudioBrandController) */
     public const ADMIN_HOST_ATTR = '_studio_admin_host';
