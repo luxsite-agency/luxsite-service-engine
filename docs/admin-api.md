@@ -43,8 +43,8 @@
 
 | Скоуп | Що дає | Потрібна роль |
 |---|---|---|
-| `content:read` | `GET` списків і записів: послуги, категорії, райони, пости, прайс, тексти по містах | ROLE_MODERATOR |
-| `content:write` | `PATCH` текстів, SEO, FAQ, активності; `POST` текстів послуги/категорії для міста | ROLE_MODERATOR |
+| `content:read` | `GET` списків і записів: послуги, категорії, райони, пости, прайс, тексти по містах, редиректи, журнал 404 | ROLE_MODERATOR |
+| `content:write` | `PATCH` текстів, SEO, FAQ, активності; `POST` текстів послуги/категорії для міста; `POST`/`DELETE` правил редиректів | ROLE_MODERATOR |
 | `prices:write` | `PATCH` прайсу (разом із `content:write`) | ROLE_MODERATOR |
 | `studio:write` | приймач content-studio `/api/studio` на хостах сайту (статті в блог) | ROLE_MODERATOR |
 | `theme:write` | живий дизайн: шаблони `services/**`, `partials/**` і `theme.css` сайту (`/theme`, MCP `theme_*`) | ROLE_MODERATOR |
@@ -56,6 +56,9 @@
 JSON-RPC 2.0 поверх POST (Streamable HTTP без потоку подій: GET → 405). Методи `initialize`, `ping`, `tools/list`,
 `tools/call`; інструменти — обгортка `ContentService` (спільне ядро з REST): `me`, `list(site, kind, q|city|category|item)`,
 `get(site, kind, id)`, `update(site, kind, id, fields)`, `upsert_city_texts(site, kind, item_id|category_id, city_id, fields)`.
+SEO (23.10.2026): `redirects_list(site, city|code|kind|q)`, `redirect_create(site, source, code?, target?, city?)`,
+`redirect_delete(site, id)`, `not_found_list(site, city|q|limit)` — обгортка `RedirectService`, ті самі перевірки й
+дозволи, що в REST (`content:read` / `content:write`).
 Помилки операції — `isError` з текстом (403 без дозволу, 404, 422 з переліком дозволених полів); «нічого не змінено» — не помилка.
 
 ## Дизайн під токеном (`theme:write`, 15.10.2026)
@@ -130,6 +133,10 @@ request), тож будь-який контролер ішов би без вх�
 | `PATCH /{site}/{kind}/{id}` | JSON `{поле: значення}` лише з дозволених полів (перелік у 422 на невідоме поле); FAQ — `[{"q":"…","a":"…"}]`; відповідь — запис після змін + `changed` |
 | `POST /{site}/item-texts` | `{item_id, city_id, …поля}` — створити/оновити тексти послуги для міста (upsert) |
 | `POST /{site}/category-texts` | `{category_id, city_id, …поля}` |
+| `GET /{site}/redirects` | правила редиректів (SEO, 23.10.2026): `id, source, target, code, kind (manual|auto|pack), city (slug або null = усі міста), hits, last_hit_at`. Фільтри: `?city=<slug>`, `?code=301`, `?kind=manual`, `?q=<підрядок>` |
+| `POST /{site}/redirects` | JSON `{source, code?, target?, city?}` → 201 нове / 200 замінене. Ті самі перевірки, що в адмінці: жива адреса, цикл, редирект на себе — 422 з поясненням; ціль, що сама переадресовується, замінюється кінцевою; чужий домен у цілі — лише власнику з `ROLE_ADMIN`. Потрібен `content:write` |
+| `DELETE /{site}/redirects/{id}` | → 204 |
+| `GET /{site}/not-found` | журнал 404 (найчастіші першими): `path, city, host, hits, first_seen_at, last_hit_at, referer`. Фільтри `?city=`, `?q=`, `?limit=` (до 1000). Для звірки з GSC перед масовим створенням правил |
 
 `{site}` — slug сайту з `/me`. Зміни пишуться одразу (як збереження в адмінці); slug, категорія послуги, картинки, порядок
 послуг і міста (де надається, де ціни) — лише в адмінці.

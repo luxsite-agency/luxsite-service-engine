@@ -223,6 +223,13 @@ cd <рушій> && SITES_FILE=<ops>/stand.yaml bin/site deploy <key> && SITES_FI
 ```
 
 `app:pipedrive:sync` — аліас тієї самої команди (старі crontab-и можуть кликати його, міняти не обов'язково).
+
+Журнал 404 (адмінка → SEO, з 23.10.2026) прибирається сам приблизно раз на 100 нових адрес; щоб ліміти
+`app.seo_not_found_limit` / `app.seo_not_found_days` трималися й на тихих сайтах — раз на добу:
+
+```
+35 3 * * * cd <path>/current && <php> bin/console app:seo:not-found:prune >/dev/null 2>&1
+```
 Без доступу команда пише «CRM вимкнено» і виходить з кодом 0. Оброблені в адмінці заявки в CRM не тягнуться.
 
 ## Прод у Docker за edge (`runtime: docker`, `proxy: edge`)

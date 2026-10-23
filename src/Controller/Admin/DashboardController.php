@@ -102,6 +102,12 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(ServiceLeadCrudController::class, 'Заявки', 'fa fa-phone-volume')
             ->setPermission('ROLE_MODERATOR');
 
+        yield MenuItem::section('SEO')->setPermission('ROLE_MODERATOR');
+        yield MenuItem::linkTo(ServiceRedirectCrudController::class, 'Редиректи', 'fa fa-share')
+            ->setPermission('ROLE_MODERATOR');
+        yield MenuItem::linkTo(ServiceNotFoundCrudController::class, 'Журнал 404', 'fa fa-triangle-exclamation')
+            ->setPermission('ROLE_MODERATOR');
+
         yield MenuItem::section('API')->setPermission('ROLE_MODERATOR');
         yield MenuItem::linkTo(AdminApiTokenCrudController::class, 'API-токени', 'fa fa-key')
             ->setPermission('ROLE_MODERATOR');

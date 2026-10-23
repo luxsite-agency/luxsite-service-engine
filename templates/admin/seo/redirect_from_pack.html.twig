@@ -1,0 +1,26 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{# «Перенести з паку» (ServiceRedirectCrudController::fromPack): app.legacy_redirects і app.gone_prefixes → правила «з паку» в БД. #}
+{% block content_title %}Перенести редиректи з паку{% endblock %}
+{% block main %}
+    <p>У паку сайту зараз: <strong data-pack-redirects>{{ count.redirects }}</strong> правил 301 з цільовим шляхом,
+        <strong data-pack-gone>{{ count.gone }}</strong> префіксів 410{% if count.legacy %}, {{ count.legacy }} правил старого формату (city/item/route) — вони лишаються в паку{% endif %}.</p>
+    <p class="text-muted">Перенесення ідемпотентне: правила «з паку» оновлюються, правила «вручну» й «авто» з тією ж адресою не чіпаються.
+        Поки мапа лишається в паку, вона спрацьовує першою (до роутингу); правила з БД для тих самих адрес — у резерві, доки блок
+        <code>app.legacy_redirects</code> у паку не очистять. 410-префікси паку діють на всі вкладені адреси — у БД переноситься лише корінь префікса.</p>
+    {% if report %}
+        {% if report.skipped %}<ul data-pack-skipped>{% for line in report.skipped %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+        {% if report.errors %}<ul class="text-danger" data-pack-errors>{% for line in report.errors %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+    {% endif %}
+    <form method="post" id="seo-from-pack">
+        <input type="hidden" name="token" value="{{ csrf_token('seo-redirects-from-pack') }}">
+        <div class="mb-3">
+            <label class="form-label" for="from-pack-site">Сайт</label>
+            <select class="form-select" name="site" id="from-pack-site">
+                {% for site in sites %}<option value="{{ site.id }}"{% if current and current.id == site.id %} selected{% endif %}>{{ site.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fa fa-box-open"></i> Перенести</button>
+        <a class="btn btn-secondary" href="{{ ea_url().setController('App\\Controller\\Admin\\ServiceRedirectCrudController').setAction('index') }}">До списку</a>
+    </form>
+{% endblock %}

@@ -1,0 +1,117 @@
+<?php
+
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE.
+
+declare(strict_types=1);
+
+namespace App\ServiceSite\Redirect;
+
+use App\Entity\ServiceCity;
+use App\Entity\ServiceSite;
+use App\EventSubscriber\ServiceHostSubscriber;
+use App\Repository\ServiceCategoryRepository;
+use App\Repository\ServiceCityRepository;
+use App\Repository\ServiceDistrictRepository;
+use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePostRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\RouterInterface;
+
+/**
+ * Жива адреса сайту = GET на хості міста не дав би 404: маршрут сайту знайдено і, для сторінок сутностей, сутність є й
+ * видима в місті (послуга активна й надається в місті чи хоч в одному іншому — тоді контролер дає 301, не 404;
+ * категорія активна з послугами в місті; район активний у місті; пост опублікований). Маршрути адмінки на хості сайту —
+ * 404 (AdminHostSubscriber), тож не живі. Невідомий /<x>/ (sv_legacy_redirect, категорія root-схеми) не живий, навіть
+ * якщо для нього є правило паку (app.legacy_redirects, prefix_redirects): пак спрацьовує до роутингу, тож правило з
+ * БД для такої адреси нешкідливе — стоїть у резерві, доки адреса є в паку; інакше «Перенести з паку» і правила на
+ * адреси з мапи були б неможливі. Лише для збереження ручних правил — не на запитах сайту.
+ *
+ * Матчер бере хост і метод з RequestContext роутера, а умови маршрутів (request.attributes.has('service_city')) — з
+ * запиту: тому на час перевірки — власний запит GET https://<хост міста>/<шлях> з атрибутами тенанта й власний контекст,
+ * потім попередній.
+ */
+final class SiteLiveUrls implements LiveUrls
+{
+    public function __construct(
+        #[Autowire(service: 'router')] private readonly RouterInterface $router,
+        private readonly ServiceCityRepository $cities,
+        private readonly ServiceItemRepository $items,
+        private readonly ServiceCategoryRepository $categories,
+        private readonly ServiceDistrictRepository $districts,
+        private readonly ServicePostRepository $posts,
+    ) {
+    }
+
+    public function isLive(ServiceSite $site, ?ServiceCity $city, string $path): bool
+    {
+        $cities = $city !== null ? [$city] : $this->cities->findAllActiveBySite($site);
+        foreach ($cities as $one) {
+            if ($this->isLiveOn($site, $one, $path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isLiveOn(ServiceSite $site, ServiceCity $city, string $path): bool
+    {
+        $request = Request::create('https://' . $city->getHost() . RedirectPath::encode($path));
+        $request->attributes->set(ServiceHostSubscriber::ATTR_SITE, $site);
+        $request->attributes->set(ServiceHostSubscriber::ATTR_CITY, $city);
+        $previous = $this->router->getContext();
+        $this->router->setContext((new RequestContext())->fromRequest($request));
+        try {
+            $match = $this->router->matchRequest($request);
+        } catch (RoutingException) {
+            return false;
+        } finally {
+            $this->router->setContext($previous);
+        }
+        $route = (string) ($match['_canonical_route'] ?? $match['_route'] ?? '');
+        $locale = ($match['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+
+        return match (true) {
+            $route === '' || $route === 'admin' || str_starts_with($route, 'admin_') || str_starts_with($route, 'api_') || str_starts_with($route, 'app_') => false,
+            $route === 'sv_service' => $this->itemLive($site, $city, (string) $match['slug'], $locale),
+            $route === 'sv_category' => $this->categoryLive($site, $city, (string) $match['category'], $locale),
+            $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,
+            $route === 'sv_blog_post' => $this->posts->findOnePublishedBySlug($site, (string) $match['slug'], $locale) !== null,
+            $route === 'sv_legacy_redirect' => false,
+            default => true,
+        };
+    }
+
+    private function itemLive(ServiceSite $site, ServiceCity $city, string $slug, string $locale): bool
+    {
+        $item = $this->items->findOneActiveBySiteAndSlug($site, $slug, $locale);
+        if ($item === null) {
+            return false;
+        }
+        if ($item->isAvailableIn($city)) {
+            return true;
+        }
+        // не надається тут → контролер дає 301 у місто, де є (не 404); нема ніде → 404
+        foreach ($this->cities->findAllActiveBySite($site) as $other) {
+            if ($item->isAvailableIn($other)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function categoryLive(ServiceSite $site, ServiceCity $city, string $slug, string $locale): bool
+    {
+        $category = $this->categories->findOneActiveBySlug($site, $slug, $locale);
+        if ($category === null) {
+            return false; // root-схема: невідомий /<x>/ — 404 або правило паку (не жива)
+        }
+
+        return $this->items->findActiveByCategory($category, $city) !== [];
+    }
+}
