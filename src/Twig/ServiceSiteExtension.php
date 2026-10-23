@@ -72,6 +72,8 @@ final class ServiceSiteExtension extends AbstractExtension
 
     /** @var array<string, list<ServicePostCategory>> рубрики бренду на запит: «<id сайту>:<мова>» → список */
     private array $categoryCache = [];
+    /** @var array<string, array<int, int>> кількість статей у рубриках: «<id сайту>:<мова>» → [id рубрики → кількість] */
+    private array $categoryCountCache = [];
 
     public function getFunctions(): array
     {
@@ -101,7 +103,8 @@ final class ServiceSiteExtension extends AbstractExtension
             // каркас сторінки за режимом бренду: контентний сайт — services/content/layout.html.twig, інакше — services/base.html.twig
             // рубрики бренду (активні, мовою сторінки, за позицією) — для шапки й футера на будь-якій сторінці, не лише там,
             // де контролер передає categories; без бренду чи на сервісному сайті без рубрик — []
-            new TwigFunction('sv_categories', $this->brandCategories(...)),
+            // sv_categories(true) — лише рубрики, де є опубліковані статті мовою сторінки (меню новинного сайту без порожніх)
+            new TwigFunction('sv_categories', $this->navCategories(...)),
             // блоки рубрик на головній новинного сайту: $limit найбільших рубрик бренду (за кількістю статей мовою сторінки)
             // по $perCategory свіжих статей — [{category, posts, count}]; порожні рубрики пропускаються
             new TwigFunction('sv_category_posts', $this->categoryPosts(...)),
@@ -313,7 +316,7 @@ final class ServiceSiteExtension extends AbstractExtension
             return [];
         }
         $locale = $this->locales()->current();
-        $counts = $this->posts->countPublishedByCategory($site, $locale);
+        $counts = $this->categoryCounts($site, $locale);
         $cats = array_values(array_filter($this->brandCategories($site), static fn (ServicePostCategory $c): bool => ($counts[(int) $c->getId()] ?? 0) > 0));
         // більші рубрики першими; при рівній кількості — порядок рубрик бренду (позиція)
         $order = array_flip(array_map(static fn (ServicePostCategory $c): int => (int) $c->getId(), $cats));
@@ -329,6 +332,25 @@ final class ServiceSiteExtension extends AbstractExtension
         }
 
         return $out;
+    }
+
+    /** @return list<ServicePostCategory> */
+    public function navCategories(bool $withPosts = false): array
+    {
+        $cats = $this->brandCategories();
+        $site = $this->locales()->currentSite();
+        if (!$withPosts || $site === null || $site->getId() === null) {
+            return $cats;
+        }
+        $counts = $this->categoryCounts($site, $this->locales()->current());
+
+        return array_values(array_filter($cats, static fn (ServicePostCategory $c): bool => ($counts[(int) $c->getId()] ?? 0) > 0));
+    }
+
+    /** @return array<int, int> id рубрики → опубліковані статті (один запит на сторінку: меню, футер і блоки головної) */
+    private function categoryCounts(ServiceSite $site, string $locale): array
+    {
+        return $this->categoryCountCache[$site->getId() . ':' . $locale] ??= $this->posts->countPublishedByCategory($site, $locale);
     }
 
     /** @return list<ServicePostCategory> */
