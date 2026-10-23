@@ -102,6 +102,9 @@ final class ServiceSiteExtension extends AbstractExtension
             // рубрики бренду (активні, мовою сторінки, за позицією) — для шапки й футера на будь-якій сторінці, не лише там,
             // де контролер передає categories; без бренду чи на сервісному сайті без рубрик — []
             new TwigFunction('sv_categories', $this->brandCategories(...)),
+            // блоки рубрик на головній новинного сайту: $limit найбільших рубрик бренду (за кількістю статей мовою сторінки)
+            // по $perCategory свіжих статей — [{category, posts, count}]; порожні рубрики пропускаються
+            new TwigFunction('sv_category_posts', $this->categoryPosts(...)),
             new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }
@@ -300,6 +303,32 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    /** @return list<array{category: ServicePostCategory, posts: list<\App\Entity\ServicePost>, count: int}> */
+    public function categoryPosts(int $limit = 4, int $perCategory = 5): array
+    {
+        $site = $this->locales()->currentSite();
+        if ($site === null || $site->getId() === null || $limit < 1 || $perCategory < 1) {
+            return [];
+        }
+        $locale = $this->locales()->current();
+        $counts = $this->posts->countPublishedByCategory($site, $locale);
+        $cats = array_values(array_filter($this->brandCategories($site), static fn (ServicePostCategory $c): bool => ($counts[(int) $c->getId()] ?? 0) > 0));
+        // більші рубрики першими; при рівній кількості — порядок рубрик бренду (позиція)
+        $order = array_flip(array_map(static fn (ServicePostCategory $c): int => (int) $c->getId(), $cats));
+        usort($cats, static fn (ServicePostCategory $a, ServicePostCategory $b): int => [$counts[(int) $b->getId()], $order[(int) $a->getId()]] <=> [$counts[(int) $a->getId()], $order[(int) $b->getId()]]);
+
+        $out = [];
+        foreach (\array_slice($cats, 0, $limit) as $c) {
+            $out[] = [
+                'category' => $c,
+                'posts' => $this->posts->findPublishedFiltered($site, $locale, $c, null, 1, $perCategory),
+                'count' => $counts[(int) $c->getId()],
+            ];
+        }
+
+        return $out;
     }
 
     /** @return list<ServicePostCategory> */

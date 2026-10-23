@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\ServiceCity;
+use App\Entity\ServicePost;
 use App\Entity\ServicePostCategory;
 use App\Entity\ServiceSite;
 use Doctrine\ORM\EntityManagerInterface;
@@ -41,12 +42,23 @@ final class BrandTemplatesTest extends HttpKernelTestCase
             $this->siteIds[] = (int) $site->getId();
             // рубрики: у alpha — активна й вимкнена, у beta — своя (sv_categories бере лише активні рубрики поточного бренду)
             if ($name !== 'plain') {
-                $em->persist((new ServicePostCategory())->setSite($site)->setSlugUk($name . '-on')->setTitleUk('Рубрика ' . $name)->setPosition(10));
-                $em->persist((new ServicePostCategory())->setSite($site)->setSlugUk($name . '-off')->setTitleUk('Вимкнена ' . $name)->setActive(false));
+                $on = (new ServicePostCategory())->setSite($site)->setSlugUk($name . '-on')->setTitleUk('Рубрика ' . $name)->setPosition(10);
+                $em->persist($on);
+                $off = (new ServicePostCategory())->setSite($site)->setSlugUk($name . '-off')->setTitleUk('Вимкнена ' . $name)->setActive(false);
+                $em->persist($off);
+                if ($name === 'alpha') {
+                    // блоки рубрик: «Друга» (2 статті) більша за «Рубрика alpha» (1), стаття вимкненої рубрики не рахується
+                    $second = (new ServicePostCategory())->setSite($site)->setSlugUk('alpha-second')->setTitleUk('Друга')->setPosition(20);
+                    $em->persist($second);
+                    foreach ([['s1', $second, '-3 days'], ['s2', $second, '-1 day'], ['o1', $on, '-2 days'], ['x1', $off, '-1 hour']] as [$ps, $cat, $when]) {
+                        $em->persist((new ServicePost())->setSite($site)->setSlugUk('ci-' . $ps)->setTitleUk('Стаття ' . $ps)->setCategory($cat)->setPublishedAt(new \DateTimeImmutable($when)));
+                    }
+                }
                 $em->flush();
                 $fs->dumpFile($root . $slug . '/services/content/contact.html.twig',
                     "{% extends '@engine/services/base.html.twig' %}"
-                    . "{% block page %}<nav class=\"sections\">{% for c in sv_categories() %}[{{ c.loc('title', sv_locale()) }}]{% endfor %}</nav>{% endblock %}");
+                    . "{% block page %}<nav class=\"sections\">{% for c in sv_categories() %}[{{ c.loc('title', sv_locale()) }}]{% endfor %}</nav>"
+                    . "<div class=\"blocks\">{% for b in sv_category_posts(4, 1) %}({{ b.category.loc('title', sv_locale()) }}:{{ b.count }}:{% for p in b.posts %}{{ p.slugUk }}{% endfor %}){% endfor %}</div>{% endblock %}");
             }
             if ($name !== 'plain') {
                 $fs->dumpFile($root . $slug . '/services/content/home.html.twig',
@@ -65,6 +77,7 @@ final class BrandTemplatesTest extends HttpKernelTestCase
         }
         $conn = $this->em()->getConnection();
         foreach ($this->siteIds as $id) {
+            $conn->executeStatement('DELETE FROM service_post WHERE site_id = ?', [$id]);
             $conn->executeStatement('DELETE FROM service_post_category WHERE site_id = ?', [$id]);
             $conn->executeStatement('DELETE FROM service_site WHERE id = ?', [$id]);
         }
@@ -94,9 +107,19 @@ final class BrandTemplatesTest extends HttpKernelTestCase
         $a = (string) $this->http('GET', 'https://' . $alpha . '.example/contacts/')->getContent();
         $b = (string) $this->http('GET', 'https://' . $beta . '.example/contacts/')->getContent();
 
-        self::assertStringContainsString('<nav class="sections">[Рубрика alpha]</nav>', $a, 'лише активні рубрики свого бренду');
+        self::assertStringContainsString('<nav class="sections">[Рубрика alpha][Друга]</nav>', $a, 'лише активні рубрики свого бренду, за позицією');
         self::assertStringContainsString('<nav class="sections">[Рубрика beta]</nav>', $b);
         self::assertSame(200, $this->http('GET', 'https://' . $plain . '.example/contacts/')->getStatusCode());
+    }
+
+    public function testCategoryPostsBiggestFirst(): void
+    {
+        [$alpha, $beta] = $this->slugs;
+        $a = (string) $this->http('GET', 'https://' . $alpha . '.example/contacts/')->getContent();
+        $b = (string) $this->http('GET', 'https://' . $beta . '.example/contacts/')->getContent();
+
+        self::assertStringContainsString('<div class="blocks">(Друга:2:ci-s2)(Рубрика alpha:1:ci-o1)</div>', $a, 'більша рубрика першою, свіжа стаття, вимкнена рубрика пропущена');
+        self::assertStringContainsString('<div class="blocks"></div>', $b, 'рубрика без статей пропущена');
     }
 
     private function em(): EntityManagerInterface
