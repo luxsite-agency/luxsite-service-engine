@@ -83,6 +83,11 @@ parameters:
     app.legacy_redirects: {}
     # Прибрані розділи старого сайту → 410 Gone (дорвеї зламу, старі «новини»): список префіксів шляху ('/n/').
     app.gone_prefixes: []
+    # Менеджер редиректів і журнал 404 в адмінці (модель shop-engine E3, 23.10.2026; docs/site-pack.md «Редиректи»):
+    # журнал 404 зберігає на сайт до seo_not_found_limit адрес і seo_not_found_days днів з останнього звернення; решта
+    # прибирається сама (приблизно раз на 100 нових адрес) і командою app:seo:not-found:prune (cron).
+    app.seo_not_found_limit: 10000
+    app.seo_not_found_days: 90
     # Гігієна URL на хостах сайту (App\ServiceSite\LegacyUrls; пак перекриває лише потрібні ключі):
     #   trailing_slash — 301 на адресу зі слешем (крім файлів із розширенням і skip_prefixes);
     #   strip_query — на сторінках за strip_query_paths зрізати зайві параметри (?task=no), лишивши трекінг keep_query.
@@ -194,6 +199,17 @@ services:
     app.theme_lock_factory:
         class: Symfony\Component\Lock\LockFactory
         arguments: ['@app.theme_lock_store']
+        autoconfigure: false
+
+    # Замок ручних правил редиректів (RedirectManager::locked): дві паралельні форми A→B і B→A не дадуть циклу.
+    # flock у var/lock — спільний для fpm-воркерів релізу; зміна slug (авто-301) замка не бере.
+    app.seo_lock_store:
+        class: Symfony\Component\Lock\Store\FlockStore
+        arguments: ['%kernel.project_dir%/var/lock']
+        autoconfigure: false
+    app.seo_lock_factory:
+        class: Symfony\Component\Lock\LockFactory
+        arguments: ['@app.seo_lock_store']
         autoconfigure: false
 
     # add more service definitions when explicit configuration is needed
