@@ -10,6 +10,7 @@ namespace App\Controller\Api\Admin;
 use App\AdminApi\ApiProblem;
 use App\AdminApi\ContentService;
 use App\AdminApi\LiveThemePolicy;
+use App\AdminApi\RedirectService;
 use App\AdminApi\ThemeService;
 use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,7 +29,7 @@ final class McpController extends AbstractController
 {
     private const string PROTOCOL = '2025-06-18';
 
-    public function __construct(private readonly ContentService $content, private readonly ThemeService $theme)
+    public function __construct(private readonly ContentService $content, private readonly ThemeService $theme, private readonly RedirectService $redirects)
     {
     }
 
@@ -91,6 +92,14 @@ final class McpController extends AbstractController
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'path'], 'properties' => ['site' => $siteProp, 'path' => ['type' => 'string']]]],
             ['name' => 'theme_revert', 'description' => 'Дизайн: повернути версію з історії (version з theme_get, формат YYYYMMDD-HHMMSS) — через ту саму перевірку, що theme_put.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'path', 'version'], 'properties' => ['site' => $siteProp, 'path' => ['type' => 'string'], 'version' => ['type' => 'string']]]],
+            ['name' => 'redirects_list', 'description' => 'SEO: правила редиректів сайту (id, source, target, code 301/302/404/410, kind manual|auto|pack, city — slug міста або null = усі міста, hits). Фільтри: city, code, kind, q (підрядок адреси). Потрібен content:read.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site'], 'properties' => ['site' => $siteProp, 'city' => ['type' => 'string'], 'code' => ['type' => 'integer'], 'kind' => ['type' => 'string', 'enum' => ['manual', 'auto', 'pack']], 'q' => ['type' => 'string']]]],
+            ['name' => 'redirect_create', 'description' => 'SEO: створити або замінити правило редиректу: source — стара адреса (шлях від кореня або повний URL старої сторінки), code 301 (типово) | 302 | 404 | 410, target — нова адреса для 301/302 (шлях /… або URL; чужий домен — лише адміністратору), city — slug міста, якщо правило лише для його хоста (порожньо = усі міста). Правило спрацьовує лише на 404: жива адреса, цикл чи редирект на себе — помилка 422 з поясненням. Ціль, що сама переадресовується, замінюється кінцевою. Потрібен content:write.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site', 'source'], 'properties' => ['site' => $siteProp, 'source' => ['type' => 'string'], 'code' => ['type' => 'integer', 'enum' => [301, 302, 404, 410]], 'target' => ['type' => 'string'], 'city' => ['type' => 'string']]]],
+            ['name' => 'redirect_delete', 'description' => 'SEO: видалити правило редиректу за id (з redirects_list). Потрібен content:write.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site', 'id'], 'properties' => ['site' => $siteProp, 'id' => ['type' => 'integer']]]],
+            ['name' => 'not_found_list', 'description' => 'SEO: журнал 404 сайту — адреси, що віддали 404 на хостах міст і не мають правила (path, city, host, hits, last_hit_at, referer без параметрів), найчастіші першими. Фільтри: city (slug), q (підрядок), limit (до 1000). Для звірки з GSC перед масовим створенням правил. Потрібен content:read.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site'], 'properties' => ['site' => $siteProp, 'city' => ['type' => 'string'], 'q' => ['type' => 'string'], 'limit' => ['type' => 'integer']]]],
             ['name' => 'upsert_city_texts', 'description' => 'Створити або оновити тексти послуги (kind=item-texts, item_id) або категорії (kind=category-texts, category_id) для міста city_id: порожнє поле падає на базовий текст. Проти дублів між містами.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'kind', 'city_id', 'fields'], 'properties' => ['site' => $siteProp, 'kind' => ['type' => 'string', 'enum' => ['item-texts', 'category-texts']], 'item_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'city_id' => ['type' => 'integer'], 'fields' => ['type' => 'object', 'additionalProperties' => true]]]],
         ];
@@ -113,6 +122,14 @@ final class McpController extends AbstractController
                 'theme_put' => $this->theme->put((string) ($a['site'] ?? ''), (string) ($a['path'] ?? ''), (string) ($a['content'] ?? '')),
                 'theme_delete' => $this->theme->delete((string) ($a['site'] ?? ''), (string) ($a['path'] ?? '')),
                 'theme_revert' => $this->theme->revert((string) ($a['site'] ?? ''), (string) ($a['path'] ?? ''), (string) ($a['version'] ?? '')),
+                'redirects_list' => $this->redirects->list((string) ($a['site'] ?? ''), array_intersect_key($a, array_flip(['city', 'code', 'kind', 'q']))),
+                'redirect_create' => $this->redirects->create((string) ($a['site'] ?? ''), array_intersect_key($a, array_flip(['source', 'code', 'target', 'city'])))[0],
+                'redirect_delete' => (function () use ($a): array {
+                    $this->redirects->delete((string) ($a['site'] ?? ''), (int) ($a['id'] ?? 0));
+
+                    return ['deleted' => (int) ($a['id'] ?? 0)];
+                })(),
+                'not_found_list' => $this->redirects->notFound((string) ($a['site'] ?? ''), array_intersect_key($a, array_flip(['city', 'q', 'limit']))),
                 default => throw new ApiProblem('Невідомий інструмент: ' . $name, 404),
             };
         } catch (ApiProblem $e) {
