@@ -92,6 +92,9 @@ lead.phone: Телефон
 lead.name: Имя
 lead.message: Что нужно сделать?
 lead.submit: Отправить
+lead.select_placeholder: '- выберите -'
+lead.consent: 'Соглашаюсь на обработку персональных данных в соответствии с {policy}'
+lead.consent_policy: политикой конфиденциальности
 
 brand.tagline: ''
 brand.in: в

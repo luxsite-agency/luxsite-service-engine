@@ -98,6 +98,10 @@ lead.phone: Телефон
 lead.name: "Ім'я"
 lead.message: Що потрібно зробити?
 lead.submit: Надіслати
+# поля запису (app.lead_fields) і згода на обробку ПД (app.lead_consent; {policy} — посилання на політику)
+lead.select_placeholder: '- оберіть -'
+lead.consent: 'Погоджуюсь на обробку персональних даних відповідно до {policy}'
+lead.consent_policy: політики конфіденційності
 
 brand.tagline: ''
 brand.in: у

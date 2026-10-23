@@ -254,6 +254,14 @@
             table.specs th { font-weight: 600; color: var(--dark); }
             .card-specs { display: grid; grid-template-columns: auto 1fr; gap: .2rem .7rem; margin: .5rem 0 0; font-size: .9rem; }
             .card-specs dt { color: var(--muted-text); } .card-specs dd { margin: 0; }
+            /* додаткові поля форми заявки (app.lead_fields) і згода на обробку ПД (app.lead_consent): на всю ширину форми */
+            .lead-fields { flex-basis: 100%; display: grid; gap: .6rem; }
+            .lead-fields__group { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .6rem; }
+            .lead-fields__group legend { font-weight: 600; color: var(--dark); margin-bottom: .3rem; }
+            .lead-field { display: grid; gap: .2rem; font-size: .9rem; }
+            .lead-field input, .lead-field select { padding: .55rem; border: 1px solid #ccc; border-radius: 6px; font: inherit; background: #fff; color: inherit; min-width: 0; }
+            .lead-consent { flex-basis: 100%; display: flex; gap: .5rem; align-items: flex-start; font-size: .85rem; line-height: 1.4; text-align: left; }
+            .lead-consent input { margin: .15rem 0 0; flex: none; }
             table.prices { width: 100%; border-collapse: collapse; margin: 1rem 0; }
             table.prices td, table.prices th { border-bottom: 1px solid var(--border); padding: .65rem .7rem; text-align: left; }
             table.prices tr:nth-child(odd) td { background: var(--bg-muted); }
