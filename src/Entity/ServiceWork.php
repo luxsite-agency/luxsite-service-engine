@@ -14,6 +14,7 @@ use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\Validator\Constraints as Assert;
 use Vich\UploaderBundle\Mapping\Attribute as Vich;
 
 /**
@@ -64,6 +65,7 @@ class ServiceWork implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionRu = null;
 
+    #[Assert\Image(maxSize: '10M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxWidth: 8000, maxHeight: 8000, mimeTypesMessage: 'Дозволено лише JPG/PNG/WebP.')]
     #[Vich\UploadableField(mapping: 'service_work_media', fileNameProperty: 'imageName')]
     private ?File $imageFile = null;
 

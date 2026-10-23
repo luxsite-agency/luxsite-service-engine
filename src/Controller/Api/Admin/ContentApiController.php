@@ -18,13 +18,14 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * REST контенту для менеджерів і скриптів (персональні токени, docs/admin-api.md). Логіка — ContentService (спільна з MCP).
  *
- *   GET   /api/admin/v1/{site}/{kind}                 список (kind: items|categories|districts|posts|prices|item-texts|category-texts)
+ *   GET   /api/admin/v1/{site}/{kind}                 список (kind: items|categories|districts|posts|prices|item-texts|category-texts|works|team|reviews)
  *   GET   /api/admin/v1/{site}/{kind}/{id}            один запис з усіма дозволеними полями
  *   PATCH /api/admin/v1/{site}/{kind}/{id}            JSON {поле: значення} лише з дозволених полів; відповідь — запис після змін
  *   POST  /api/admin/v1/{site}/item-texts             {item_id, city_id, …поля} — створити/оновити тексти послуги для міста
  *   POST  /api/admin/v1/{site}/category-texts         {category_id, city_id, …поля}
  *
- * Фільтри списків: ?city=<slug> (districts, prices, item-texts, category-texts), ?category=<id> (items), ?item=<id> (prices), ?q=<підрядок>.
+ * Фільтри списків: ?city=<slug> (districts, prices, item-texts, category-texts, works, team, reviews), ?category=<id> (items), ?item=<id> (prices, works), ?q=<підрядок>.
+ * Фото записів (items, categories, posts, works, team, reviews) — ImageApiController (…/{id}/image).
  */
 final class ContentApiController extends AbstractController
 {
@@ -79,7 +80,7 @@ final class ContentApiController extends AbstractController
 
             return $result instanceof JsonResponse ? $result : $this->json($result);
         } catch (ApiProblem $e) {
-            return $this->json(['error' => $e->getMessage()], $e->status);
+            return $this->json(['error' => $e->getMessage()], $e->status, $e->headers);
         }
     }
 }
