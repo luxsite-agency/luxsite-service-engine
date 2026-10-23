@@ -117,6 +117,7 @@ final class BlogController extends AbstractController
             'site' => $site,
             'city' => $city,
             'post' => $post,
+            'related' => $site->isContent() ? $this->posts->findRelated($site, $post, $request->getLocale(), 3) : [],
             'altUrls' => $altUrls,
             'canonicalUrls' => $this->apexUrls($altUrls, $city, $this->cities->findActiveApex($site)),
         ]);
