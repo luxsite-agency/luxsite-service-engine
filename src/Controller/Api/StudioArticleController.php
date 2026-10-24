@@ -199,7 +199,7 @@ final class StudioArticleController extends AbstractController
         $body = $this->linkPolicy($this->localizeImages($body, $own), $own, $follow);
         $credit = isset($data['cover_credit']) && \is_string($data['cover_credit']) && trim($data['cover_credit']) !== ''
             ? "\n<p class=\"post-photo-credit\" style=\"font-size:.85em;color:#6b7280\">" . htmlspecialchars(trim($data['cover_credit']), ENT_QUOTES) . "</p>\n" : '';
-        $html = $body . $this->faqHtml($data['faq'] ?? [], $lang) . $this->relatedHtml($data['related'] ?? [], $lang) . $this->sourcesHtml($data['sources'] ?? [], $lang, $follow) . $credit;
+        $html = $body . $this->faqHtml($data['faq'] ?? [], $lang) . $this->relatedHtml($data['related'] ?? [], $lang) . $this->sourcesHtml($data['sources'] ?? [], $lang, $follow, (string) ($data['sources_format'] ?? 'link')) . $credit;
         $lead = isset($data['lead']) ? trim((string) $data['lead']) : null;
         $metaTitle = isset($data['meta_title']) ? mb_substr(trim((string) $data['meta_title']), 0, 255) : null;
         $metaDesc = isset($data['meta_desc']) ? trim((string) $data['meta_desc']) : null;
@@ -645,18 +645,29 @@ final class StudioArticleController extends AbstractController
 
     /** @param mixed $sources */
     /** @param list<string> $follow домени без nofollow (outbound.follow бренду) */
-    private function sourcesHtml(mixed $sources, string $lang, array $follow = []): string
+    /**
+     * «Джерела»: sources_format=link — посилання (nofollow, крім outbound.follow бренду); text або джерело без адреси — назва
+     * звичайним текстом без посилання (24.10.2026, власник: «джерела текстом, без активного посилання»).
+     */
+    private function sourcesHtml(mixed $sources, string $lang, array $follow = [], string $format = 'link'): string
     {
         if (!\is_array($sources) || $sources === []) {
             return '';
         }
         $items = '';
         foreach ($sources as $row) {
-            $url = trim((string) ($row['url'] ?? ''));
-            if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            if (!\is_array($row)) {
                 continue;
             }
-            $title = trim((string) ($row['title'] ?? '')) ?: parse_url($url, PHP_URL_HOST);
+            $url = trim((string) ($row['url'] ?? ''));
+            $title = trim((string) ($row['title'] ?? ''));
+            if ($format === 'text' || $url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+                if ($title !== '') {
+                    $items .= sprintf("<li>%s</li>\n", htmlspecialchars($title, ENT_QUOTES));
+                }
+                continue;
+            }
+            $title = $title ?: parse_url($url, PHP_URL_HOST);
             $host = strtolower((string) preg_replace('/^www\./', '', (string) parse_url($url, PHP_URL_HOST)));
             $rel = self::hostIn($host, $follow) ? 'noopener' : 'nofollow noopener';
             $items .= sprintf("<li><a href=\"%s\" rel=\"%s\" target=\"_blank\">%s</a></li>\n", htmlspecialchars($url, ENT_QUOTES), $rel, htmlspecialchars((string) $title, ENT_QUOTES));
