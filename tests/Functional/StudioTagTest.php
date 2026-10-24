@@ -121,8 +121,9 @@ final class StudioTagTest extends HttpKernelTestCase
     }
 
     /**
-     * Набір тегів — за основною мовою бренду (рев'ю #28): студія не переносить tags у переклад (шле []), а слаг перекладу —
-     * транслітерація імені іншою мовою. Переклад лише дописує назву своєю мовою тегам, що вже є в статті.
+     * Набір тегів — за мовою, якою його задано (studio_tags_lang, рев'ю #28): студія пише оригінал мовою свого сайту, не
+     * переносить tags у переклад (шле []), а слаг перекладу — транслітерація імені. Переклад лише дописує назву своєю мовою
+     * тегам, що вже є в статті.
      */
     public function testTranslationKeepsTags(): void
     {
@@ -146,14 +147,14 @@ final class StudioTagTest extends HttpKernelTestCase
         $ruPage = $this->get('https://' . $this->host . '/ru/novyny/tag/volodymyr-zelenskyi/');
         self::assertSame(200, $ruPage->getStatusCode());
         self::assertStringContainsString('<h1>Владимир Зеленский</h1>', (string) $ruPage->getContent());
-        // основна мова знову замінює набір
+        // мова набору знову замінює його
         self::assertSame(200, $this->put('z-uk', $group, 'zelenskyi-zaiava', ['tags' => []])->getStatusCode());
         self::assertSame([], $this->postTags('zelenskyi-zaiava'));
 
-        // стаття спершу ru: тег створюється з ru-назвою і в uk-полях; основна uk-стаття ставить свою назву
+        // оригінал ru (студійний сайт з мовою ru на бренді uk+ru): тег створюється з ru-назвою і в uk-полях, набором керує ru;
+        // uk-переклад ставить uk-назву тегу, але набір не змінює
         $g2 = '00000000-0000-4000-8000-0000000000a2';
         self::assertSame(201, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => [['name' => 'Дмитрий Песков', 'slug' => 'dmytro-pieskov']]])->getStatusCode());
-        // ru-стаття, якої ще нема українською, сама керує набором
         self::assertSame(200, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => []])->getStatusCode());
         $this->em()->clear();
         self::assertSame([], $this->post('peskov-zaiavlenie')->getTags()->toArray());
@@ -164,6 +165,10 @@ final class StudioTagTest extends HttpKernelTestCase
         self::assertSame('Дмитро Пєсков', $tag->getTitleUk(), 'uk-копію ru-назви замінено');
         self::assertSame('Дмитрий Песков', $tag->getTitleRu());
         self::assertSame(['volodymyr-zelenskyi', 'dmytro-pieskov'], $this->tagSlugs());
+        self::assertSame(200, $this->put('p-uk', $g2, 'pieskov-zaiava', ['tags' => []])->getStatusCode());
+        self::assertSame(['dmytro-pieskov'], $this->postTags('pieskov-zaiava'), 'uk-переклад ru-оригіналу з [] не стирає теги');
+        self::assertSame(200, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => []])->getStatusCode());
+        self::assertSame([], $this->postTags('pieskov-zaiava'), 'ru-оригінал керує набором і після перекладу');
     }
 
     public function testAdminValidationAndRedirects(): void

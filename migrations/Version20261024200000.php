@@ -12,13 +12,14 @@ use Doctrine\Migrations\AbstractMigration;
 
 /**
  * Теги статей (24.10.2026, контентний сайт): service_post_tag (слаг і назва uk/ru/en, унікальний слаг у межах сайту й мови)
- * і зв'язок service_post_tags (ON DELETE CASCADE з обох боків). Адитивна: нові таблиці, наявні рядки не змінюються.
+ * і зв'язок service_post_tags (ON DELETE CASCADE з обох боків); service_post.studio_tags_lang — мова студії, якою задано набір
+ * тегів статті (переклад набір не змінює). Адитивна: нові таблиці й колонка NULL, наявні рядки не змінюються.
  */
 final class Version20261024200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Теги статей: service_post_tag і service_post_tags';
+        return 'Теги статей: service_post_tag, service_post_tags, service_post.studio_tags_lang';
     }
 
     public function up(Schema $schema): void
@@ -28,6 +29,7 @@ final class Version20261024200000 extends AbstractMigration
         $this->addSql('ALTER TABLE service_post_tag ADD CONSTRAINT FK_A3B861CDF6BD1646 FOREIGN KEY (site_id) REFERENCES service_site (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE service_post_tags ADD CONSTRAINT FK_FE78C9674B89032C FOREIGN KEY (post_id) REFERENCES service_post (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE service_post_tags ADD CONSTRAINT FK_FE78C967BAD26311 FOREIGN KEY (tag_id) REFERENCES service_post_tag (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE service_post ADD studio_tags_lang VARCHAR(5) DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
@@ -37,5 +39,6 @@ final class Version20261024200000 extends AbstractMigration
         $this->addSql('ALTER TABLE service_post_tag DROP FOREIGN KEY FK_A3B861CDF6BD1646');
         $this->addSql('DROP TABLE service_post_tags');
         $this->addSql('DROP TABLE service_post_tag');
+        $this->addSql('ALTER TABLE service_post DROP studio_tags_lang');
     }
 }

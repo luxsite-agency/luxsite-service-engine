@@ -192,14 +192,15 @@ final class StudioArticleController extends AbstractController
         }
 
         // Теги (лише контентні бренди, як рубрики): tags = [{name, slug}, …] до TAGS_MAX — люди з прямою мовою (24.10.2026).
-        // Набір тегів статті належить основній мові бренду: її PUT (або стаття, якої цією мовою ще нема) замінює набір повністю
-        // ([] — без тегів). PUT перекладу лише дописує назву своєю мовою тегам, що вже є в статті, нічого не знімає й не
-        // створює: студія не переносить tags у переклад (шле []), а слаг перекладу — транслітерація імені іншою мовою
-        // (рев'ю #28). Нема поля (чи null) — теги не чіпаємо.
+        // Набір тегів статті належить мові, якою його задано (ServicePost.studioTagsLang; перший PUT із тегами): PUT цією мовою
+        // замінює набір повністю ([] — без тегів). PUT іншою мовою — переклад: лише дописує назву своєю мовою тегам, що вже є
+        // в статті, нічого не знімає й не створює — студія пише оригінал мовою свого сайту, не переносить tags у переклад
+        // (шле []), а слаг перекладу — транслітерація імені (рев'ю #28). Виняток: у статті тегів нема, а переклад їх приніс —
+        // набір задає він. Нема поля (чи null) — теги не чіпаємо.
         $tags = null;
         if ($site->isContent() && isset($data['tags'])) {
-            $primary = $langs[0] ?? $lang;
-            $translation = $post !== null && $lang !== $primary && trim(strip_tags((string) $post->locRaw('desc', $primary))) !== '';
+            $owner = $post?->getStudioTagsLang();
+            $translation = $owner !== null && $owner !== $lang && !($post->getTags()->isEmpty() && \is_array($data['tags']) && $data['tags'] !== []);
             $tags = $this->resolveTags($site, $lang, $data['tags'], $translation ? $post : null);
             if (\is_string($tags)) {
                 return $this->json(['error' => 'Невалідні дані.', 'fields' => ['tags' => $tags]], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -278,7 +279,7 @@ final class StudioArticleController extends AbstractController
             $post->setCategory($category);
         }
         if ($tags !== null) {
-            $post->replaceTags($tags);
+            $post->replaceTags($tags)->setStudioTagsLang($lang);
         }
         $post->setActive(true)->setStudioSyncedAt(new \DateTimeImmutable());
 
@@ -300,7 +301,7 @@ final class StudioArticleController extends AbstractController
     /**
      * Теги з панелі: кожен — {name, slug}, повтори слагу в списку відкидаються.
      *
-     * Основна мова ($translationOf = null): slug шукається серед тегів бренду — спершу слагом мови статті, далі слагом будь-якої
+     * Мова набору ($translationOf = null): slug шукається серед тегів бренду — спершу слагом мови статті, далі слагом будь-якої
      * мови (той самий тег іншою мовою, без дубля й без 1062 на slug_uk); у знайденого дописуються порожні назва й слаг цієї
      * мови, назву наявної мови не чіпаємо (крім uk-копії ru-назви тегу, створеного ru-статтею); такого нема — новий активний
      * з назвою name (без назви — помилка). Повертає новий набір тегів статті.
@@ -358,14 +359,8 @@ final class StudioArticleController extends AbstractController
                     $anyLang ??= $t;
                 }
             }
-            if ($tag !== null) {
-                // ru-стаття створила тег з uk-полями = ru (рубрика має мати uk або en): основна uk-стаття ставить свою назву
-                if ($lang === 'uk' && $name !== '' && $tag->getTitleRu() !== null && $tag->getTitleUk() === $tag->getTitleRu() && $tag->getSlugUk() === $tag->getSlugRu()) {
-                    $tag->setTitleUk($name);
-                }
-                $this->fillTagLang($tag, $lang, $slug, $name, $candidates);
-            } elseif ($anyLang !== null) {
-                $tag = $anyLang;
+            if ($tag !== null || $anyLang !== null) {
+                $tag ??= $anyLang;
                 $this->fillTagLang($tag, $lang, $slug, $name, $candidates);
             } else {
                 if ($name === '') {
@@ -403,6 +398,10 @@ final class StudioArticleController extends AbstractController
     {
         if ($name === '') {
             return;
+        }
+        // ru-стаття створила тег з uk-полями = ru (тегу потрібна uk або en): перша uk-стаття ставить свою назву
+        if ($lang === 'uk' && $tag->getTitleRu() !== null && $tag->getTitleUk() === $tag->getTitleRu() && $tag->getSlugUk() === $tag->getSlugRu()) {
+            $tag->setTitleUk($name);
         }
         if (trim((string) $tag->locRaw('title', $lang)) === '') {
             match ($lang) {

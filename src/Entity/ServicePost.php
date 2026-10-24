@@ -57,6 +57,13 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $studioSyncedAt = null;
 
+    /**
+     * Мова статті студії, якою задано набір тегів (24.10.2026): PUT цією мовою замінює набір, PUT іншою мовою — переклад, лише
+     * дописує назви тегів (студія пише оригінал мовою свого сайту, а в переклад шле tags: []). NULL — тегів зі студії ще не було.
+     */
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $studioTagsLang = null;
+
     /** NULL — статті нема українською (англомовний бренд; 22.10.2026): кілька таких на сайті не конфліктують в унікальному індексі */
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugUk = null;
@@ -420,6 +427,18 @@ class ServicePost implements TimestampableInterface
     public function getStudioSyncedAt(): ?\DateTimeImmutable
     {
         return $this->studioSyncedAt;
+    }
+
+    public function getStudioTagsLang(): ?string
+    {
+        return $this->studioTagsLang;
+    }
+
+    public function setStudioTagsLang(?string $studioTagsLang): self
+    {
+        $this->studioTagsLang = $studioTagsLang;
+
+        return $this;
     }
 
     public function setStudioSyncedAt(?\DateTimeImmutable $studioSyncedAt): self
