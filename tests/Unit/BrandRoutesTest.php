@@ -9,7 +9,9 @@ namespace App\Tests\Unit;
 
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\Repository\ServicePostCategoryRepository;
 use App\ServiceSite\BrandRoutes;
+use App\ServiceSite\BrandSettings;
 use App\ServiceSite\LocalizedRoutes;
 use App\ServiceSite\SiteLocales;
 use PHPUnit\Framework\TestCase;
@@ -78,7 +80,7 @@ final class BrandRoutesTest extends TestCase
         self::assertSame('/', $routes->get('sv_home.uk')?->getPath(), 'друга мова теж без префікса');
         self::assertSame(10, $routes->getPriority('sv_blog_post.uk'));
 
-        $brandRoutes = new BrandRoutes(new SiteLocales(new RequestStack(), ['en', 'uk'], [], 'uk', false), 'blog');
+        $brandRoutes = new BrandRoutes(new SiteLocales(new RequestStack(), ['en', 'uk'], [], 'uk', false), new BrandSettings(), $this->createStub(ServicePostCategoryRepository::class), 'blog');
         $en = $this->brand('trysail', ['en'], null);
         $uk = $this->brand('eplus', ['uk'], 'novyny');
 

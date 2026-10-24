@@ -140,7 +140,44 @@ final class BlogController extends AbstractController
     )]
     public function category(Request $request, string $slug): Response
     {
+        // бренд з рубриками від кореня: стара адреса /<блог>/category/<slug>/ — один 301 на /<slug>/ (BrandRouter)
+        if ($this->brandSettings->categoryRoot($this->serviceSite($request))) {
+            return $this->redirectToRoute('sv_blog_category', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
+        }
+
         return $this->categoryPage($request, $slug, 1);
+    }
+
+    /**
+     * Рубрика від кореня: /<slug>/ (app.brands.<slug>.category_url: root, 24.10.2026). Умова — у бренду є активна рубрика
+     * з таким slug, не зайнятим фіксованим розділом (BrandRoutes::rootCategory); інакше роутер іде далі (legacy-301 чи 404).
+     */
+    #[Route(
+        path: ['uk' => '/{slug}/', 'ru' => '/ru/{slug}/'],
+        name: 'sv_blog_category_root',
+        requirements: ['slug' => '[a-z0-9-]+'],
+        priority: 1,
+        condition: "request.attributes.has('service_city') and service('brand_routes').rootCategory(request, params)",
+    )]
+    public function categoryRoot(Request $request, string $slug): Response
+    {
+        return $this->categoryPage($request, $slug, 1);
+    }
+
+    #[Route(
+        path: ['uk' => '/{slug}/page/{page}/', 'ru' => '/ru/{slug}/page/{page}/'],
+        name: 'sv_blog_category_root_page',
+        requirements: ['slug' => '[a-z0-9-]+', 'page' => '[1-9]\\d*'],
+        priority: 1,
+        condition: "request.attributes.has('service_city') and service('brand_routes').rootCategory(request, params)",
+    )]
+    public function categoryRootPaged(Request $request, string $slug, int $page): Response
+    {
+        if ($page === 1) {
+            return $this->redirectToRoute('sv_blog_category', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
+        }
+
+        return $this->categoryPage($request, $slug, $page);
     }
 
     #[Route(
@@ -153,8 +190,10 @@ final class BlogController extends AbstractController
     )]
     public function categoryPaged(Request $request, string $slug, int $page): Response
     {
-        if ($page === 1) {
-            return $this->redirectToRoute('sv_blog_category', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
+        if ($page === 1 || $this->brandSettings->categoryRoot($this->serviceSite($request))) {
+            $params = ['slug' => $slug, '_locale' => $request->getLocale()];
+
+            return $this->redirectToRoute($page === 1 ? 'sv_blog_category' : 'sv_blog_category_page', $page === 1 ? $params : $params + ['page' => $page], 301);
         }
 
         return $this->categoryPage($request, $slug, $page);

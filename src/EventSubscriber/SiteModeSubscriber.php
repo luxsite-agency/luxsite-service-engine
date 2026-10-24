@@ -26,12 +26,12 @@ final class SiteModeSubscriber implements EventSubscriberInterface
 {
     /** Що відкрито контентному сайту (канонічні імена, без .<мова>) */
     public const CONTENT_ROUTES = [
-        'sv_home', 'sv_blog', 'sv_blog_page', 'sv_blog_post', 'sv_blog_category', 'sv_blog_category_page', 'sv_author',
+        'sv_home', 'sv_blog', 'sv_blog_page', 'sv_blog_post', 'sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_author',
         'sv_about', 'sv_contacts', 'sv_thanks', 'sv_privacy', 'sv_terms', 'sv_sitemap', 'sv_robots', 'sv_lead',
     ];
 
     /** Маршрути лише для контентного сайту */
-    public const CONTENT_ONLY_ROUTES = ['sv_blog_category', 'sv_blog_category_page', 'sv_author'];
+    public const CONTENT_ONLY_ROUTES = ['sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_author'];
 
     /** Префікси імен маршрутів, які стосуються сайту (решта — службові) */
     private const SITE_ROUTE_PREFIXES = ['sv_', 'connect_google'];
