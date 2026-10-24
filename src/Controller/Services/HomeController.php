@@ -42,6 +42,7 @@ final class HomeController extends AbstractController
         private readonly ServiceWorkRepository $works,
         private readonly ServicePostRepository $posts,
         private readonly ServicePostCategoryRepository $postCategories,
+        private readonly \App\ServiceSite\BrandSettings $brandSettings,
     ) {
     }
 
@@ -132,13 +133,13 @@ final class HomeController extends AbstractController
 
     /**
      * Головна контентного сайту (ServiceSite.mode = content): інтро бренду (апекс-місто: H1, інтро, блоки 2–3 мовою
-     * сторінки), «обрані» статті, свіжі статті (app.blog_per_page; 0 = 12) і рубрики. Без каталогу, цін, відгуків і заявок.
+     * сторінки), «обрані» статті, свіжі статті (app.blog_per_page або app.brands.<slug>.blog_per_page; 0 = 12) і рубрики. Без каталогу, цін, відгуків і заявок.
      */
     private function contentHome(Request $request): Response
     {
         $site = $this->serviceSite($request);
         $locale = $request->getLocale();
-        $perPage = (int) $this->getParameter('app.blog_per_page') ?: 12;
+        $perPage = $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')) ?: 12;
         $featured = $this->posts->findFeatured($site, $locale, 3);
         $featuredIds = array_map(static fn ($p) => $p->getId(), $featured);
         $latest = array_values(array_filter(

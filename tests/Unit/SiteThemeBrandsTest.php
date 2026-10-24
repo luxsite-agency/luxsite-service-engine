@@ -60,6 +60,9 @@ final class SiteThemeBrandsTest extends TestCase
         self::assertSame('news', $settings->templatesDir((new ServiceSite())->setSlug('eplus')));
         self::assertSame('trysail', $settings->templatesDir((new ServiceSite())->setSlug('trysail')));
         self::assertSame('other', $settings->templatesDir((new ServiceSite())->setSlug('other')));
+        $perPage = new BrandSettings(['eplus' => ['blog_per_page' => 20]]);
+        self::assertSame(20, $perPage->blogPerPage((new ServiceSite())->setSlug('eplus'), 12));
+        self::assertSame(12, $perPage->blogPerPage((new ServiceSite())->setSlug('trysail'), 12), 'без ключа — app.blog_per_page');
         $this->expectException(\InvalidArgumentException::class);
         new SiteTheme([], '', ['eplus' => ['templates' => '../news']]);
     }

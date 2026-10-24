@@ -17,11 +17,12 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *  - studio_on_public_host: false — приймач студії /api/studio на доменах бренду вимкнено (404), лише через адмін-хост
  *    /api/studio/<slug>/… (ендпойнт не світиться на кожному домені мережі). Типово true — як було;
  *  - templates: <тека> — шаблони бренду з templates/site/brands/<тека>/ замість теки зі slug бренду: кілька брендів з
- *    одним набором (24.10.2026: сім новинних брендів поруч з англійськими). Читає App\Twig\BrandTemplateLoader.
+ *    одним набором (24.10.2026: сім новинних брендів поруч з англійськими). Читає App\Twig\BrandTemplateLoader;
+ *  - blog_per_page: N — статей на сторінку списку й головної бренду замість app.blog_per_page (новини — 20, решта — 12).
  */
 final class BrandSettings
 {
-    public const KEYS = ['theme', 'outbound', 'studio_on_public_host', 'templates'];
+    public const KEYS = ['theme', 'outbound', 'studio_on_public_host', 'templates', 'blog_per_page'];
 
     /** @param array<string, array<string, mixed>> $brands app.brands */
     public function __construct(
@@ -47,6 +48,14 @@ final class BrandSettings
         }
 
         return $dir;
+    }
+
+    /** Статей на сторінку бренду: app.brands.<slug>.blog_per_page або $default (app.blog_per_page) */
+    public function blogPerPage(ServiceSite $site, int $default): int
+    {
+        $n = $this->brands[$site->getSlug()]['blog_per_page'] ?? null;
+
+        return \is_int($n) && $n >= 0 ? $n : $default;
     }
 
     public function studioOnPublicHost(ServiceSite $site): bool

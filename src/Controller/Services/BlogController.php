@@ -33,6 +33,7 @@ final class BlogController extends AbstractController
         private readonly ServiceCityRepository $cities,
         private readonly ServicePostCategoryRepository $categories,
         private readonly ServiceAuthorRepository $authors,
+        private readonly \App\ServiceSite\BrandSettings $brandSettings,
     ) {
     }
 
@@ -77,7 +78,7 @@ final class BlogController extends AbstractController
         if ($site->isContent()) {
             return $this->contentList($request, $site, $page, null, null);
         }
-        $perPage = max(0, (int) $this->getParameter('app.blog_per_page'));
+        $perPage = max(0, $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')));
         $total = $this->posts->countPublishedBySite($site, $request->getLocale());
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
@@ -192,7 +193,7 @@ final class BlogController extends AbstractController
     {
         $city = $this->serviceCity($request);
         $locale = $request->getLocale();
-        $perPage = $author !== null ? 0 : max(0, (int) $this->getParameter('app.blog_per_page'));
+        $perPage = $author !== null ? 0 : max(0, $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')));
         $total = $this->posts->countPublishedFiltered($site, $locale, $category, $author);
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
