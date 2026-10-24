@@ -21,15 +21,24 @@ class ServicePostTagRepository extends ServiceEntityRepository
     }
 
     /**
-     * Активні теги сайту, що існують мовою (слаг і назва), у порядку створення; $locale = null — усі активні.
+     * Теги сайту (будь-якої активності), у яких хоч одна мова має слаг зі списку: кандидати для приймача студії, щоб не
+     * вантажити всі теги бренду на кожну публікацію.
+     *
+     * @param list<string> $slugs
      *
      * @return list<ServicePostTag>
      */
-    public function findActiveBySite(ServiceSite $site, ?string $locale = null): array
+    public function findBySiteAndSlugs(ServiceSite $site, array $slugs): array
     {
-        $all = $this->findBy(['site' => $site, 'active' => true], ['id' => 'ASC']);
+        if ($slugs === []) {
+            return [];
+        }
 
-        return array_values(array_filter($all, static fn (ServicePostTag $t): bool => $locale === null || $t->existsIn($locale)));
+        return $this->createQueryBuilder('t')
+            ->where('t.site = :site')->setParameter('site', $site)
+            ->andWhere('t.slugUk IN (:slugs) OR t.slugRu IN (:slugs) OR t.slugEn IN (:slugs)')->setParameter('slugs', $slugs)
+            ->orderBy('t.id', 'ASC')
+            ->getQuery()->getResult();
     }
 
     /** Активний тег за слагом мови (ru — з фолбеком на uk-слаг, як у рубрик) */

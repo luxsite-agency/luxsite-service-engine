@@ -120,6 +120,81 @@ final class StudioTagTest extends HttpKernelTestCase
         self::assertSame(['oleh-hryhorov', 'donald-tramp'], $this->postTags('tramp-i-hryhorov'), 'інші статті не зачеплено');
     }
 
+    /**
+     * Набір тегів — за основною мовою бренду (рев'ю #28): студія не переносить tags у переклад (шле []), а слаг перекладу —
+     * транслітерація імені іншою мовою. Переклад лише дописує назву своєю мовою тегам, що вже є в статті.
+     */
+    public function testTranslationKeepsTags(): void
+    {
+        $group = '00000000-0000-4000-8000-0000000000a1';
+        self::assertSame(201, $this->put('z-uk', $group, 'zelenskyi-zaiava', ['tags' => [['name' => 'Володимир Зеленський', 'slug' => 'volodymyr-zelenskyi']]])->getStatusCode());
+
+        $ru = $this->put('z-ru', $group, 'zelenskii-zaiavlenie', ['lang' => 'ru', 'tags' => []]);
+        self::assertSame(200, $ru->getStatusCode(), (string) $ru->getContent());
+        self::assertSame(['volodymyr-zelenskyi'], $this->json($ru)['tags'] ?? null, 'ru-переклад з [] не стирає теги статті');
+        // інший слаг (транслітерація ru) — не новий тег і не заміна
+        self::assertSame(200, $this->put('z-ru', $group, 'zelenskii-zaiavlenie', ['lang' => 'ru', 'tags' => [['name' => 'Владимир Зеленский', 'slug' => 'vladimir-zelenskii']]])->getStatusCode());
+        self::assertSame(['volodymyr-zelenskyi'], $this->tagSlugs());
+        self::assertSame(['volodymyr-zelenskyi'], $this->postTags('zelenskyi-zaiava'));
+        // той самий слаг — дописується ru-назва, uk не змінюється
+        self::assertSame(200, $this->put('z-ru', $group, 'zelenskii-zaiavlenie', ['lang' => 'ru', 'tags' => [['name' => 'Владимир Зеленский', 'slug' => 'volodymyr-zelenskyi']]])->getStatusCode());
+        $this->em()->clear();
+        $tag = $this->tag('volodymyr-zelenskyi');
+        self::assertSame('Володимир Зеленський', $tag->getTitleUk());
+        self::assertSame('Владимир Зеленский', $tag->getTitleRu());
+        self::assertNull($tag->getSlugRu(), 'ru бере uk-слаг');
+        $ruPage = $this->get('https://' . $this->host . '/ru/novyny/tag/volodymyr-zelenskyi/');
+        self::assertSame(200, $ruPage->getStatusCode());
+        self::assertStringContainsString('<h1>Владимир Зеленский</h1>', (string) $ruPage->getContent());
+        // основна мова знову замінює набір
+        self::assertSame(200, $this->put('z-uk', $group, 'zelenskyi-zaiava', ['tags' => []])->getStatusCode());
+        self::assertSame([], $this->postTags('zelenskyi-zaiava'));
+
+        // стаття спершу ru: тег створюється з ru-назвою і в uk-полях; основна uk-стаття ставить свою назву
+        $g2 = '00000000-0000-4000-8000-0000000000a2';
+        self::assertSame(201, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => [['name' => 'Дмитрий Песков', 'slug' => 'dmytro-pieskov']]])->getStatusCode());
+        // ru-стаття, якої ще нема українською, сама керує набором
+        self::assertSame(200, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => []])->getStatusCode());
+        $this->em()->clear();
+        self::assertSame([], $this->post('peskov-zaiavlenie')->getTags()->toArray());
+        self::assertSame(200, $this->put('p-ru', $g2, 'peskov-zaiavlenie', ['lang' => 'ru', 'tags' => [['name' => 'Дмитрий Песков', 'slug' => 'dmytro-pieskov']]])->getStatusCode());
+        self::assertSame(200, $this->put('p-uk', $g2, 'pieskov-zaiava', ['tags' => [['name' => 'Дмитро Пєсков', 'slug' => 'dmytro-pieskov']]])->getStatusCode());
+        $this->em()->clear();
+        $tag = $this->tag('dmytro-pieskov');
+        self::assertSame('Дмитро Пєсков', $tag->getTitleUk(), 'uk-копію ru-назви замінено');
+        self::assertSame('Дмитрий Песков', $tag->getTitleRu());
+        self::assertSame(['volodymyr-zelenskyi', 'dmytro-pieskov'], $this->tagSlugs());
+    }
+
+    public function testAdminValidationAndRedirects(): void
+    {
+        self::assertSame(201, $this->put('v1', '00000000-0000-4000-8000-0000000000b1', 'validatsiia', ['tags' => [['name' => 'Олег Григоров', 'slug' => 'oleh-hryhorov']]])->getStatusCode());
+        $this->em()->clear();
+        /** @var \Symfony\Component\Validator\Validator\ValidatorInterface $validator */
+        $validator = self::getContainer()->get('validator');
+        $site = $this->em()->find(ServiceSite::class, $this->siteId) ?? self::fail('бренд є');
+        $svc = $this->em()->find(ServiceSite::class, $this->serviceId) ?? self::fail('сайт є');
+
+        $dup = (new ServicePostTag())->setSite($site)->setSlugUk('oleh-hryhorov')->setTitleUk('Дубль');
+        self::assertContains('slugUk', array_map(static fn ($v): string => $v->getPropertyPath(), iterator_to_array($validator->validate($dup))), 'дубль слагу — помилка форми, а не 1062');
+        self::assertStringContainsString(' · ' . self::SLUG, (string) $this->tag('oleh-hryhorov'), 'бренд у назві для адмінки');
+
+        $post = $this->post('validatsiia');
+        $post->addTag((new ServicePostTag())->setSite($svc)->setSlugUk('chuzhyi')->setTitleUk('Чужий'));
+        foreach (['a', 'b', 'c'] as $s) {
+            $post->addTag((new ServicePostTag())->setSite($site)->setSlugUk($s)->setTitleUk($s));
+        }
+        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), iterator_to_array($validator->validate($post)));
+        self::assertContains('Не більше 3 тегів.', $messages);
+        self::assertContains('Тег «Чужий · ' . $this->serviceSlug . '» — іншого бренду.', $messages);
+
+        /** @var \App\ServiceSite\Redirect\SiteLiveUrls $live */
+        $live = self::getContainer()->get(\App\ServiceSite\Redirect\SiteLiveUrls::class);
+        $city = $this->em()->getRepository(ServiceCity::class)->findOneBy(['site' => $site]);
+        self::assertTrue($live->isLive($site, $city, '/novyny/tag/oleh-hryhorov/'), 'активний тег — жива адреса');
+        self::assertFalse($live->isLive($site, $city, '/novyny/tag/stara-nazva/'), 'старий слаг тегу — можна завести 301');
+    }
+
     public function testInvalidTags(): void
     {
         $cases = [

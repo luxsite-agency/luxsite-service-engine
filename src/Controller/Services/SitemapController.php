@@ -211,10 +211,14 @@ final class SitemapController extends AbstractController
             }
             // теги — лише мовами, де сторінка індексується (від ServicePostTag::INDEX_MIN_POSTS статей; менше — noindex)
             $tagCounts = [];
+            $indexedIds = [];
             foreach ($locales as $l) {
                 $tagCounts[$l] = $this->posts->countPublishedByTag($site, $l);
+                $indexedIds += array_filter($tagCounts[$l], static fn (int $n): bool => $n >= ServicePostTag::INDEX_MIN_POSTS);
             }
-            foreach ($this->postTags->findActiveBySite($site) as $t) {
+            // лише теги, що індексуються хоч однією мовою, а не всі теги бренду (у новинних — тисячі людей)
+            $indexedTags = $indexedIds === [] ? [] : $this->postTags->findBy(['site' => $site, 'active' => true, 'id' => array_keys($indexedIds)], ['id' => 'ASC']);
+            foreach ($indexedTags as $t) {
                 $indexed = static fn (string $l): bool => $t->existsIn($l) && ($tagCounts[$l][$t->getId()] ?? 0) >= ServicePostTag::INDEX_MIN_POSTS;
                 $add('sv_blog_tag', static fn (string $l): array => ['slug' => $t->slug($l) ?: '-'], null, $indexed);
             }

@@ -14,6 +14,7 @@ use App\Entity\ServicePostCategory;
 use App\Entity\ServicePostTag;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\Repository\ServicePostTagRepository;
 use App\ServiceSite\BrandRoutes;
 use App\ServiceSite\BrandSettings;
 use App\ServiceSite\SiteLocales;
@@ -191,10 +192,15 @@ final class StudioArticleController extends AbstractController
         }
 
         // Теги (лише контентні бренди, як рубрики): tags = [{name, slug}, …] до TAGS_MAX — люди з прямою мовою (24.10.2026).
-        // Є поле — набір тегів поста замінюється повністю ([] — без тегів); нема поля (чи null) — теги не чіпаємо.
+        // Набір тегів статті належить основній мові бренду: її PUT (або стаття, якої цією мовою ще нема) замінює набір повністю
+        // ([] — без тегів). PUT перекладу лише дописує назву своєю мовою тегам, що вже є в статті, нічого не знімає й не
+        // створює: студія не переносить tags у переклад (шле []), а слаг перекладу — транслітерація імені іншою мовою
+        // (рев'ю #28). Нема поля (чи null) — теги не чіпаємо.
         $tags = null;
         if ($site->isContent() && isset($data['tags'])) {
-            $tags = $this->resolveTags($site, $lang, $data['tags']);
+            $primary = $langs[0] ?? $lang;
+            $translation = $post !== null && $lang !== $primary && trim(strip_tags((string) $post->locRaw('desc', $primary))) !== '';
+            $tags = $this->resolveTags($site, $lang, $data['tags'], $translation ? $post : null);
             if (\is_string($tags)) {
                 return $this->json(['error' => 'Невалідні дані.', 'fields' => ['tags' => $tags]], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
@@ -292,13 +298,19 @@ final class StudioArticleController extends AbstractController
     }
 
     /**
-     * Теги з панелі: кожен — {name, slug}; slug шукається серед тегів бренду — спершу слагом мови статті, далі слагом будь-якої
-     * мови (переклад того самого тегу, без дубля й без 1062 на slug_uk; порожні поля мови дописуються, назву наявної мови не
-     * чіпаємо); такого нема — новий активний з назвою name (без назви — помилка). Повтори слагу в списку відкидаються.
+     * Теги з панелі: кожен — {name, slug}, повтори слагу в списку відкидаються.
      *
-     * @return list<ServicePostTag>|string теги або текст помилки поля tags
+     * Основна мова ($translationOf = null): slug шукається серед тегів бренду — спершу слагом мови статті, далі слагом будь-якої
+     * мови (той самий тег іншою мовою, без дубля й без 1062 на slug_uk); у знайденого дописуються порожні назва й слаг цієї
+     * мови, назву наявної мови не чіпаємо (крім uk-копії ru-назви тегу, створеного ru-статтею); такого нема — новий активний
+     * з назвою name (без назви — помилка). Повертає новий набір тегів статті.
+     *
+     * Переклад ($translationOf = стаття): лише теги, що вже є в статті (за слагом будь-якої мови), отримують порожні назву й
+     * слаг мови перекладу; повертає null — набір тегів статті не змінюється.
+     *
+     * @return list<ServicePostTag>|string|null теги, текст помилки поля tags або null (переклад: набір не змінювати)
      */
-    private function resolveTags(ServiceSite $site, string $lang, mixed $raw): array|string
+    private function resolveTags(ServiceSite $site, string $lang, mixed $raw, ?ServicePost $translationOf = null): array|string|null
     {
         if (!\is_array($raw) || !array_is_list($raw)) {
             return 'tags — масив об’єктів {name, slug}.';
@@ -315,29 +327,47 @@ final class StudioArticleController extends AbstractController
             return sprintf('Не більше %d тегів.', self::TAGS_MAX);
         }
 
-        $existing = $this->em->getRepository(ServicePostTag::class)->findBy(['site' => $site]);
+        /** @var ServicePostTagRepository $repo */
+        $repo = $this->em->getRepository(ServicePostTag::class);
+        // лише кандидати (теги з будь-яким із цих слагів), а не всі теги бренду на кожну публікацію
+        $candidates = $repo->findBySiteAndSlugs($site, array_map('strval', array_keys($wanted)));
+        $hasSlug = static fn (ServicePostTag $t, string $slug): bool => \in_array($slug, [$t->getSlugUk(), $t->getSlugRu(), $t->getSlugEn()], true);
+
+        if ($translationOf !== null) {
+            foreach ($wanted as $slug => $name) {
+                foreach ($translationOf->getTags() as $t) {
+                    if ($hasSlug($t, (string) $slug)) {
+                        $this->fillTagLang($t, $lang, (string) $slug, $name, $candidates);
+                        break;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         $out = [];
         foreach ($wanted as $slug => $name) {
+            $slug = (string) $slug;
             $tag = null;
             $anyLang = null;
-            foreach ($existing as $t) {
+            foreach ($candidates as $t) {
                 if ($t->slug($lang) === $slug) {
                     $tag ??= $t;
-                } elseif (\in_array($slug, [$t->getSlugUk(), $t->getSlugRu(), $t->getSlugEn()], true)) {
+                } elseif ($hasSlug($t, $slug)) {
                     $anyLang ??= $t;
                 }
             }
-            if ($tag === null && $anyLang !== null) {
-                $tag = $anyLang;
-                if ($name !== '' && !$tag->existsIn($lang)) {
-                    match ($lang) {
-                        'en' => $tag->setSlugEn($tag->getSlugEn() ?: $slug)->setTitleEn($tag->getTitleEn() ?: $name),
-                        'ru' => $tag->setSlugRu($tag->getSlugRu() ?: $slug)->setTitleRu($tag->getTitleRu() ?: $name),
-                        default => $tag->setSlugUk($tag->getSlugUk() ?: $slug)->setTitleUk($tag->getTitleUk() ?: $name),
-                    };
+            if ($tag !== null) {
+                // ru-стаття створила тег з uk-полями = ru (рубрика має мати uk або en): основна uk-стаття ставить свою назву
+                if ($lang === 'uk' && $name !== '' && $tag->getTitleRu() !== null && $tag->getTitleUk() === $tag->getTitleRu() && $tag->getSlugUk() === $tag->getSlugRu()) {
+                    $tag->setTitleUk($name);
                 }
-            }
-            if ($tag === null) {
+                $this->fillTagLang($tag, $lang, $slug, $name, $candidates);
+            } elseif ($anyLang !== null) {
+                $tag = $anyLang;
+                $this->fillTagLang($tag, $lang, $slug, $name, $candidates);
+            } else {
                 if ($name === '') {
                     return sprintf('Тегу "%s" на сайті нема: для нового потрібна назва (name).', $slug);
                 }
@@ -355,12 +385,44 @@ final class StudioArticleController extends AbstractController
                     return implode(' ', array_unique($messages));
                 }
                 $this->em->persist($tag);
-                $existing[] = $tag;
+                $candidates[] = $tag;
             }
             $out[] = $tag;
         }
 
         return $out;
+    }
+
+    /**
+     * Порожні назва й слаг мови $lang у тегу: назва — з name; слаг — лише коли тег цією мовою без слагу (ru бере uk-слаг) і
+     * слаг вільний серед кандидатів (інакше 1062 на унікальному індексі мови).
+     *
+     * @param list<ServicePostTag> $candidates теги бренду з цим слагом у будь-якій мові
+     */
+    private function fillTagLang(ServicePostTag $tag, string $lang, string $slug, string $name, array $candidates): void
+    {
+        if ($name === '') {
+            return;
+        }
+        if (trim((string) $tag->locRaw('title', $lang)) === '') {
+            match ($lang) {
+                'en' => $tag->setTitleEn($name),
+                'ru' => $tag->setTitleRu($name),
+                default => $tag->setTitleUk($name),
+            };
+        }
+        if (trim($tag->slug($lang)) === '') {
+            foreach ($candidates as $c) {
+                if ($c !== $tag && $c->locRaw('slug', $lang) === $slug) {
+                    return;
+                }
+            }
+            match ($lang) {
+                'en' => $tag->setSlugEn($slug),
+                'ru' => $tag->setSlugRu($slug),
+                default => $tag->setSlugUk($slug),
+            };
+        }
     }
 
     /**

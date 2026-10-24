@@ -13,6 +13,7 @@ use App\Repository\ServicePostTagRepository;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
@@ -22,6 +23,9 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
  * тег існує мовою, коли є слаг і назва цією мовою (як ServicePostCategory::existsIn).
  */
 #[ORM\Entity(repositoryClass: ServicePostTagRepository::class)]
+#[UniqueEntity(fields: ['site', 'slugUk'], message: 'Тег з таким слагом uk у бренді вже є.', errorPath: 'slugUk', ignoreNull: true)]
+#[UniqueEntity(fields: ['site', 'slugRu'], message: 'Тег з таким слагом ru у бренді вже є.', errorPath: 'slugRu', ignoreNull: true)]
+#[UniqueEntity(fields: ['site', 'slugEn'], message: 'Тег з таким слагом en у бренді вже є.', errorPath: 'slugEn', ignoreNull: true)]
 #[ORM\Table(name: 'service_post_tag')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_ru', columns: ['site_id', 'slug_ru'])]
@@ -119,9 +123,12 @@ class ServicePostTag implements TimestampableInterface
         return $this;
     }
 
+    /** Адмінка: назва й бренд — однойменні теги різних брендів у підказці поля «Теги» розрізняються */
     public function __toString(): string
     {
-        return $this->titleUk ?? $this->titleEn ?? $this->titleRu ?? '';
+        $title = $this->titleUk ?? $this->titleEn ?? $this->titleRu ?? '';
+
+        return $this->site !== null ? $title . ' · ' . $this->site->getSlug() : $title;
     }
 
     public function getSlugUk(): ?string

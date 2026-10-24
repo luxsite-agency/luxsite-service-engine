@@ -647,6 +647,20 @@ class ServicePost implements TimestampableInterface
         $context->buildViolation('Потрібні заголовок і слаг хоча б однією мовою.')->atPath('titleUk')->addViolation();
     }
 
+    /** Теги статті (адмінка): лише теги того самого бренду, не більше 3 — як приймає студія */
+    #[Assert\Callback]
+    public function validateTags(\Symfony\Component\Validator\Context\ExecutionContextInterface $context): void
+    {
+        if ($this->tags->count() > 3) {
+            $context->buildViolation('Не більше 3 тегів.')->atPath('tags')->addViolation();
+        }
+        foreach ($this->tags as $tag) {
+            if ($this->site !== null && $tag->getSite()?->getId() !== $this->site->getId()) {
+                $context->buildViolation(sprintf('Тег «%s» — іншого бренду.', $tag))->atPath('tags')->addViolation();
+            }
+        }
+    }
+
     /** Слаг за локаллю з фолбеком ru→uk */
     public function slug(string $locale): string
     {

@@ -288,7 +288,18 @@ final class BlogController extends AbstractController
             $altUrls = $page === 1
                 ? $this->altUrls('sv_blog_tag', static fn (string $l): array => ['slug' => $tag->slug($l) ?: '-'])
                 : $this->altUrls('sv_blog_tag_page', static fn (string $l): array => ['slug' => $tag->slug($l) ?: '-', 'page' => (string) $page]);
-            $altUrls = array_intersect_key($altUrls, array_flip(array_filter(array_keys($altUrls), $tag->existsIn(...))));
+            // інші мови — лише ті, де тег індексується (як у sitemap) і є ця сторінка списку; поточна мова — завжди (canonical)
+            $altUrls = array_intersect_key($altUrls, array_flip(array_filter(array_keys($altUrls), function (string $l) use ($site, $tag, $locale, $page, $perPage): bool {
+                if (!$tag->existsIn($l)) {
+                    return false;
+                }
+                if ($l === $locale) {
+                    return true;
+                }
+                $n = $this->posts->countPublishedFiltered($site, $l, null, null, $tag);
+
+                return $n >= ServicePostTag::INDEX_MIN_POSTS && ($perPage <= 0 || $page <= (int) ceil($n / $perPage));
+            })));
         } elseif ($category !== null) {
             $altUrls = $page === 1
                 ? $this->altUrls('sv_blog_category', static fn (string $l): array => ['slug' => $category->slug($l) ?: '-'])

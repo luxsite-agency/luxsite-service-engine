@@ -15,6 +15,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServicePostTagRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
@@ -24,7 +25,7 @@ use Symfony\Component\Routing\RouterInterface;
 /**
  * Жива адреса сайту = GET на хості міста не дав би 404: маршрут сайту знайдено і, для сторінок сутностей, сутність є й
  * видима в місті (послуга активна й надається в місті чи хоч в одному іншому — тоді контролер дає 301, не 404;
- * категорія активна з послугами в місті; район активний у місті; пост опублікований). Маршрути адмінки на хості сайту —
+ * категорія активна з послугами в місті; район активний у місті; пост опублікований; тег статей активний). Маршрути адмінки на хості сайту —
  * 404 (AdminHostSubscriber), тож не живі. Невідомий /<x>/ (sv_legacy_redirect, категорія root-схеми) не живий, навіть
  * якщо для нього є правило паку (app.legacy_redirects, prefix_redirects): пак спрацьовує до роутингу, тож правило з
  * БД для такої адреси нешкідливе — стоїть у резерві, доки адреса є в паку; інакше «Перенести з паку» і правила на
@@ -43,6 +44,7 @@ final class SiteLiveUrls implements LiveUrls
         private readonly ServiceCategoryRepository $categories,
         private readonly ServiceDistrictRepository $districts,
         private readonly ServicePostRepository $posts,
+        private readonly ServicePostTagRepository $tags,
     ) {
     }
 
@@ -83,6 +85,8 @@ final class SiteLiveUrls implements LiveUrls
             $route === 'sv_category' => $this->categoryLive($site, $city, (string) $match['category'], $locale),
             $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,
             $route === 'sv_blog_post' => $this->posts->findOnePublishedBySlug($site, (string) $match['slug'], $locale) !== null,
+            // тег (24.10.2026): адреса злитого чи перейменованого тегу не жива — на неї можна завести 301
+            $route === 'sv_blog_tag' || $route === 'sv_blog_tag_page' => $this->tags->findOneActiveBySlug($site, (string) $match['slug'], (string) ($match['_locale'] ?? $locale)) !== null,
             $route === 'sv_legacy_redirect' => false,
             default => true,
         };
