@@ -64,14 +64,13 @@
             .calc-summary { position: static; }
         }
         @media (max-width: 640px) {
+            /* три рядки: назва; ціна | разом; обсяг */
             .pl-head { display: none; }
-            .pl-row { grid-template-columns: minmax(0, 1fr) auto; }
+            .pl-row { grid-template-columns: minmax(0, 1fr) auto; gap: .4rem 1rem; }
             .pl-row .pl-name { grid-column: 1 / -1; }
-            .pl-row .pl-price { text-align: left; }
-            .pl-row .pl-total { grid-column: 2; }
-            .pl-row .pl-qty { grid-column: 1; grid-row: 2; justify-content: flex-start; }
-            .pl-row .pl-price { grid-row: 3; }
-            .pl-row .pl-total { grid-row: 3; }
+            .pl-row .pl-price { grid-column: 1; grid-row: 2; text-align: left; }
+            .pl-row .pl-total { grid-column: 2; grid-row: 2; }
+            .pl-row .pl-qty { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; }
         }
         /* плаваюча CTA не потрібна: форма заявки вже в підсумку */
         .floating-cta { display: none; }

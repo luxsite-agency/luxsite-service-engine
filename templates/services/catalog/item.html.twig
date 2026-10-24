@@ -150,10 +150,7 @@
             <tr><th scope="row">{{ spec.label }}</th><td>{{ spec.value }}</td></tr>
             {% endfor %}
         </table>
-        {%- set _pricesNote = 'prices.note'|trans({}, 'servicesite') %}
-        {%- if _pricesNote %}
-        <p class="meta prices-note">{{ _pricesNote }}</p>
-        {%- endif %}
+        {{ include('services/partials/_prices_note.html.twig') }}
     </section>
     {% endif %}
 
