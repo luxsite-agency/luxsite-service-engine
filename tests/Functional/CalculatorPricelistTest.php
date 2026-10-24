@@ -66,6 +66,11 @@ final class CalculatorPricelistTest extends SeoTestCase
         self::assertStringContainsString('href="/calculator/"', $home, 'кнопка й меню ведуть на дійсну адресу');
         self::assertStringNotContainsString('calculator-cleaning', $home);
 
+        // сторінка послуги з таблицею цін: примітка під таблицею
+        $item = (string) $this->http('GET', 'https://' . $this->apex . '/services/item-' . $this->s . '/')->getContent();
+        self::assertStringContainsString('<table class="prices">', $item);
+        self::assertStringContainsString('<p class="meta prices-note">Ціни на сайті орієнтовні.', $item);
+
         $sitemap = (string) $this->http('GET', 'https://' . $this->apex . '/sitemap.xml')->getContent();
         self::assertStringContainsString('https://' . $this->apex . '/calculator/', $sitemap);
         self::assertStringNotContainsString('calculator-cleaning', $sitemap);
