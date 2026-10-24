@@ -27,7 +27,7 @@ use Symfony\Component\Routing\RequestContext;
  *    (setLocale), тож її успадковує й підзапит сторінки помилки. Типове [uk, ru] — нічого не робить.
  *    Без префіксів (app.locale_prefix: false) мова за замовчуванням — перша мова бренду (SiteLocales::default()).
  *    Тут же — розділ статей бренду в параметр _blog контексту роутера (BrandRoutes): path('sv_blog_post', …) у
- *    шаблонах і контролерах дає /<префікс бренду>/… без явного параметра.
+ *    шаблонах і контролерах дає /<префікс бренду>/… без явного параметра; і _cat_root — рубрики від кореня (BrandRouter).
  * 2. Після роутера (20, перед LocaleListener 16): мова маршруту не з набору бренду (ServiceSite.locales) → 404.
  *    Бренд без власного набору — усі мови розгортання, тобто перевірка нічого не відсікає.
  */
@@ -54,7 +54,10 @@ final class SiteLocaleSubscriber implements EventSubscriberInterface
             return;
         }
         $request = $event->getRequest();
-        $this->routerContext->setParameter('_blog', $this->brandRoutes->blog($request));
+        $site = $request->attributes->get(ServiceHostSubscriber::ATTR_SITE);
+        foreach ($this->brandRoutes->contextParams($site instanceof ServiceSite ? $site : null) as $name => $value) {
+            $this->routerContext->setParameter($name, $value);
+        }
         $default = $this->locales->default();
         if ($default === $this->frameworkDefault || !$request->attributes->get(ServiceHostSubscriber::ATTR_SITE) instanceof ServiceSite) {
             return;

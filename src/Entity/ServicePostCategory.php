@@ -11,6 +11,7 @@ use App\Doctrine\TimestampableInterface;
 use App\Doctrine\TimestampsTrait;
 use App\Repository\ServicePostCategoryRepository;
 use App\ServiceSite\LocalizedFieldsTrait;
+use App\Validator\RootCategorySlug;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -21,6 +22,7 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
  * коли є слаг і назва цією мовою (як ServicePost::existsIn).
  */
 #[ORM\Entity(repositoryClass: ServicePostCategoryRepository::class)]
+#[RootCategorySlug]
 #[ORM\Table(name: 'service_post_category')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_ru', columns: ['site_id', 'slug_ru'])]

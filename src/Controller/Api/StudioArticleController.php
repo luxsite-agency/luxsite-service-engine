@@ -275,7 +275,9 @@ final class StudioArticleController extends AbstractController
             throw $this->createNotFoundException('Сервісний сайт не визначено за хостом.');
         }
         // через адмін-хост (/api/studio/<slug>/…) контекст роутера не бренду: адреси статей — з розділом бренду
-        $this->router->getContext()->setParameter('_blog', $this->brandRoutes->blogOf($site));
+        foreach ($this->brandRoutes->contextParams($site) as $name => $value) {
+            $this->router->getContext()->setParameter($name, $value);
+        }
 
         return $site;
     }

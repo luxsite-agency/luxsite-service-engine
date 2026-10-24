@@ -18,11 +18,13 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *    /api/studio/<slug>/… (ендпойнт не світиться на кожному домені мережі). Типово true — як було;
  *  - templates: <тека> — шаблони бренду з templates/site/brands/<тека>/ замість теки зі slug бренду: кілька брендів з
  *    одним набором (24.10.2026: сім новинних брендів поруч з англійськими). Читає App\Twig\BrandTemplateLoader;
- *  - blog_per_page: N — статей на сторінку списку й головної бренду замість app.blog_per_page (новини — 20, решта — 12).
+ *  - blog_per_page: N — статей на сторінку списку й головної бренду замість app.blog_per_page (новини — 20, решта — 12);
+ *  - category_url: root — рубрики блогу від кореня (/<рубрика>/ замість /<блог>/category/<рубрика>/; 24.10.2026, новинні
+ *    бренди з WP-адресами). Типово — як було. Маршрути — BlogController, генерація — App\Routing\BrandRouter.
  */
 final class BrandSettings
 {
-    public const KEYS = ['theme', 'outbound', 'studio_on_public_host', 'templates', 'blog_per_page'];
+    public const KEYS = ['theme', 'outbound', 'studio_on_public_host', 'templates', 'blog_per_page', 'category_url'];
 
     /** @param array<string, array<string, mixed>> $brands app.brands */
     public function __construct(
@@ -56,6 +58,12 @@ final class BrandSettings
         $n = $this->brands[$site->getSlug()]['blog_per_page'] ?? null;
 
         return \is_int($n) && $n >= 0 ? $n : $default;
+    }
+
+    /** Рубрики блогу бренду від кореня сайту (app.brands.<slug>.category_url: root) */
+    public function categoryRoot(ServiceSite $site): bool
+    {
+        return ($this->brands[$site->getSlug()]['category_url'] ?? null) === 'root';
     }
 
     public function studioOnPublicHost(ServiceSite $site): bool

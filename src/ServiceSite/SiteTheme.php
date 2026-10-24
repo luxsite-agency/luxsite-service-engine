@@ -96,6 +96,9 @@ final class SiteTheme
             if (isset($brand['blog_per_page']) && (!\is_int($brand['blog_per_page']) || $brand['blog_per_page'] < 0)) {
                 throw new \InvalidArgumentException(sprintf('app.brands.%s.blog_per_page: очікується ціле число ≥ 0.', $slug));
             }
+            if (isset($brand['category_url']) && !\in_array($brand['category_url'], ['root', 'blog'], true)) {
+                throw new \InvalidArgumentException(sprintf('app.brands.%s.category_url: очікується root або blog.', $slug));
+            }
             $theme = (array) ($brand['theme'] ?? []);
             // перевірка ключів одразу (як і app.theme), щоб одрук у паку валив деплой, а не сторінку бренду
             self::merge(self::DEFAULTS, $theme, 'app.brands.' . $slug . '.theme');
