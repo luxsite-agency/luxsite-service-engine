@@ -167,8 +167,8 @@
         {% if calculator_available() -%}
         <p class="prices-calc-link">
             <a class="btn" href="{{ path('sv_calculator') }}">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>
-        </p>{% endif %}
-    </section>
+        </p>
+    {% endif %}</section>
     {% endif %}
 
     {# розгорнутий СЕО-текст під цінами (правиться в адмінці: Міста сервісів → Блок 3) #}
