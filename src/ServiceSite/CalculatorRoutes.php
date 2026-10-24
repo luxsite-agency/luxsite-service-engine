@@ -104,7 +104,8 @@ final class CalculatorRoutes
                 'sv_calculator_legacy_' . str_replace('-', '_', $seg),
                 $legacy,
                 [RedirectController::class, 'redirectAction'],
-                ['route' => 'sv_calculator', 'permanent' => true, 'keepQueryParams' => true],
+                // _canonical_route старого маршруту не має потрапити в query нової адреси
+                ['route' => 'sv_calculator', 'permanent' => true, 'keepQueryParams' => true, 'ignoreAttributes' => ['_canonical_route']],
             );
         }
 

@@ -53,6 +53,7 @@ final class CalculatorRoutesTest extends TestCase
             self::assertSame('sv_calculator', $legacy->getDefault('route'));
             self::assertTrue($legacy->getDefault('permanent'));
             self::assertTrue($legacy->getDefault('keepQueryParams'));
+            self::assertSame(['_canonical_route'], $legacy->getDefault('ignoreAttributes'));
             self::assertSame('/ru' . $path, $routes->get('sv_calculator_legacy_' . $key . '.ru')->getPath());
         }
         self::assertSame("request.attributes.has('service_city')", $routes->get('sv_calculator_legacy_calculator.uk')->getCondition());
