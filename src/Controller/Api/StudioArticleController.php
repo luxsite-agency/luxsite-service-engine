@@ -149,21 +149,37 @@ final class StudioArticleController extends AbstractController
             return $this->json(['error' => sprintf('Слаг "%s" уже зайнятий постом #%d.', $slug, $clash->getId())], Response::HTTP_CONFLICT);
         }
 
-        // Рубрика: category_slug мовою статті серед рубрик бренду; такої нема — нова активна з назвою category_name
-        // (рубрики-персони новинних брендів з панелі, 24.10.2026). Без category_slug рубрика поста не змінюється.
+        // Рубрика (лише контентні бренди: сервісні сайти, як і раніше, category_slug ігнорують): category_slug серед рубрик
+        // бренду — спершу слагом мови статті, далі слагом будь-якої мови (переклад тієї самої рубрики, без дубля й без
+        // 1062 на slug_uk); такої нема — нова активна з назвою category_name (рубрики-персони з панелі, 24.10.2026).
+        // Без category_slug рубрика поста не змінюється.
         $category = null;
-        $categorySlug = strtolower(trim((string) ($data['category_slug'] ?? '')));
+        $categorySlug = $site->isContent() ? strtolower(trim((string) ($data['category_slug'] ?? ''))) : '';
+        $categoryName = mb_substr(trim((string) ($data['category_name'] ?? '')), 0, 255);
         if ($categorySlug !== '') {
             $position = 0;
+            $anyLang = null;
             foreach ($this->em->getRepository(ServicePostCategory::class)->findBy(['site' => $site]) as $c) {
                 $position = max($position, $c->getPosition() + 1);
                 if ($c->slug($lang) === $categorySlug) {
-                    $category = $c;
-                    break;
+                    $category ??= $c;
+                } elseif (\in_array($categorySlug, [$c->getSlugUk(), $c->getSlugRu(), $c->getSlugEn()], true)) {
+                    $anyLang ??= $c;
+                }
+            }
+            if ($category === null && $anyLang !== null) {
+                // рубрика є іншою мовою: дописуємо цю мову, якщо її поля порожні (назву наявної мови не чіпаємо)
+                $category = $anyLang;
+                if ($categoryName !== '' && !$category->existsIn($lang)) {
+                    match ($lang) {
+                        'en' => $category->setSlugEn($category->getSlugEn() ?: $categorySlug)->setTitleEn($category->getTitleEn() ?: $categoryName),
+                        'ru' => $category->setSlugRu($category->getSlugRu() ?: $categorySlug)->setTitleRu($category->getTitleRu() ?: $categoryName),
+                        default => $category->setSlugUk($category->getSlugUk() ?: $categorySlug)->setTitleUk($category->getTitleUk() ?: $categoryName),
+                    };
                 }
             }
             if ($category === null) {
-                $category = $this->newCategory($site, $lang, $categorySlug, trim((string) ($data['category_name'] ?? '')), $position);
+                $category = $this->newCategory($site, $lang, $categorySlug, $categoryName, $position);
                 if (\is_array($category)) {
                     return $this->json(['error' => 'Невалідні дані.', 'fields' => $category], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
@@ -272,7 +288,6 @@ final class StudioArticleController extends AbstractController
         if (!preg_match('/^[a-z0-9-]+$/', $slug) || \strlen($slug) > self::SLUG_MAX) {
             return ['category_slug' => sprintf('Слаг рубрики: лише латиниця, цифри, дефіс, до %d символів.', self::SLUG_MAX)];
         }
-        $name = mb_substr($name, 0, 255);
         $category = (new ServicePostCategory())->setSite($site)->setActive(true)->setPosition($position);
         match ($lang) {
             'en' => $category->setSlugEn($slug)->setTitleEn($name),
@@ -601,7 +616,8 @@ final class StudioArticleController extends AbstractController
             foreach ($langs as $l) {
                 if ($c->existsIn($l)) {
                     $title = (string) $c->loc('title', $l);
-                    $push('category', $l, $url('sv_blog_category', ['slug' => $c->slug($l)], $l), $title, $c->loc('desc', $l), [$title], 3);
+                    $desc = trim(strip_tags((string) $c->loc('desc', $l)));
+                    $push('category', $l, $url('sv_blog_category', ['slug' => $c->slug($l)], $l), $title, $desc !== '' ? $desc : null, [$title], 3);
                 }
             }
         }

@@ -29,6 +29,8 @@ final class StudioCategoryTest extends HttpKernelTestCase
     private string $host;
     private string $email;
     private int $siteId = 0;
+    private string $serviceSlug = '';
+    private int $serviceId = 0;
     /** @var array<string, string> */
     private array $auth = [];
 
@@ -44,15 +46,21 @@ final class StudioCategoryTest extends HttpKernelTestCase
         $em->persist($site);
         $em->persist((new ServiceCity())->setSite($site)->setHost($this->host)->setSlug('main')->setIsApex(true)->setNameNomUk('Київ'));
         $em->persist((new ServicePostCategory())->setSite($site)->setSlugUk('politics')->setTitleUk('Політика'));
+        // сервісний сайт поруч: category_slug він, як і раніше, ігнорує
+        $this->serviceSlug = 'ci-studiocat-svc-' . $suffix;
+        $svc = (new ServiceSite())->setSlug($this->serviceSlug)->setName('CI svc')->setApexDomain($this->serviceSlug . '.example');
+        $em->persist($svc);
+        $em->persist((new ServiceCity())->setSite($svc)->setHost($this->serviceSlug . '.example')->setSlug('main')->setIsApex(true)->setNameNomUk('Київ'));
         $this->email = 'ci-studiocat-' . $suffix . '@example.com';
-        $user = (new User())->setEmail($this->email)->setRoles(['ROLE_MODERATOR'])->setPassword('x')->setSites([self::SLUG]);
+        $user = (new User())->setEmail($this->email)->setRoles(['ROLE_MODERATOR'])->setPassword('x')->setSites([self::SLUG, $this->serviceSlug]);
         $em->persist($user);
         $em->flush();
         $this->siteId = (int) $site->getId();
+        $this->serviceId = (int) $svc->getId();
 
         /** @var AdminApiTokens $tokens */
         $tokens = self::getContainer()->get(AdminApiTokens::class);
-        $issued = $tokens->issue($user, 'студія', [ApiScope::StudioWrite], 7, $user, [self::SLUG]);
+        $issued = $tokens->issue($user, 'студія', [ApiScope::StudioWrite], 7, $user, [self::SLUG, $this->serviceSlug]);
         $this->auth = ['HTTP_AUTHORIZATION' => 'Bearer ' . $issued->plain, 'CONTENT_TYPE' => 'application/json'];
     }
 
@@ -61,7 +69,7 @@ final class StudioCategoryTest extends HttpKernelTestCase
         $conn = $this->em()->getConnection();
         $conn->executeStatement('DELETE t FROM admin_api_token t JOIN `user` u ON u.id = t.user_id WHERE u.email = ?', [$this->email]);
         $conn->executeStatement('DELETE FROM `user` WHERE email = ?', [$this->email]);
-        $conn->executeStatement('DELETE FROM service_site WHERE id = ?', [$this->siteId]);
+        $conn->executeStatement('DELETE FROM service_site WHERE id IN (?, ?)', [$this->siteId, $this->serviceId]);
         parent::tearDown();
     }
 
@@ -77,6 +85,10 @@ final class StudioCategoryTest extends HttpKernelTestCase
         $again = $this->put('a2', '00000000-0000-4000-8000-0000000000a2', 'tramp-zaiava', ['category_slug' => 'donald-tramp', 'category_name' => 'Дональд Трамп']);
         self::assertSame(200, $again->getStatusCode(), 'повтор — та сама стаття');
         self::assertSame($this->json($created)['id'] ?? null, $this->json($again)['id'] ?? null);
+        // переклад тієї самої статті з тим самим слагом рубрики — та сама рубрика, без дубля
+        $ru = $this->put('a2ru', '00000000-0000-4000-8000-0000000000a2', 'tramp-zaiavlenie', ['lang' => 'ru', 'category_slug' => 'donald-tramp', 'category_name' => 'Дональд Трамп']);
+        self::assertSame(200, $ru->getStatusCode(), (string) $ru->getContent());
+        self::assertSame('donald-tramp', $this->json($ru)['category'] ?? null);
 
         $noName = $this->put('a3', '00000000-0000-4000-8000-0000000000a3', 'zelenskyi', ['category_slug' => 'volodymyr-zelenskyi']);
         self::assertSame(422, $noName->getStatusCode());
@@ -105,12 +117,21 @@ final class StudioCategoryTest extends HttpKernelTestCase
         self::assertSame(['/politics/' => 'Політика', '/donald-tramp/' => 'Дональд Трамп'], $categories, '/pages — рубрики бренду від кореня');
     }
 
-    /** @param array<string, string> $extra */
-    private function put(string $externalId, string $group, string $slug, array $extra): \Symfony\Component\HttpFoundation\Response
+    public function testServiceSiteIgnoresCategory(): void
     {
-        $body = (string) json_encode(['lang' => 'uk', 'group_id' => $group, 'title' => 'Новина ' . $slug, 'slug' => $slug, 'body_html' => '<p>Текст новини.</p>'] + $extra);
+        $r = $this->put('s1', '00000000-0000-4000-8000-0000000000b1', 'servisna-stattia', ['category_slug' => 'nevidoma'], $this->serviceSlug);
+        self::assertSame(201, $r->getStatusCode(), 'сервісний сайт: category_slug без назви не дає 422, як і до рубрик з панелі');
+        self::assertNull($this->json($r)['category'] ?? null);
+        $svc = $this->em()->find(ServiceSite::class, $this->serviceId) ?? self::fail('сайт є');
+        self::assertSame([], $this->em()->getRepository(ServicePostCategory::class)->findBy(['site' => $svc]));
+    }
 
-        return $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . self::SLUG . '/articles/' . $externalId, $body, $this->auth);
+    /** @param array<string, string> $extra lang у $extra перекриває uk */
+    private function put(string $externalId, string $group, string $slug, array $extra, string $brand = self::SLUG): \Symfony\Component\HttpFoundation\Response
+    {
+        $body = (string) json_encode($extra + ['lang' => 'uk', 'group_id' => $group, 'title' => 'Новина ' . $slug, 'slug' => $slug, 'body_html' => '<p>Текст новини.</p>']);
+
+        return $this->send('PUT', 'https://' . $this->admin . '/api/studio/' . $brand . '/articles/' . $externalId, $body, $this->auth);
     }
 
     /** @return array<string, mixed> */
