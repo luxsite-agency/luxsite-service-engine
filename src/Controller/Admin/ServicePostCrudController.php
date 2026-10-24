@@ -120,13 +120,16 @@ class ServicePostCrudController extends AbstractCrudController
             yield TextField::new('slugEn', 'Слаг en')->setColumns(6)->setRequired($this->locales[0] === 'en')
                 ->setHelp('Частина адреси латиницею. ⚠️ Після публікації краще не міняти.');
         }
-        yield FormField::addFieldset('Рубрика й автор');
+        yield FormField::addFieldset('Рубрика, теги й автор');
         yield AssociationField::new('category', 'Рубрика')->hideOnIndex()->setColumns(6)
             ->setHelp('Контентний сайт: рубрика блогу того самого бренду. Сервісним сайтам не потрібна.');
         yield AssociationField::new('author', 'Автор')->hideOnIndex()->setColumns(6)
             ->setHelp('Контентний сайт: підпис статті й сторінка автора.');
         yield BooleanField::new('featured', 'Обрана')->hideOnIndex()->setColumns(6)
             ->setHelp('Контентний сайт: стаття вгорі головної.');
+        yield AssociationField::new('tags', 'Теги')->hideOnIndex()->setColumns(6)->autocomplete()
+            ->setFormTypeOption('by_reference', false)
+            ->setHelp('Контентний сайт: до 3 тегів того самого бренду (новини — люди з прямою мовою). Студія замінює набір при кожній публікації.');
         yield FormField::addFieldset('Публікація');
         yield DateTimeField::new('publishedAt', 'Опубліковано')->setColumns(6)
             ->setHelp('Порожньо = чернетка, на сайті не видно');

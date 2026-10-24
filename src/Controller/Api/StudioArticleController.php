@@ -11,6 +11,7 @@ use App\AdminApi\AdminApiTokens;
 use App\AdminApi\ApiScope;
 use App\Entity\ServicePost;
 use App\Entity\ServicePostCategory;
+use App\Entity\ServicePostTag;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
 use App\ServiceSite\BrandRoutes;
@@ -39,6 +40,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Тенант (ServiceSite) береться з Host — як і решта сервісних роутів. Одна панельна стаття
  * однією мовою заповнює *Uk або *Ru поля одного ServicePost, спільного для перекладів (group_id).
  * Рубрика — category_slug; якої нема в бренду, створюється з назвою category_name (без назви — 422).
+ * Теги — tags: [{name, slug}, …] до 3 (люди з прямою мовою); незалежні від рубрики, набір замінюється повністю.
  */
 #[Route('/api/studio', name: 'api_studio_', priority: 20, condition: "request.attributes.has('service_site')")]
 final class StudioArticleController extends AbstractController
@@ -51,6 +53,8 @@ final class StudioArticleController extends AbstractController
     ];
     /** = довжина колонок slug_uk/ru/en: slug-и старих новинних сайтів (транслітерований заголовок) бувають до ~120 */
     private const SLUG_MAX = 160;
+    /** Тегів у статті (люди з прямою мовою): більше — 422, а не мовчазне обрізання */
+    private const TAGS_MAX = 3;
     private const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
     /** Атрибут запиту: прийшов через адмін-хост /api/studio/<slug>/… (StudioBrandController) */
     public const ADMIN_HOST_ATTR = '_studio_admin_host';
@@ -186,6 +190,16 @@ final class StudioArticleController extends AbstractController
             }
         }
 
+        // Теги (лише контентні бренди, як рубрики): tags = [{name, slug}, …] до TAGS_MAX — люди з прямою мовою (24.10.2026).
+        // Є поле — набір тегів поста замінюється повністю ([] — без тегів); нема поля (чи null) — теги не чіпаємо.
+        $tags = null;
+        if ($site->isContent() && isset($data['tags'])) {
+            $tags = $this->resolveTags($site, $lang, $data['tags']);
+            if (\is_string($tags)) {
+                return $this->json(['error' => 'Невалідні дані.', 'fields' => ['tags' => $tags]], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        }
+
         $created = false;
         if ($post === null) {
             $post = (new ServicePost())->setSite($site)->setStudioGroupId($groupId);
@@ -257,6 +271,9 @@ final class StudioArticleController extends AbstractController
         if ($category !== null) {
             $post->setCategory($category);
         }
+        if ($tags !== null) {
+            $post->replaceTags($tags);
+        }
         $post->setActive(true)->setStudioSyncedAt(new \DateTimeImmutable());
 
         $this->em->persist($post);
@@ -270,7 +287,80 @@ final class StudioArticleController extends AbstractController
             'external_id' => $externalId,
             'created' => $created,
             'category' => $post->getCategory()?->slug($lang),
+            'tags' => array_values(array_map(static fn (ServicePostTag $t): string => $t->slug($lang), $post->getTags()->toArray())),
         ], $created ? Response::HTTP_CREATED : Response::HTTP_OK);
+    }
+
+    /**
+     * Теги з панелі: кожен — {name, slug}; slug шукається серед тегів бренду — спершу слагом мови статті, далі слагом будь-якої
+     * мови (переклад того самого тегу, без дубля й без 1062 на slug_uk; порожні поля мови дописуються, назву наявної мови не
+     * чіпаємо); такого нема — новий активний з назвою name (без назви — помилка). Повтори слагу в списку відкидаються.
+     *
+     * @return list<ServicePostTag>|string теги або текст помилки поля tags
+     */
+    private function resolveTags(ServiceSite $site, string $lang, mixed $raw): array|string
+    {
+        if (!\is_array($raw) || !array_is_list($raw)) {
+            return 'tags — масив об’єктів {name, slug}.';
+        }
+        $wanted = [];
+        foreach ($raw as $i => $row) {
+            $slug = \is_array($row) ? strtolower(trim((string) ($row['slug'] ?? ''))) : '';
+            if ($slug === '' || !preg_match('/^[a-z0-9-]+$/', $slug) || \strlen($slug) > self::SLUG_MAX) {
+                return sprintf('Тег #%d: слаг — лише латиниця, цифри, дефіс, до %d символів.', $i + 1, self::SLUG_MAX);
+            }
+            $wanted[$slug] ??= mb_substr(trim((string) ($row['name'] ?? '')), 0, 255);
+        }
+        if (\count($wanted) > self::TAGS_MAX) {
+            return sprintf('Не більше %d тегів.', self::TAGS_MAX);
+        }
+
+        $existing = $this->em->getRepository(ServicePostTag::class)->findBy(['site' => $site]);
+        $out = [];
+        foreach ($wanted as $slug => $name) {
+            $tag = null;
+            $anyLang = null;
+            foreach ($existing as $t) {
+                if ($t->slug($lang) === $slug) {
+                    $tag ??= $t;
+                } elseif (\in_array($slug, [$t->getSlugUk(), $t->getSlugRu(), $t->getSlugEn()], true)) {
+                    $anyLang ??= $t;
+                }
+            }
+            if ($tag === null && $anyLang !== null) {
+                $tag = $anyLang;
+                if ($name !== '' && !$tag->existsIn($lang)) {
+                    match ($lang) {
+                        'en' => $tag->setSlugEn($tag->getSlugEn() ?: $slug)->setTitleEn($tag->getTitleEn() ?: $name),
+                        'ru' => $tag->setSlugRu($tag->getSlugRu() ?: $slug)->setTitleRu($tag->getTitleRu() ?: $name),
+                        default => $tag->setSlugUk($tag->getSlugUk() ?: $slug)->setTitleUk($tag->getTitleUk() ?: $name),
+                    };
+                }
+            }
+            if ($tag === null) {
+                if ($name === '') {
+                    return sprintf('Тегу "%s" на сайті нема: для нового потрібна назва (name).', $slug);
+                }
+                $tag = (new ServicePostTag())->setSite($site)->setActive(true);
+                match ($lang) {
+                    'en' => $tag->setSlugEn($slug)->setTitleEn($name),
+                    'ru' => $tag->setSlugRu($slug)->setTitleRu($name)->setSlugUk($slug)->setTitleUk($name),
+                    default => $tag->setSlugUk($slug)->setTitleUk($name),
+                };
+                $messages = [];
+                foreach ($this->validator->validate($tag) as $violation) {
+                    $messages[] = (string) $violation->getMessage();
+                }
+                if ($messages !== []) {
+                    return implode(' ', array_unique($messages));
+                }
+                $this->em->persist($tag);
+                $existing[] = $tag;
+            }
+            $out[] = $tag;
+        }
+
+        return $out;
     }
 
     /**

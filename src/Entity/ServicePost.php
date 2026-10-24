@@ -12,6 +12,8 @@ use App\Doctrine\TimestampsTrait;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\ExtraFieldsTrait;
 use App\ServiceSite\LocalizedFieldsTrait;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\File;
@@ -125,6 +127,19 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $featured = false;
 
+    /**
+     * Теги статті (24.10.2026, контентний сайт): люди з прямою мовою від content-studio, до 3; незалежні від рубрики.
+     * Видалення тегу чи статті прибирає лише зв'язок.
+     *
+     * @var Collection<int, ServicePostTag>
+     */
+    #[ORM\ManyToMany(targetEntity: ServicePostTag::class)]
+    #[ORM\JoinTable(name: 'service_post_tags')]
+    #[ORM\JoinColumn(name: 'post_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'tag_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $tags;
+
     // англійська версія (22.10.2026): без фолбеку на uk — стаття існує англійською, лише коли є slugEn і titleEn
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugEn = null;
@@ -146,6 +161,11 @@ class ServicePost implements TimestampableInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $imageAltEn = null;
+
+    public function __construct()
+    {
+        $this->tags = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -539,6 +559,61 @@ class ServicePost implements TimestampableInterface
         $this->featured = $featured;
 
         return $this;
+    }
+
+    /** @return Collection<int, ServicePostTag> */
+    public function getTags(): Collection
+    {
+        return $this->tags;
+    }
+
+    public function addTag(ServicePostTag $tag): self
+    {
+        if (!$this->tags->contains($tag)) {
+            $this->tags->add($tag);
+        }
+
+        return $this;
+    }
+
+    public function removeTag(ServicePostTag $tag): self
+    {
+        $this->tags->removeElement($tag);
+
+        return $this;
+    }
+
+    /**
+     * Повна заміна набору тегів (приймач студії): [] — без тегів.
+     *
+     * @param iterable<ServicePostTag> $tags
+     */
+    public function replaceTags(iterable $tags): self
+    {
+        $keep = [];
+        foreach ($tags as $tag) {
+            $keep[spl_object_id($tag)] = $tag;
+        }
+        foreach ($this->tags->toArray() as $tag) {
+            if (!isset($keep[spl_object_id($tag)])) {
+                $this->tags->removeElement($tag);
+            }
+        }
+        foreach ($keep as $tag) {
+            $this->addTag($tag);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Теги для показу мовою: активні й ті, що існують мовою (шаблони статті, JSON-LD).
+     *
+     * @return list<ServicePostTag>
+     */
+    public function tagsIn(string $locale): array
+    {
+        return array_values(array_filter($this->tags->toArray(), static fn (ServicePostTag $t): bool => $t->isActive() && $t->existsIn($locale)));
     }
 
     /** alt за локаллю з фолбеком ru→uk (у шаблонах: post.imageAlt(locale)); en — без фолбеку */

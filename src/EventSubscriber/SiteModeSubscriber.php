@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *
  * - content: **allowlist** точних імен (CONTENT_ROUTES). Будь-який інший маршрут сайту (sv_*, вхід Google для відгуків)
  *   → 404: новий сервісний маршрут, доданий у рушій пізніше, на контентних сайтах сам не з'явиться.
- * - services: маршрути, яких у сервісних сайтів не було (CONTENT_ONLY_ROUTES: рубрики, автори) → 404, тож сервісний
+ * - services: маршрути, яких у сервісних сайтів не було (CONTENT_ONLY_ROUTES: рубрики, теги, автори) → 404, тож сервісний
  *   сайт поводиться як до появи режиму.
  * Службові маршрути (студія, Liip, адмінка) не чіпаються.
  */
@@ -26,12 +26,12 @@ final class SiteModeSubscriber implements EventSubscriberInterface
 {
     /** Що відкрито контентному сайту (канонічні імена, без .<мова>) */
     public const CONTENT_ROUTES = [
-        'sv_home', 'sv_blog', 'sv_blog_page', 'sv_blog_post', 'sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_author',
+        'sv_home', 'sv_blog', 'sv_blog_page', 'sv_blog_post', 'sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_blog_tag', 'sv_blog_tag_page', 'sv_author',
         'sv_about', 'sv_contacts', 'sv_thanks', 'sv_privacy', 'sv_terms', 'sv_sitemap', 'sv_robots', 'sv_lead',
     ];
 
     /** Маршрути лише для контентного сайту */
-    public const CONTENT_ONLY_ROUTES = ['sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_author'];
+    public const CONTENT_ONLY_ROUTES = ['sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_blog_tag', 'sv_blog_tag_page', 'sv_author'];
 
     /** Префікси імен маршрутів, які стосуються сайту (решта — службові) */
     private const SITE_ROUTE_PREFIXES = ['sv_', 'connect_google'];

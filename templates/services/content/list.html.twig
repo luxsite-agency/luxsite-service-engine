@@ -1,16 +1,22 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Список статей контентного сайту: увесь блог, рубрика (category) або автор (author). #}
+{# Список статей контентного сайту: увесь блог, рубрика (category), тег (tag) або автор (author). #}
 {% extends 'services/content/layout.html.twig' %}
 
 {# locale задає base.html.twig, а він рендериться пізніше за верхній рівень дочірнього шаблону #}
 {% set locale = sv_locale() %}
 
 {% set _brand = site.brandName(locale) ?? site.name %}
+{% set tag = tag|default(null) %}
 {% if category %}
     {% set _h1 = category.loc('title', locale) %}
     {% set _title = category.loc('metaTitle', locale) ?? (_h1 ~ ' - ' ~ _brand) %}
     {% set _desc = category.loc('metaDesc', locale) ?? category.loc('desc', locale)|striptags|slice(0, 160) %}
     {% set _route, _params = 'sv_blog_category', {slug: category.slug(locale)} %}
+{% elseif tag %}
+    {% set _h1 = tag.loc('title', locale) %}
+    {% set _title = _h1 ~ ' - ' ~ _brand %}
+    {% set _desc = 'blog.tag_desc'|trans({'%tag%': _h1}, 'servicesite') %}
+    {% set _route, _params = 'sv_blog_tag', {slug: tag.slug(locale)} %}
 {% elseif author %}
     {% set _h1 = author.name %}
     {% set _title = author.name ~ ' - ' ~ _brand %}
@@ -22,13 +28,15 @@
     {% set _desc = city.loc('metaDesc', locale) %}
     {% set _route, _params = 'sv_blog', {} %}
 {% endif %}
+{% set _pageRoute = category ? 'sv_blog_category_page' : (tag ? 'sv_blog_tag_page' : 'sv_blog_page') %}
 
 {% block title %}{{ _title }}{% if page > 1 %}{{ 'blog.page_suffix'|trans({'%page%': page}, 'servicesite') }}{% endif %}{% endblock %}
 
 {% block metaDescription %}{{ _desc }}{% endblock %}
 
 {% block meta %}
-    {% set _pageRoute = category ? 'sv_blog_category_page' : 'sv_blog_page' %}
+    {# тег з малою кількістю статей (BlogController: noindex) — не в індекс, але посилання на статті рахуються #}
+    {% if noindex|default(false) and not city.noindex %}<meta name="robots" content="noindex, follow">{% endif %}
     {% if page > 1 %}<link rel="prev" href="{{ page == 2 ? url(_route, _params|merge({_locale: locale})) : url(_pageRoute, _params|merge({page: page - 1, _locale: locale})) }}">{% endif %}
     {% if page < pages %}<link rel="next" href="{{ url(_pageRoute, _params|merge({page: page + 1, _locale: locale})) }}">{% endif %}
 {% endblock %}
@@ -36,7 +44,7 @@
 {% block schema %}
     {% import 'services/partials/_schema.html.twig' as schema %}
     {% set _crumbs = [{'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})}] %}
-    {% if category or author %}{% set _crumbs = _crumbs|merge([{'name': 'nav.blog'|trans({}, 'servicesite'), 'url': url('sv_blog', {_locale: locale})}]) %}{% endif %}
+    {% if category or tag or author %}{% set _crumbs = _crumbs|merge([{'name': 'nav.blog'|trans({}, 'servicesite'), 'url': url('sv_blog', {_locale: locale})}]) %}{% endif %}
     {{ schema.crumbs(_crumbs|merge([{'name': _h1}])) }}
     {% if author %}
         {% set _person = {'@context': 'https://schema.org', '@type': 'Person', 'name': author.name, 'url': url('sv_author', {slug: author.slug, _locale: locale})} %}
@@ -49,7 +57,7 @@
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {% if category or author %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a> →{% endif %}
+        {% if category or tag or author %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a> →{% endif %}
         {{ _h1 }}
     </nav>
     {% if author %}
@@ -77,7 +85,6 @@
     </div>
 
     {% if pages > 1 %}
-    {% set _pageRoute = category ? 'sv_blog_category_page' : 'sv_blog_page' %}
     <nav class="c-pages" aria-label="{{ 'blog.pagination'|trans({}, 'servicesite') }}">
         {% if page > 1 %}<a href="{{ page == 2 ? path(_route, _params) : path(_pageRoute, _params|merge({page: page - 1})) }}">{{ 'blog.prev'|trans({}, 'servicesite') }}</a>{% endif %}
         {% if page < pages %}<a href="{{ path(_pageRoute, _params|merge({page: page + 1})) }}">{{ 'blog.next'|trans({}, 'servicesite') }}</a>{% endif %}
