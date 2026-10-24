@@ -100,7 +100,8 @@ final class StudioCategoryTest extends HttpKernelTestCase
 
         self::assertSame(200, $this->send('GET', 'https://' . $this->host . '/donald-tramp/', '', [])->getStatusCode(), 'нова рубрика відкривається від кореня');
         $pages = $this->json($this->send('GET', 'https://' . $this->admin . '/api/studio/' . self::SLUG . '/pages', '', $this->auth))['pages'] ?? [];
-        $categories = array_column(array_filter($pages, static fn (array $p): bool => $p['type'] === 'category'), 'title', 'url');
+        // ru у розгортанні з uk+ru — фолбеком на uk, як у постів; перевіряємо uk
+        $categories = array_column(array_filter($pages, static fn (array $p): bool => $p['type'] === 'category' && $p['lang'] === 'uk'), 'title', 'url');
         self::assertSame(['/politics/' => 'Політика', '/donald-tramp/' => 'Дональд Трамп'], $categories, '/pages — рубрики бренду від кореня');
     }
 
