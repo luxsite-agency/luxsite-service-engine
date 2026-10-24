@@ -12,6 +12,7 @@ use App\AdminApi\ApiScope;
 use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\ServiceSite\BrandRoutes;
 use App\ServiceSite\BrandSettings;
 use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
@@ -63,6 +64,7 @@ final class StudioArticleController extends AbstractController
         private readonly string $projectDir,
         private readonly SiteLocales $locales,
         private readonly BrandSettings $brandSettings,
+        private readonly BrandRoutes $brandRoutes,
         /** @var list<string> app.studio.image_hosts: звідки приймач качає картинки; порожньо — будь-який публічний https */
         #[Autowire(param: 'app.studio.image_hosts')]
         private readonly array $imageHosts = [],
@@ -272,6 +274,8 @@ final class StudioArticleController extends AbstractController
         if (!$site instanceof ServiceSite) {
             throw $this->createNotFoundException('Сервісний сайт не визначено за хостом.');
         }
+        // через адмін-хост (/api/studio/<slug>/…) контекст роутера не бренду: адреси статей — з розділом бренду
+        $this->router->getContext()->setParameter('_blog', $this->brandRoutes->blogOf($site));
 
         return $site;
     }

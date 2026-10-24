@@ -9,6 +9,7 @@ namespace App\Twig;
 
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\ServiceSite\BrandSettings;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -21,7 +22,7 @@ use Twig\Source;
  *
  *   var/theme/brands/<slug>/templates   живий дизайн бренду (під токеном)
  *   var/theme/templates                 живий дизайн розгортання (як і раніше — першим для бренду без своїх файлів)
- *   templates/site/brands/<slug>        пак: дизайн бренду
+ *   templates/site/brands/<slug>        пак: дизайн бренду (або <тека> з app.brands.<slug>.templates — спільний набір)
  *   → далі стандартний FilesystemLoader: templates/site (пак), templates (@engine)
  *
  * Бренд — з головного запиту (атрибут ServiceHostSubscriber), тож і підзапит сторінки помилки бачить свій бренд.
@@ -38,6 +39,7 @@ final class BrandTemplateLoader implements LoaderInterface
         private readonly RequestStack $requests,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
+        private readonly BrandSettings $brands = new BrandSettings(),
     ) {
     }
 
@@ -78,7 +80,7 @@ final class BrandTemplateLoader implements LoaderInterface
         }
         $slug = $site->getSlug();
         $liveBrand = $this->projectDir . '/var/theme/brands/' . $slug . '/templates/';
-        $packBrand = $this->projectDir . '/templates/site/brands/' . $slug . '/';
+        $packBrand = $this->projectDir . '/templates/site/brands/' . $this->brands->templatesDir($site) . '/';
         if (!is_dir($liveBrand) && !is_dir($packBrand)) {
             return null;
         }
