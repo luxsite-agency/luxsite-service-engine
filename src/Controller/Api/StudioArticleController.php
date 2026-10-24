@@ -10,6 +10,7 @@ namespace App\Controller\Api;
 use App\AdminApi\AdminApiTokens;
 use App\AdminApi\ApiScope;
 use App\Entity\ServicePost;
+use App\Entity\ServicePostCategory;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
 use App\ServiceSite\BrandRoutes;
@@ -23,6 +24,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -36,6 +38,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * підключають сайт до content-studio своїм токеном, без доступу до .env на сервері).
  * Тенант (ServiceSite) береться з Host — як і решта сервісних роутів. Одна панельна стаття
  * однією мовою заповнює *Uk або *Ru поля одного ServicePost, спільного для перекладів (group_id).
+ * Рубрика — category_slug; якої нема в бренду, створюється з назвою category_name (без назви — 422).
  */
 #[Route('/api/studio', name: 'api_studio_', priority: 20, condition: "request.attributes.has('service_site')")]
 final class StudioArticleController extends AbstractController
@@ -65,6 +68,7 @@ final class StudioArticleController extends AbstractController
         private readonly SiteLocales $locales,
         private readonly BrandSettings $brandSettings,
         private readonly BrandRoutes $brandRoutes,
+        private readonly ValidatorInterface $validator,
         /** @var list<string> app.studio.image_hosts: звідки приймач качає картинки; порожньо — будь-який публічний https */
         #[Autowire(param: 'app.studio.image_hosts')]
         private readonly array $imageHosts = [],
@@ -145,6 +149,27 @@ final class StudioArticleController extends AbstractController
             return $this->json(['error' => sprintf('Слаг "%s" уже зайнятий постом #%d.', $slug, $clash->getId())], Response::HTTP_CONFLICT);
         }
 
+        // Рубрика: category_slug мовою статті серед рубрик бренду; такої нема — нова активна з назвою category_name
+        // (рубрики-персони новинних брендів з панелі, 24.10.2026). Без category_slug рубрика поста не змінюється.
+        $category = null;
+        $categorySlug = strtolower(trim((string) ($data['category_slug'] ?? '')));
+        if ($categorySlug !== '') {
+            $position = 0;
+            foreach ($this->em->getRepository(ServicePostCategory::class)->findBy(['site' => $site]) as $c) {
+                $position = max($position, $c->getPosition() + 1);
+                if ($c->slug($lang) === $categorySlug) {
+                    $category = $c;
+                    break;
+                }
+            }
+            if ($category === null) {
+                $category = $this->newCategory($site, $lang, $categorySlug, trim((string) ($data['category_name'] ?? '')), $position);
+                if (\is_array($category)) {
+                    return $this->json(['error' => 'Невалідні дані.', 'fields' => $category], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+            }
+        }
+
         $created = false;
         if ($post === null) {
             $post = (new ServicePost())->setSite($site)->setStudioGroupId($groupId);
@@ -213,6 +238,9 @@ final class StudioArticleController extends AbstractController
         } elseif ($publishedAt !== null && $created) {
             $post->setPublishedAt($publishedAt);
         }
+        if ($category !== null) {
+            $post->setCategory($category);
+        }
         $post->setActive(true)->setStudioSyncedAt(new \DateTimeImmutable());
 
         $this->em->persist($post);
@@ -225,7 +253,42 @@ final class StudioArticleController extends AbstractController
             'url' => $url,
             'external_id' => $externalId,
             'created' => $created,
+            'category' => $post->getCategory()?->slug($lang),
         ], $created ? Response::HTTP_CREATED : Response::HTTP_OK);
+    }
+
+    /**
+     * Нова рубрика з панелі: активна, в кінці меню, слаг і назва мовою статті (ru дублюється в uk-поля, як у поста:
+     * рубриці потрібна uk або en). Порушення валідатора, зокрема RootCategorySlug (слаг фіксованого розділу при
+     * category_url: root), — 422, а не 500 на flush.
+     *
+     * @return ServicePostCategory|array<string, string> рубрика або помилки полів
+     */
+    private function newCategory(ServiceSite $site, string $lang, string $slug, string $name, int $position): ServicePostCategory|array
+    {
+        if ($name === '') {
+            return ['category_name' => sprintf('Рубрики "%s" на сайті нема: для нової потрібна назва (category_name).', $slug)];
+        }
+        if (!preg_match('/^[a-z0-9-]+$/', $slug) || \strlen($slug) > self::SLUG_MAX) {
+            return ['category_slug' => sprintf('Слаг рубрики: лише латиниця, цифри, дефіс, до %d символів.', self::SLUG_MAX)];
+        }
+        $name = mb_substr($name, 0, 255);
+        $category = (new ServicePostCategory())->setSite($site)->setActive(true)->setPosition($position);
+        match ($lang) {
+            'en' => $category->setSlugEn($slug)->setTitleEn($name),
+            'ru' => $category->setSlugRu($slug)->setTitleRu($name)->setSlugUk($slug)->setTitleUk($name),
+            default => $category->setSlugUk($slug)->setTitleUk($name),
+        };
+        $messages = [];
+        foreach ($this->validator->validate($category) as $violation) {
+            $messages[] = (string) $violation->getMessage();
+        }
+        if ($messages !== []) {
+            return ['category_slug' => implode(' ', array_unique($messages))];
+        }
+        $this->em->persist($category);
+
+        return $category;
     }
 
     /**
@@ -531,6 +594,15 @@ final class StudioArticleController extends AbstractController
             foreach ($langs as $l) {
                 $title = (string) $c->loc('title', $l);
                 $push('category', $l, $url('sv_category', ['category' => $c->slug($l), 'slug' => $c->slug($l)], $l), $title, null, [$title], 3);
+            }
+        }
+        // контентний сайт: рубрики статей (новинні бренди) — панель бачить, які вже є, і веде в них перелінковку
+        foreach ($site->isContent() ? $em->getRepository(ServicePostCategory::class)->findBy(['site' => $site, 'active' => true], ['position' => 'ASC', 'id' => 'ASC']) : [] as $c) {
+            foreach ($langs as $l) {
+                if ($c->existsIn($l)) {
+                    $title = (string) $c->loc('title', $l);
+                    $push('category', $l, $url('sv_blog_category', ['slug' => $c->slug($l)], $l), $title, $c->loc('desc', $l), [$title], 3);
+                }
             }
         }
         foreach ($em->getRepository(\App\Entity\ServicePost::class)->findBy(['site' => $site, 'active' => true]) as $p) {
