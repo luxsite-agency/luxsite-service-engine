@@ -398,7 +398,9 @@ do_deploy() {
         [ "$DRY_RUN" = 1 ] || wait_mysql
         # var — спільний том: скомпільований контейнер попереднього релізу посилається на його бандли, і cache:clear нового
         # релізу (auto-scripts composer) падає на першому ж прибраному пакеті («Class …Bundle not found», 17.10 після #74)
-        run compose exec -T php sh -c 'rm -rf var/cache/*'
+        # живий php-fpm (уже з нового релізу) під трафіком дописує кеш, і rm падає «Directory not empty» — деплой зупинявся до
+        # перемикання (satellites 24.10.2026). Ще одна спроба, далі не валимо: свіжий кеш нового релізу не шкодить, cache:clear нижче
+        run compose exec -T php sh -c 'rm -rf var/cache/* 2>/dev/null || { sleep 2; rm -rf var/cache/* 2>/dev/null; } || echo "!! var/cache очищено не повністю (кеш під трафіком) — далі cache:clear"'
     fi
     if [ -n "$prev" ] && [ "${SITE_SKIP_BACKUP:-0}" != 1 ]; then
         log "бекап перед деплоєм"
@@ -523,7 +525,7 @@ do_rollback() {
     [ -n "$prev" ] || die "SITE_PREV_TAG порожній — нема куди відкочувати"
     [ -d "$ROOT/releases/$prev" ] || die "релізу $prev уже нема на диску"
     log "відкат $cur → $prev (міграції БД не відкочуються — для схеми є бекап pre-deploy)"
-    if [ "$RUNTIME" = docker ]; then COMPOSE_REL="$ROOT/releases/$prev"; run compose up -d; run compose exec -T php sh -c 'rm -rf var/cache/*'; composer_install "$ROOT/releases/$prev"; fi
+    if [ "$RUNTIME" = docker ]; then COMPOSE_REL="$ROOT/releases/$prev"; run compose up -d; run compose exec -T php sh -c 'rm -rf var/cache/* 2>/dev/null || { sleep 2; rm -rf var/cache/* 2>/dev/null; } || true'; composer_install "$ROOT/releases/$prev"; fi
     console "$ROOT/releases/$prev" cache:clear >/dev/null || true
     if [ "$DRY_RUN" != 1 ]; then printf 'SITE_TAG=%s\nSITE_PREV_TAG=%s\n' "$prev" "$cur" > "$ROOT/release.env"; fi
     as_user ln -sfn "releases/$prev" "$ROOT/current"
