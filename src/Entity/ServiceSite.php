@@ -10,6 +10,7 @@ namespace App\Entity;
 use App\Doctrine\TimestampableInterface;
 use App\Doctrine\TimestampsTrait;
 use App\Repository\ServiceSiteRepository;
+use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -90,6 +91,14 @@ class ServiceSite implements TimestampableInterface
      */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $heroImagePath = null;
+
+    /**
+     * Розділ статей бренду (24.10.2026): /<префікс>/… замість app.blog_prefix — кілька брендів одного розгортання з
+     * різними розділами (англійські /blog/, українські /novyny/). null = app.blog_prefix, як було.
+     */
+    #[ORM\Column(length: 32, nullable: true)]
+    #[Assert\Regex(pattern: '/^[a-z0-9-]+$/', message: 'Лише латиниця в нижньому регістрі, цифри й дефіс: blog, novyny.')]
+    private ?string $blogPrefix = null;
 
     // — Сторінка «Про нас» (спільна на всі міста бренду) —
 
@@ -266,6 +275,28 @@ class ServiceSite implements TimestampableInterface
         if (\in_array('en', $this->locales ?? [], true) && !$this->isContent()) {
             $context->buildViolation('Англійська мова доступна лише контентному сайту (режим «Контентний»).')->atPath('locales')->addViolation();
         }
+    }
+
+    /** Префікс розділу статей не може бути фіксованим розділом сайту (services, about…), окрім blog і news */
+    #[Assert\Callback]
+    public function validateBlogPrefix(ExecutionContextInterface $context): void
+    {
+        if ($this->blogPrefix !== null && \in_array($this->blogPrefix, array_diff(CatalogUrls::RESERVED_SEGMENTS, ['blog', 'news']), true)) {
+            $context->buildViolation('«{{ value }}» — зарезервований сегмент іншого розділу сайту.')->setParameter('{{ value }}', $this->blogPrefix)->atPath('blogPrefix')->addViolation();
+        }
+    }
+
+    public function getBlogPrefix(): ?string
+    {
+        return $this->blogPrefix;
+    }
+
+    public function setBlogPrefix(?string $blogPrefix): self
+    {
+        $blogPrefix = $blogPrefix === null ? '' : trim($blogPrefix, " /\t\n");
+        $this->blogPrefix = $blogPrefix === '' ? null : $blogPrefix;
+
+        return $this;
     }
 
     /** @return list<string>|null */

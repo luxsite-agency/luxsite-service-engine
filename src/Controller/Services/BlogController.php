@@ -33,14 +33,17 @@ final class BlogController extends AbstractController
         private readonly ServiceCityRepository $cities,
         private readonly ServicePostCategoryRepository $categories,
         private readonly ServiceAuthorRepository $authors,
+        private readonly \App\ServiceSite\BrandSettings $brandSettings,
     ) {
     }
 
     #[Route(
-        path: ['uk' => '/%app.blog_prefix%/', 'ru' => '/ru/%app.blog_prefix%/'],
+        path: ['uk' => '/{_blog}/', 'ru' => '/ru/{_blog}/'],
         name: 'sv_blog',
+        requirements: ['_blog' => '[a-z0-9-]+'],
         priority: 10,
-        condition: "request.attributes.has('service_city')",
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
     )]
     public function index(Request $request): Response
     {
@@ -52,11 +55,12 @@ final class BlogController extends AbstractController
      * Розмір сторінки — app.blog_per_page (пак; 0 = усі на одній). У sitemap лише /blog/.
      */
     #[Route(
-        path: ['uk' => '/%app.blog_prefix%/page/{page}/', 'ru' => '/ru/%app.blog_prefix%/page/{page}/'],
+        path: ['uk' => '/{_blog}/page/{page}/', 'ru' => '/ru/{_blog}/page/{page}/'],
         name: 'sv_blog_page',
-        requirements: ['page' => '[1-9]\\d*'],
+        requirements: ['_blog' => '[a-z0-9-]+', 'page' => '[1-9]\\d*'],
         priority: 11,
-        condition: "request.attributes.has('service_city')",
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
     )]
     public function page(Request $request, int $page): Response
     {
@@ -74,7 +78,7 @@ final class BlogController extends AbstractController
         if ($site->isContent()) {
             return $this->contentList($request, $site, $page, null, null);
         }
-        $perPage = max(0, (int) $this->getParameter('app.blog_per_page'));
+        $perPage = max(0, $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')));
         $total = $this->posts->countPublishedBySite($site, $request->getLocale());
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
@@ -95,10 +99,12 @@ final class BlogController extends AbstractController
     }
 
     #[Route(
-        path: ['uk' => '/%app.blog_prefix%/{slug}/', 'ru' => '/ru/%app.blog_prefix%/{slug}/'],
+        path: ['uk' => '/{_blog}/{slug}/', 'ru' => '/ru/{_blog}/{slug}/'],
         name: 'sv_blog_post',
+        requirements: ['_blog' => '[a-z0-9-]+'],
         priority: 10,
-        condition: "request.attributes.has('service_city')",
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
     )]
     public function show(Request $request, string $slug): Response
     {
@@ -125,11 +131,12 @@ final class BlogController extends AbstractController
 
     /** Рубрика контентного сайту: /<блог>/category/<slug>/ */
     #[Route(
-        path: ['uk' => '/%app.blog_prefix%/category/{slug}/', 'ru' => '/ru/%app.blog_prefix%/category/{slug}/'],
+        path: ['uk' => '/{_blog}/category/{slug}/', 'ru' => '/ru/{_blog}/category/{slug}/'],
         name: 'sv_blog_category',
-        requirements: ['slug' => '[a-z0-9-]+'],
+        requirements: ['_blog' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+'],
         priority: 11,
-        condition: "request.attributes.has('service_city')",
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
     )]
     public function category(Request $request, string $slug): Response
     {
@@ -137,11 +144,12 @@ final class BlogController extends AbstractController
     }
 
     #[Route(
-        path: ['uk' => '/%app.blog_prefix%/category/{slug}/page/{page}/', 'ru' => '/ru/%app.blog_prefix%/category/{slug}/page/{page}/'],
+        path: ['uk' => '/{_blog}/category/{slug}/page/{page}/', 'ru' => '/ru/{_blog}/category/{slug}/page/{page}/'],
         name: 'sv_blog_category_page',
-        requirements: ['slug' => '[a-z0-9-]+', 'page' => '[1-9]\\d*'],
+        requirements: ['_blog' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+', 'page' => '[1-9]\\d*'],
         priority: 12,
-        condition: "request.attributes.has('service_city')",
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
     )]
     public function categoryPaged(Request $request, string $slug, int $page): Response
     {
@@ -185,7 +193,7 @@ final class BlogController extends AbstractController
     {
         $city = $this->serviceCity($request);
         $locale = $request->getLocale();
-        $perPage = $author !== null ? 0 : max(0, (int) $this->getParameter('app.blog_per_page'));
+        $perPage = $author !== null ? 0 : max(0, $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')));
         $total = $this->posts->countPublishedFiltered($site, $locale, $category, $author);
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {

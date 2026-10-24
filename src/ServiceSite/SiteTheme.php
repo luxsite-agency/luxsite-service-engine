@@ -90,6 +90,12 @@ final class SiteTheme
             if ($unknown !== []) {
                 throw new \InvalidArgumentException(sprintf('app.brands.%s: невідомі ключі %s. Дозволені: %s', $slug, implode(', ', array_keys($unknown)), implode(', ', BrandSettings::KEYS)));
             }
+            if (isset($brand['templates']) && (!\is_string($brand['templates']) || !preg_match('~^[a-z0-9-]+$~', $brand['templates']))) {
+                throw new \InvalidArgumentException(sprintf('app.brands.%s.templates: очікується назва теки [a-z0-9-] у templates/site/brands/.', $slug));
+            }
+            if (isset($brand['blog_per_page']) && (!\is_int($brand['blog_per_page']) || $brand['blog_per_page'] < 0)) {
+                throw new \InvalidArgumentException(sprintf('app.brands.%s.blog_per_page: очікується ціле число ≥ 0.', $slug));
+            }
             $theme = (array) ($brand['theme'] ?? []);
             // перевірка ключів одразу (як і app.theme), щоб одрук у паку валив деплой, а не сторінку бренду
             self::merge(self::DEFAULTS, $theme, 'app.brands.' . $slug . '.theme');

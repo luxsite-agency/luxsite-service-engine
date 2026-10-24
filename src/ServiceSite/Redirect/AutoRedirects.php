@@ -13,6 +13,7 @@ use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
+use App\ServiceSite\BrandRoutes;
 use App\ServiceSite\CatalogUrls;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\EntityManagerInterface;
@@ -45,6 +46,7 @@ final class AutoRedirects
         private readonly UrlGeneratorInterface $urls,
         private readonly CatalogUrls $catalogUrls,
         private readonly LoggerInterface $logger,
+        private readonly BrandRoutes $brandRoutes,
     ) {
     }
 
@@ -142,7 +144,7 @@ final class AutoRedirects
             $entity instanceof ServiceItem => $this->itemPath($entity, $locale, $entity->getCategory()?->slug($locale) ?? '', $slug),
             $entity instanceof ServiceCategory => $this->catalogUrls->isNested() ? $this->generate('sv_category', ['category' => $slug, '_locale' => $locale]) : null,
             $entity instanceof ServiceDistrict => $this->generate('sv_district', ['slug' => $slug, '_locale' => $locale]),
-            $entity instanceof ServicePost => $this->generate('sv_blog_post', ['slug' => $slug, '_locale' => $locale]),
+            $entity instanceof ServicePost => $this->generate('sv_blog_post', ['slug' => $slug, '_locale' => $locale, '_blog' => $this->brandRoutes->blogOf($entity->getSite())]),
             default => null,
         };
     }

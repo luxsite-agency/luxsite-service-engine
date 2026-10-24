@@ -17,6 +17,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * коди для розмітки app.locale_codes. Одне місце, з якого шаблони й контролери беруть «яка зараз мова» і «якими
  * мовами є сторінка» — замість зашитих uk/ru. При типовому [uk, ru] і бренді без власного набору дає ті самі значення,
  * що були зашиті.
+ *
+ * app.locale_prefix: false (24.10.2026) — бренди різними мовами в одному розгортанні: префіксів нема, мова за
+ * замовчуванням — перша мова бренду (ServiceSite.locales), а не розгортання.
  */
 final class SiteLocales
 {
@@ -36,6 +39,8 @@ final class SiteLocales
         /** framework.default_locale (uk): мова адмінки й хостів без бренду */
         #[Autowire('%kernel.default_locale%')]
         private readonly string $frameworkDefault = 'uk',
+        #[Autowire('%app.locale_prefix%')]
+        private readonly bool $prefixed = true,
     ) {
     }
 
@@ -45,10 +50,26 @@ final class SiteLocales
         return $this->locales;
     }
 
-    /** Мова без префікса в адресі */
+    /** Чи мають мови, крім першої, префікс /<мова>/ (app.locale_prefix) */
+    public function prefixed(): bool
+    {
+        return $this->prefixed;
+    }
+
+    /** Мова без префікса в адресі: перша мова розгортання; без префіксів — перша мова поточного бренду */
     public function default(): string
     {
-        return $this->locales[0];
+        return $this->defaultFor($this->currentSite());
+    }
+
+    /** Мова без префікса для бренду $site (null — хост без бренду: перша мова розгортання) */
+    public function defaultFor(?ServiceSite $site): string
+    {
+        if ($this->prefixed || $site === null) {
+            return $this->locales[0];
+        }
+
+        return $site->enabledLocales($this->locales)[0] ?? $this->locales[0];
     }
 
     /**
@@ -94,6 +115,9 @@ final class SiteLocales
 
     private function prefixOf(string $path): ?string
     {
+        if (!$this->prefixed) {
+            return null;
+        }
         foreach (\array_slice($this->locales, 1) as $l) {
             if (str_starts_with($path, '/' . $l . '/')) {
                 return $l;

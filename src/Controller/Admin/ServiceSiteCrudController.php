@@ -20,6 +20,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Validator\Constraints\Count;
 
 #[IsGranted('ROLE_ADMIN')]
 class ServiceSiteCrudController extends AbstractCrudController
@@ -32,6 +33,10 @@ class ServiceSiteCrudController extends AbstractCrudController
         private readonly AdminBranding $branding,
         #[Autowire('%app.locales%')]
         private readonly array $locales = ['uk', 'ru'],
+        #[Autowire('%app.locale_prefix%')]
+        private readonly bool $localePrefix = true,
+        #[Autowire('%app.blog_prefix%')]
+        private readonly string $blogPrefix = 'blog',
     ) {
     }
 
@@ -82,10 +87,18 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield ChoiceField::new('mode', 'Режим')->hideOnIndex()
             ->setChoices(['Сервісний (каталог, ціни, заявки)' => 'services', 'Контентний (блог, рубрики, форма зв\'язку)' => 'content'])
             ->setHelp('Контентний: головна зі статтями, рубрики, автори, «Про нас», форма зв\'язку; каталог, райони, відгуки, FAQ і калькулятор — 404, контакти міста не публікуються.');
-        yield ChoiceField::new('locales', 'Мови сайту')->hideOnIndex()
+        $locales = ChoiceField::new('locales', 'Мови сайту')->hideOnIndex()
             ->setChoices(array_combine(array_map('strtoupper', $this->locales), $this->locales))
-            ->allowMultipleChoices()->renderExpanded()
-            ->setHelp(sprintf('Порожньо — усі мови розгортання (%s). Перша мова розгортання — без префікса в адресі; вимкнена мова → 404, без hreflang і sitemap.', implode(', ', $this->locales)));
+            ->allowMultipleChoices()->renderExpanded();
+        if ($this->localePrefix) {
+            yield $locales->setHelp(sprintf('Порожньо — усі мови розгортання (%s). Перша мова розгортання — без префікса в адресі; вимкнена мова → 404, без hreflang і sitemap.', implode(', ', $this->locales)));
+        } else {
+            // app.locale_prefix: false — адреси без мовного префікса, тож мова бренду рівно одна (24.10.2026)
+            yield $locales->setHelp('Рівно одна мова: адреси без мовного префікса, мова сайту — ця.')
+                ->setFormTypeOption('constraints', [new Count(min: 1, max: 1, exactMessage: 'Оберіть рівно одну мову сайту.')]);
+        }
+        yield TextField::new('blogPrefix', 'Розділ статей')->hideOnIndex()
+            ->setHelp(sprintf('Сегмент адреси статей: /<розділ>/<стаття>/. Порожньо — «%s» (параметр паку app.blog_prefix). Зміна міняє адреси всіх статей бренду — старі без 301.', $this->blogPrefix));
         yield TextField::new('heroImagePath', 'Ілюстрація хіро')->hideOnIndex()
             ->setHelp('Шлях від кореня сайту, напр. /themes/<ключ-паку>/hero.webp; порожньо = без ілюстрації');
 

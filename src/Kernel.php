@@ -87,13 +87,18 @@ class Kernel extends BaseKernel
     /**
      * Мови розгортання (app.locales): маршрути оголошені як uk без префікса + /ru/; інший набір мов переписує зібрану
      * колекцію тут, після всіх імпортів (у configureRoutes її ще нема). При [uk, ru] — та сама колекція без змін.
+     * app.locale_prefix: false — усі мови без префікса, мова — від бренду.
      * Деталі — App\ServiceSite\LocalizedRoutes.
      */
     public function loadRoutes(LoaderInterface $loader): RouteCollection
     {
         /** @var list<string> $locales */
         $locales = $this->container->getParameter('app.locales');
+        $prefixed = $this->container->getParameter('app.locale_prefix');
+        if (!\is_bool($prefixed)) {
+            throw new \InvalidArgumentException('app.locale_prefix: очікується true або false.');
+        }
 
-        return LocalizedRoutes::apply($this->loadRoutesDefaults($loader), $locales);
+        return LocalizedRoutes::apply($this->loadRoutesDefaults($loader), $locales, $prefixed);
     }
 }

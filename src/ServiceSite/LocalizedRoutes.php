@@ -18,6 +18,10 @@ use Symfony\Component\Routing\RouteCollection;
  * При типовому [uk, ru] колекція повертається та сама (ранній вихід) — маршрути живих сайтів не змінюються.
  * Інакше будується нова колекція в тому самому порядку і з тими самими пріоритетами: RouteCollection::add() переносить
  * маршрут у кінець і скидає пріоритет, тож перебудова без getPriority() змінила б порядок зіставлення.
+ *
+ * Без префіксів (app.locale_prefix: false, 24.10.2026): усі мовні варіанти мають ту саму безпрефіксну адресу, тож
+ * генерація будь-якою мовою дає один шлях, а зіставлення вибирає варіант мови бренду умовою
+ * service('brand_routes').locale(request) (App\ServiceSite\BrandRoutes). Одна мова розгортання — умова не потрібна.
  */
 final class LocalizedRoutes
 {
@@ -26,10 +30,10 @@ final class LocalizedRoutes
     /** Мова варіанта без префікса в оголошеннях */
     private const UNPREFIXED = 'uk';
 
-    /** @param list<string> $locales app.locales, перша — без префікса */
-    public static function apply(RouteCollection $routes, array $locales): RouteCollection
+    /** @param list<string> $locales app.locales, перша — без префікса (або всі без префікса, коли $prefixed = false) */
+    public static function apply(RouteCollection $routes, array $locales, bool $prefixed = true): RouteCollection
     {
-        if ($locales === self::DECLARED) {
+        if ($locales === self::DECLARED && $prefixed) {
             return $routes;
         }
         self::assertLocales($locales);
@@ -48,8 +52,13 @@ final class LocalizedRoutes
             }
             foreach ($locales as $i => $target) {
                 $variant = clone $route;
-                if ($i > 0) {
+                if ($i > 0 && $prefixed) {
                     $variant->setPath('/' . $target . $route->getPath());
+                }
+                if (!$prefixed && \count($locales) > 1) {
+                    $own = $route->getCondition();
+                    $brand = sprintf("service('brand_routes').locale(request) == '%s'", $target);
+                    $variant->setCondition($own === '' ? $brand : '(' . $own . ') and ' . $brand);
                 }
                 // setDefault/setRequirement('_locale') локалізованого маршруту Symfony ігнорує (Route::isLocalized), тож
                 // defaults замінюються цілком (тоді маршрут ще не «локалізований»), а потім — requirement

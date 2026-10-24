@@ -8,12 +8,14 @@ declare(strict_types=1);
 namespace App\EventSubscriber;
 
 use App\Entity\ServiceSite;
+use App\ServiceSite\BrandRoutes;
 use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Routing\RequestContext;
 
 /**
  * Мова на хостах брендів (22.10.2026).
@@ -23,6 +25,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  *    бренду отримує її як мову. Інакше сторінки без _locale у маршруті (404, /lead, sitemap, robots) і path() без
  *    явної мови пішли б українською — а варіантів маршрутів .uk на такому розгортанні нема. Мова ставиться явно
  *    (setLocale), тож її успадковує й підзапит сторінки помилки. Типове [uk, ru] — нічого не робить.
+ *    Без префіксів (app.locale_prefix: false) мова за замовчуванням — перша мова бренду (SiteLocales::default()).
+ *    Тут же — розділ статей бренду в параметр _blog контексту роутера (BrandRoutes): path('sv_blog_post', …) у
+ *    шаблонах і контролерах дає /<префікс бренду>/… без явного параметра.
  * 2. Після роутера (20, перед LocaleListener 16): мова маршруту не з набору бренду (ServiceSite.locales) → 404.
  *    Бренд без власного набору — усі мови розгортання, тобто перевірка нічого не відсікає.
  */
@@ -30,6 +35,9 @@ final class SiteLocaleSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly SiteLocales $locales,
+        private readonly BrandRoutes $brandRoutes,
+        #[Autowire(service: 'router.request_context')]
+        private readonly RequestContext $routerContext,
         #[Autowire('%kernel.default_locale%')]
         private readonly string $frameworkDefault = 'uk',
     ) {
@@ -42,12 +50,13 @@ final class SiteLocaleSubscriber implements EventSubscriberInterface
 
     public function onBeforeRouting(RequestEvent $event): void
     {
-        $default = $this->locales->default();
-        if (!$event->isMainRequest() || $default === $this->frameworkDefault) {
+        if (!$event->isMainRequest()) {
             return;
         }
         $request = $event->getRequest();
-        if (!$request->attributes->get(ServiceHostSubscriber::ATTR_SITE) instanceof ServiceSite) {
+        $this->routerContext->setParameter('_blog', $this->brandRoutes->blog($request));
+        $default = $this->locales->default();
+        if ($default === $this->frameworkDefault || !$request->attributes->get(ServiceHostSubscriber::ATTR_SITE) instanceof ServiceSite) {
             return;
         }
         $request->setDefaultLocale($default);

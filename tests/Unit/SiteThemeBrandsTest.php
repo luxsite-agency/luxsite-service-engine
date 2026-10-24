@@ -9,6 +9,7 @@ namespace App\Tests\Unit;
 
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\ServiceSite\BrandSettings;
 use App\ServiceSite\SiteTheme;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,6 +49,22 @@ final class SiteThemeBrandsTest extends TestCase
         self::assertSame('site', $theme->get('key'));
         self::assertSame('#000000', $theme->colors()['dark']);
         self::assertSame('#f98111', $theme->colors()['accent']);
+    }
+
+    /** Спільний набір шаблонів (24.10.2026): app.brands.<slug>.templates — тека в templates/site/brands/, інакше slug */
+    public function testSharedTemplatesDir(): void
+    {
+        $brands = ['eplus' => ['templates' => 'news'], 'trysail' => []];
+        new SiteTheme([], '', $brands);
+        $settings = new BrandSettings($brands);
+        self::assertSame('news', $settings->templatesDir((new ServiceSite())->setSlug('eplus')));
+        self::assertSame('trysail', $settings->templatesDir((new ServiceSite())->setSlug('trysail')));
+        self::assertSame('other', $settings->templatesDir((new ServiceSite())->setSlug('other')));
+        $perPage = new BrandSettings(['eplus' => ['blog_per_page' => 20]]);
+        self::assertSame(20, $perPage->blogPerPage((new ServiceSite())->setSlug('eplus'), 12));
+        self::assertSame(12, $perPage->blogPerPage((new ServiceSite())->setSlug('trysail'), 12), 'без ключа — app.blog_per_page');
+        $this->expectException(\InvalidArgumentException::class);
+        new SiteTheme([], '', ['eplus' => ['templates' => '../news']]);
     }
 
     public function testUnknownBrandKeysRejected(): void

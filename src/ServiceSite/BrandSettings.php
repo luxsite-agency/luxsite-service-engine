@@ -15,11 +15,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *  - outbound.follow: [домени] — зовнішні посилання в статтях студії на ці домени (і їхні піддомени) без nofollow;
  *    решта зовнішніх — nofollow, як і раніше (рішення координатора 22.10.2026: allowlist у паку);
  *  - studio_on_public_host: false — приймач студії /api/studio на доменах бренду вимкнено (404), лише через адмін-хост
- *    /api/studio/<slug>/… (ендпойнт не світиться на кожному домені мережі). Типово true — як було.
+ *    /api/studio/<slug>/… (ендпойнт не світиться на кожному домені мережі). Типово true — як було;
+ *  - templates: <тека> — шаблони бренду з templates/site/brands/<тека>/ замість теки зі slug бренду: кілька брендів з
+ *    одним набором (24.10.2026: сім новинних брендів поруч з англійськими). Читає App\Twig\BrandTemplateLoader;
+ *  - blog_per_page: N — статей на сторінку списку й головної бренду замість app.blog_per_page (новини — 20, решта — 12).
  */
 final class BrandSettings
 {
-    public const KEYS = ['theme', 'outbound', 'studio_on_public_host'];
+    public const KEYS = ['theme', 'outbound', 'studio_on_public_host', 'templates', 'blog_per_page'];
 
     /** @param array<string, array<string, mixed>> $brands app.brands */
     public function __construct(
@@ -34,6 +37,25 @@ final class BrandSettings
         $list = (array) ($this->brands[$site->getSlug()]['outbound']['follow'] ?? []);
 
         return array_values(array_unique(array_map(static fn ($d): string => (string) preg_replace('/^www\./', '', strtolower(trim((string) $d))), $list)));
+    }
+
+    /** Тека шаблонів бренду в templates/site/brands/: app.brands.<slug>.templates або сам slug */
+    public function templatesDir(ServiceSite $site): string
+    {
+        $dir = $this->brands[$site->getSlug()]['templates'] ?? $site->getSlug();
+        if (!\is_string($dir) || !preg_match('~^[a-z0-9-]+$~', $dir)) {
+            throw new \InvalidArgumentException(sprintf('app.brands.%s.templates: очікується назва теки [a-z0-9-].', $site->getSlug()));
+        }
+
+        return $dir;
+    }
+
+    /** Статей на сторінку бренду: app.brands.<slug>.blog_per_page або $default (app.blog_per_page) */
+    public function blogPerPage(ServiceSite $site, int $default): int
+    {
+        $n = $this->brands[$site->getSlug()]['blog_per_page'] ?? null;
+
+        return \is_int($n) && $n >= 0 ? $n : $default;
     }
 
     public function studioOnPublicHost(ServiceSite $site): bool
