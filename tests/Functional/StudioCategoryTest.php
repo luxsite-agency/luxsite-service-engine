@@ -117,6 +117,25 @@ final class StudioCategoryTest extends HttpKernelTestCase
         self::assertSame(['/politics/' => 'Політика', '/donald-tramp/' => 'Дональд Трамп'], $categories, '/pages — рубрики бренду від кореня');
     }
 
+    public function testSourcesAsPlainText(): void
+    {
+        $src = ['sources' => [['title' => 'Українська правда: заява', 'url' => 'https://www.pravda.com.ua/news/1/']]];
+        self::assertSame(201, $this->put('t1', '00000000-0000-4000-8000-0000000000c1', 'dzherela', $src + ['sources_format' => 'link'])->getStatusCode());
+        $html = fn (): string => (string) ($this->em()->getRepository(ServicePost::class)->findOneBy(['slugUk' => 'dzherela']) ?? self::fail('стаття є'))->getDescUk();
+        self::assertStringContainsString('rel="nofollow noopener"', $html(), 'link — посилання з nofollow, як було');
+
+        // повтор тієї самої статті у форматі text — блок джерел перезаписується назвами без посилань
+        self::assertSame(200, $this->put('t1', '00000000-0000-4000-8000-0000000000c1', 'dzherela', $src + ['sources_format' => 'text'])->getStatusCode());
+        $this->em()->clear();
+        self::assertStringContainsString('<li>Українська правда: заява</li>', $html());
+        self::assertStringNotContainsString('pravda.com.ua', $html());
+
+        // джерело без адреси (панель у режимі text шле лише title) — теж текстом, а не зникає
+        self::assertSame(200, $this->put('t1', '00000000-0000-4000-8000-0000000000c1', 'dzherela', ['sources' => [['title' => 'Reuters']], 'sources_format' => 'text'])->getStatusCode());
+        $this->em()->clear();
+        self::assertStringContainsString('<li>Reuters</li>', $html());
+    }
+
     public function testServiceSiteIgnoresCategory(): void
     {
         $r = $this->put('s1', '00000000-0000-4000-8000-0000000000b1', 'servisna-stattia', ['category_slug' => 'nevidoma'], $this->serviceSlug);
