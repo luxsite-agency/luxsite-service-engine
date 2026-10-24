@@ -28,7 +28,7 @@ final class CatalogUrls
      */
     public const RESERVED_SEGMENTS = [
         'services', 'districts', 'blog', 'news', 'about', 'contacts', 'faq', 'reviews', 'privacy-policy',
-        'terms-of-service', 'thank-you', 'calculator-cleaning', 'lead', 'sitemap.xml', 'robots.txt',
+        'terms-of-service', 'thank-you', 'calculator-cleaning', 'calculator', 'lead', 'sitemap.xml', 'robots.txt',
         'ru', 'uk', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
     ];
 
@@ -37,6 +37,8 @@ final class CatalogUrls
         private readonly string $scheme = 'flat',
         #[Autowire('%app.blog_prefix%')]
         private readonly string $blogPrefix = 'blog',
+        #[Autowire('%app.calculator.path%')]
+        private readonly mixed $calculatorPath = [],
     ) {
     }
 
@@ -57,7 +59,7 @@ final class CatalogUrls
             return [];
         }
 
-        return array_values(array_unique([...self::RESERVED_SEGMENTS, $this->blogPrefix]));
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
     }
 
     /** Чи заборонений slug для категорії (reservedCategorySlugs); порівняння без регістру. */

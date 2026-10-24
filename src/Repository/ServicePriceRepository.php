@@ -52,6 +52,47 @@ class ServicePriceRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
+    /**
+     * Калькулятор «за прайсом» (CalculatorAvailability::MODE_PRICELIST): усі активні позиції міста з in_calculator=1,
+     * чия послуга активна, надається в місті й ціни на неї не приховані (hiddenCities / priceHiddenCities). Позиції без
+     * числа (priceText «за домовленістю») теж — їх можна обрати, у сумі вони йдуть як «ціна уточнюється».
+     * Порядок: категорія → послуга → позиція (так само групує шаблон). Позиції без послуги — у кінці, окремою групою.
+     *
+     * @return ServicePrice[]
+     */
+    public function findPricelistCalculator(ServiceCity $city): array
+    {
+        return $this->createQueryBuilder('p')
+            ->addSelect('i', 'c')
+            ->leftJoin('p.item', 'i')
+            ->leftJoin('i.category', 'c')
+            ->where('p.city = :city')->setParameter('city', $city)
+            ->andWhere('p.active = true')
+            ->andWhere('p.inCalculator = true')
+            ->andWhere('i.id IS NULL OR (i.active = true AND c.active = true AND :city NOT MEMBER OF i.hiddenCities AND :city NOT MEMBER OF i.priceHiddenCities)')
+            ->orderBy('c.position', 'ASC')
+            ->addOrderBy('c.id', 'ASC')
+            ->addOrderBy('i.position', 'ASC')
+            ->addOrderBy('i.id', 'ASC')
+            ->addOrderBy('p.position', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
+            ->getQuery()->getResult();
+    }
+
+    /** Чи є в місті хоч одна позиція для калькулятора «за прайсом» (ті самі умови, що findPricelistCalculator). */
+    public function hasPricelistCalculator(ServiceCity $city): bool
+    {
+        return (int) $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->leftJoin('p.item', 'i')
+            ->leftJoin('i.category', 'c')
+            ->where('p.city = :city')->setParameter('city', $city)
+            ->andWhere('p.active = true')
+            ->andWhere('p.inCalculator = true')
+            ->andWhere('i.id IS NULL OR (i.active = true AND c.active = true AND :city NOT MEMBER OF i.hiddenCities AND :city NOT MEMBER OF i.priceHiddenCities)')
+            ->getQuery()->getSingleScalarResult() > 0;
+    }
+
     /** @return ServicePrice[] Весь прайс міста, згрупується в шаблоні по item */
     public function findActiveByCity(ServiceCity $city): array
     {

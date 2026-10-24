@@ -22,6 +22,9 @@ use App\Repository\ServiceLeadRepository;
 use App\Repository\ServiceCalcTypeRepository;
 use App\ServiceSite\CalcOption;
 use App\ServiceSite\CalcPricer;
+use App\ServiceSite\CalculatorAvailability;
+use App\ServiceSite\CalculatorRoutes;
+use App\ServiceSite\PricelistCalc;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
@@ -31,14 +34,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Калькулятор вартості клінінгу: сторінка з підрахунком наживо (JS інлайном
- * у шаблоні, формула дублює CalcPricer) і прийом заявки з розрахунком.
- * Вартість для заявки рахується ЗАВЖДИ на сервері з БД - ціни з форми
- * не приймаються (захист від підміни в DevTools).
+ * Калькулятор вартості: сторінка з підрахунком наживо (JS інлайном у шаблоні) і прийом заявки з розрахунком.
+ * Два режими (CalculatorAvailability): «за площею» (клінінг: типи прибирання × площа × коефіцієнти + опції, формула
+ * CalcPricer) і «за прайсом» (категорія → послуга → позиції прайсу міста з обсягом, PricelistCalc). Маршрути
+ * sv_calculator / sv_calc_lead збирає Kernel::configureRoutes через CalculatorRoutes (адреса з паку або типова за режимом).
+ * Вартість для заявки рахується ЗАВЖДИ на сервері з БД - ціни з форми не приймаються (захист від підміни в DevTools).
  */
 final class CalculatorController extends AbstractController
 {
@@ -64,6 +67,8 @@ final class CalculatorController extends AbstractController
         private readonly LeadRateLimit $rateLimit,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceLeadRepository $leads,
+        private readonly CalculatorAvailability $availability,
+        private readonly PricelistCalc $pricelist,
     ) {
     }
 
@@ -81,20 +86,31 @@ final class CalculatorController extends AbstractController
         return $fromPrices !== [] ? $fromPrices : $this->options->findActiveBySite($site);
     }
 
-    #[Route(
-        path: ['uk' => '/calculator-cleaning/', 'ru' => '/ru/calculator-cleaning/'],
-        name: 'sv_calculator',
-        priority: 10,
-        condition: "request.attributes.has('service_city')",
-    )]
     public function index(Request $request): Response
     {
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
-        $types = $this->types->findActiveForCity($site, $city);
-        if ($types === []) {
+        $mode = $this->availability->modeFor($site, $city);
+        if ($mode === null) {
             throw $this->createNotFoundException('Калькулятор ще не наповнено.');
         }
+        // типова адреса іншого режиму (/calculator-cleaning/ ↔ /calculator/) → 301 на дійсну, query лишається
+        if ($this->isForeignDefaultPath($request, $mode)) {
+            $query = $request->getQueryString();
+
+            return $this->redirect($this->generateUrl('sv_calculator', ['_locale' => $request->getLocale()]) . ($query !== null ? '?' . $query : ''), 301);
+        }
+
+        if ($mode === CalculatorAvailability::MODE_PRICELIST) {
+            return $this->render('services/calculator_pricelist.html.twig', [
+                'site' => $site,
+                'city' => $city,
+                'groups' => $this->pricelist->groups($this->prices->findPricelistCalculator($city)),
+                'altUrls' => $this->altUrls('sv_calculator'),
+            ]);
+        }
+
+        $types = $this->types->findActiveForCity($site, $city);
 
         return $this->render('services/calculator.html.twig', [
             'site' => $site,
@@ -112,20 +128,31 @@ final class CalculatorController extends AbstractController
     }
 
     /**
-     * Заявка з калькулятора. Падає в загальну чергу ServiceLead, у message -
-     * перерахований НА СЕРВЕРІ розрахунок (тип, площа, коефіцієнти, опції, сума).
+     * Без app.calculator.path маршрут приймає оба типові сегменти ({_calc}); дійсний для режиму підставляє
+     * CalculatorRouteSubscriber у RequestContext — звіряємо з ним сегмент запиту.
      */
-    #[Route(
-        path: '/calculator-cleaning/lead',
-        name: 'sv_calc_lead',
-        methods: ['POST'],
-        priority: 10,
-        condition: "request.attributes.has('service_city')",
-    )]
+    private function isForeignDefaultPath(Request $request, string $mode): bool
+    {
+        $segment = $request->attributes->get(CalculatorRoutes::PLACEHOLDER);
+        if (!\is_string($segment)) {
+            return false;
+        }
+
+        return $segment !== ($mode === CalculatorAvailability::MODE_PRICELIST ? CalculatorRoutes::SEGMENT_PRICELIST : CalculatorRoutes::SEGMENT_AREA);
+    }
+
+    /**
+     * Заявка з калькулятора (обох режимів). Падає в загальну чергу ServiceLead, у message -
+     * перерахований НА СЕРВЕРІ розрахунок (площа: тип, площа, коефіцієнти, опції, сума; прайс: позиції × обсяг, сума).
+     */
     public function submit(Request $request): Response
     {
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
+        $mode = $this->availability->modeFor($site, $city);
+        if ($mode === null) {
+            throw $this->createNotFoundException('Калькулятор ще не наповнено.');
+        }
         $locale = $request->request->get('loc') === 'ru' ? 'ru' : 'uk';
         $fromHome = $request->request->get('from') === 'home';
         // калькулятор стоїть і на сторінках послуг: повертаємо людину туди, звідки
@@ -178,6 +205,19 @@ final class CalculatorController extends AbstractController
             return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'dup']);
         }
 
+        if ($mode === CalculatorAvailability::MODE_PRICELIST) {
+            // «за прайсом»: з форми лише id позиції → обсяг; позиції й ціни — з прайсу міста
+            $quote = $this->pricelist->quote($this->prices->findPricelistCalculator($city), (array) $request->request->all('qty'));
+            if ($quote['rows'] === []) {
+                $this->addFlash('lead_error', $this->translator->trans('calc.pricelist.empty', [], 'servicesite', $locale));
+
+                return $this->redirect($back);
+            }
+            $message = $this->pricelist->buildMessage($quote, $locale);
+
+            return $this->storeLead($request, $city, $phone, $name, $message, $sourceUrl, $locale);
+        }
+
         // Валідація розрахунку: всі позиції звіряються з БД по сайту, а ціна
         // типу береться саме міська - інакше заявка порахується за чужим прайсом
         $type = $this->types->findOneActiveForCity($site, $city, $request->request->getInt('type'));
@@ -219,6 +259,12 @@ final class CalculatorController extends AbstractController
                 . ': ' . $item->loc('title', $locale) . "\n" . $message;
         }
 
+        return $this->storeLead($request, $city, $phone, $name, $message, $sourceUrl, $locale);
+    }
+
+    /** Запис заявки, сповіщення, CRM і редирект на «дякуємо» — спільне для обох режимів. */
+    private function storeLead(Request $request, ServiceCity $city, string $phone, string $name, string $message, string $sourceUrl, string $locale): Response
+    {
         $lead = (new ServiceLead())
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))

@@ -7,13 +7,13 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
-use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -40,7 +40,7 @@ final class SitemapController extends AbstractController
         private readonly ServiceCityRepository $cities,
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly CatalogUrls $catalogUrls,
-        private readonly ServiceCalcTypeRepository $calcTypes,
+        private readonly CalculatorAvailability $calculator,
     ) {
     }
 
@@ -124,8 +124,8 @@ final class SitemapController extends AbstractController
         if ($site->getAboutUk() !== null) {
             $add('sv_about');
         }
-        // калькулятор є лише в брендів, де він наповнений (типи в БД)
-        if ($this->calcTypes->findActiveBySite($site) !== []) {
+        // калькулятор є, де він наповнений (типи прибирання або позиції прайсу з in_calculator); адреса — дійсна для режиму
+        if ($this->calculator->isAvailable($site, $city)) {
             $add('sv_calculator');
         }
         $add('sv_faq');
