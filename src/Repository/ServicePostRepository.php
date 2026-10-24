@@ -10,6 +10,7 @@ namespace App\Repository;
 use App\Entity\ServiceAuthor;
 use App\Entity\ServicePost;
 use App\Entity\ServicePostCategory;
+use App\Entity\ServicePostTag;
 use App\Entity\ServiceSite;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -107,13 +108,13 @@ class ServicePostRepository extends ServiceEntityRepository
     }
 
     /**
-     * Сторінка статей рубрики чи автора (контентний сайт): мовою $locale, свіжі першими; $perPage <= 0 = усі.
+     * Сторінка статей рубрики, автора чи тегу (контентний сайт): мовою $locale, свіжі першими; $perPage <= 0 = усі.
      *
      * @return ServicePost[]
      */
-    public function findPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author, int $page, int $perPage): array
+    public function findPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author, int $page, int $perPage, ?ServicePostTag $tag = null): array
     {
-        $qb = $this->filtered($site, $locale, $category, $author)
+        $qb = $this->filtered($site, $locale, $category, $author, $tag)
             ->orderBy('p.publishedAt', 'DESC')
             ->addOrderBy('p.id', 'DESC');
         if ($perPage > 0) {
@@ -123,9 +124,31 @@ class ServicePostRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
-    public function countPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author): int
+    public function countPublishedFiltered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author, ?ServicePostTag $tag = null): int
     {
-        return (int) $this->filtered($site, $locale, $category, $author)->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
+        return (int) $this->filtered($site, $locale, $category, $author, $tag)->select('COUNT(p.id)')->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Скільки опублікованих статей мовою $locale в кожного тегу сайту (лише теги, де є статті): поріг індексації сторінки
+     * тегу (ServicePostTag::INDEX_MIN_POSTS) у sitemap.
+     *
+     * @return array<int, int> id тегу => кількість
+     */
+    public function countPublishedByTag(ServiceSite $site, string $locale): array
+    {
+        $rows = $this->published($site, $locale)
+            ->select('t.id AS tag, COUNT(p.id) AS n')
+            ->innerJoin('p.tags', 't')
+            ->groupBy('t.id')
+            ->getQuery()->getArrayResult();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['tag']] = (int) $row['n'];
+        }
+
+        return $out;
     }
 
     /**
@@ -163,9 +186,12 @@ class ServicePostRepository extends ServiceEntityRepository
             ->getQuery()->getResult();
     }
 
-    private function filtered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author): \Doctrine\ORM\QueryBuilder
+    private function filtered(ServiceSite $site, string $locale, ?ServicePostCategory $category, ?ServiceAuthor $author, ?ServicePostTag $tag = null): \Doctrine\ORM\QueryBuilder
     {
         $qb = $this->published($site, $locale);
+        if ($tag !== null) {
+            $qb->andWhere(':tag MEMBER OF p.tags')->setParameter('tag', $tag);
+        }
         if ($category !== null) {
             $qb->andWhere('p.category = :cat')->setParameter('cat', $category);
         }

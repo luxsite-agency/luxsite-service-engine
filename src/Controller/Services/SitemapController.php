@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Entity\ServicePostTag;
 use App\Repository\ServiceAuthorRepository;
 use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCategoryRepository;
@@ -17,6 +18,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServicePostTagRepository;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
 use App\ServiceSite\SiteLocales;
@@ -48,6 +50,7 @@ final class SitemapController extends AbstractController
         private readonly ServicePageRepository $pages,
         private readonly ServicePostCategoryRepository $postCategories,
         private readonly ServiceAuthorRepository $authors,
+        private readonly ServicePostTagRepository $postTags,
     ) {
     }
 
@@ -163,7 +166,7 @@ final class SitemapController extends AbstractController
     }
 
     /**
-     * Карта контентного сайту (ServiceSite.mode = content): головна, блог, рубрики й автори зі статтями, статті, «Про нас»,
+     * Карта контентного сайту (ServiceSite.mode = content): головна, блог, рубрики й автори зі статтями, теги від 3 статей, статті, «Про нас»,
      * контакти, юридичні сторінки. Сторінки, що існують не всіма мовами бренду (статті, рубрики), — лише своїми мовами.
      * Блог і статті — лише на апексі (як у сервісного сайту).
      *
@@ -205,6 +208,19 @@ final class SitemapController extends AbstractController
                 if (isset($withPosts['cat'][$c->getId()])) {
                     $add('sv_blog_category', static fn (string $l): array => ['slug' => $c->slug($l) ?: '-'], null, $c->existsIn(...));
                 }
+            }
+            // теги — лише мовами, де сторінка індексується (від ServicePostTag::INDEX_MIN_POSTS статей; менше — noindex)
+            $tagCounts = [];
+            $indexedIds = [];
+            foreach ($locales as $l) {
+                $tagCounts[$l] = $this->posts->countPublishedByTag($site, $l);
+                $indexedIds += array_filter($tagCounts[$l], static fn (int $n): bool => $n >= ServicePostTag::INDEX_MIN_POSTS);
+            }
+            // лише теги, що індексуються хоч однією мовою, а не всі теги бренду (у новинних — тисячі людей)
+            $indexedTags = $indexedIds === [] ? [] : $this->postTags->findBy(['site' => $site, 'active' => true, 'id' => array_keys($indexedIds)], ['id' => 'ASC']);
+            foreach ($indexedTags as $t) {
+                $indexed = static fn (string $l): bool => $t->existsIn($l) && ($tagCounts[$l][$t->getId()] ?? 0) >= ServicePostTag::INDEX_MIN_POSTS;
+                $add('sv_blog_tag', static fn (string $l): array => ['slug' => $t->slug($l) ?: '-'], null, $indexed);
             }
             foreach ($this->authors->findActiveBySite($site) as $a) {
                 if (isset($withPosts['author'][$a->getId()])) {

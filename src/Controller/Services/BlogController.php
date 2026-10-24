@@ -9,11 +9,13 @@ namespace App\Controller\Services;
 
 use App\Entity\ServiceAuthor;
 use App\Entity\ServicePostCategory;
+use App\Entity\ServicePostTag;
 use App\Entity\ServiceSite;
 use App\Repository\ServiceAuthorRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServicePostTagRepository;
 use App\ServiceSite\ServiceCityAware;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,6 +36,7 @@ final class BlogController extends AbstractController
         private readonly ServicePostCategoryRepository $categories,
         private readonly ServiceAuthorRepository $authors,
         private readonly \App\ServiceSite\BrandSettings $brandSettings,
+        private readonly ServicePostTagRepository $tags,
     ) {
     }
 
@@ -199,6 +202,40 @@ final class BlogController extends AbstractController
         return $this->categoryPage($request, $slug, $page);
     }
 
+    /**
+     * Тег контентного сайту: /<блог>/tag/<slug>/ (24.10.2026, люди з прямою мовою від студії). Адреса однакова й при
+     * рубриках від кореня. Менше ніж ServicePostTag::INDEX_MIN_POSTS статей мовою сторінки — noindex, follow.
+     */
+    #[Route(
+        path: ['uk' => '/{_blog}/tag/{slug}/', 'ru' => '/ru/{_blog}/tag/{slug}/'],
+        name: 'sv_blog_tag',
+        requirements: ['_blog' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+'],
+        priority: 11,
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
+    )]
+    public function tag(Request $request, string $slug): Response
+    {
+        return $this->tagPage($request, $slug, 1);
+    }
+
+    #[Route(
+        path: ['uk' => '/{_blog}/tag/{slug}/page/{page}/', 'ru' => '/ru/{_blog}/tag/{slug}/page/{page}/'],
+        name: 'sv_blog_tag_page',
+        requirements: ['_blog' => '[a-z0-9-]+', 'slug' => '[a-z0-9-]+', 'page' => '[1-9]\\d*'],
+        priority: 12,
+        defaults: ['_blog' => '%app.blog_prefix%'],
+        condition: "request.attributes.has('service_city') and params['_blog'] == service('brand_routes').blog(request)",
+    )]
+    public function tagPaged(Request $request, string $slug, int $page): Response
+    {
+        if ($page === 1) {
+            return $this->redirectToRoute('sv_blog_tag', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
+        }
+
+        return $this->tagPage($request, $slug, $page);
+    }
+
     /** Автор статей контентного сайту: /author/<slug>/ */
     #[Route(
         path: ['uk' => '/author/{slug}/', 'ru' => '/ru/author/{slug}/'],
@@ -224,21 +261,46 @@ final class BlogController extends AbstractController
         return $this->contentList($request, $site, $page, $category, null);
     }
 
+    private function tagPage(Request $request, string $slug, int $page): Response
+    {
+        $site = $this->serviceSite($request);
+        $tag = $this->tags->findOneActiveBySlug($site, $slug, $request->getLocale())
+            ?? throw $this->createNotFoundException('Тег не знайдено.');
+
+        return $this->contentList($request, $site, $page, null, null, $tag);
+    }
+
     /**
-     * Список статей контентного сайту: увесь блог, рубрика або автор (усі статті автора — однією сторінкою).
+     * Список статей контентного сайту: увесь блог, рубрика, тег або автор (усі статті автора — однією сторінкою).
      * Canonical — на апекс, як і у блогу сервісного сайту.
      */
-    private function contentList(Request $request, ServiceSite $site, int $page, ?ServicePostCategory $category, ?ServiceAuthor $author): Response
+    private function contentList(Request $request, ServiceSite $site, int $page, ?ServicePostCategory $category, ?ServiceAuthor $author, ?ServicePostTag $tag = null): Response
     {
         $city = $this->serviceCity($request);
         $locale = $request->getLocale();
         $perPage = $author !== null ? 0 : max(0, $this->brandSettings->blogPerPage($site, (int) $this->getParameter('app.blog_per_page')));
-        $total = $this->posts->countPublishedFiltered($site, $locale, $category, $author);
+        $total = $this->posts->countPublishedFiltered($site, $locale, $category, $author, $tag);
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
             throw $this->createNotFoundException('Такої сторінки немає.');
         }
-        if ($category !== null) {
+        if ($tag !== null) {
+            $altUrls = $page === 1
+                ? $this->altUrls('sv_blog_tag', static fn (string $l): array => ['slug' => $tag->slug($l) ?: '-'])
+                : $this->altUrls('sv_blog_tag_page', static fn (string $l): array => ['slug' => $tag->slug($l) ?: '-', 'page' => (string) $page]);
+            // інші мови — лише ті, де тег індексується (як у sitemap) і є ця сторінка списку; поточна мова — завжди (canonical)
+            $altUrls = array_intersect_key($altUrls, array_flip(array_filter(array_keys($altUrls), function (string $l) use ($site, $tag, $locale, $page, $perPage): bool {
+                if (!$tag->existsIn($l)) {
+                    return false;
+                }
+                if ($l === $locale) {
+                    return true;
+                }
+                $n = $this->posts->countPublishedFiltered($site, $l, null, null, $tag);
+
+                return $n >= ServicePostTag::INDEX_MIN_POSTS && ($perPage <= 0 || $page <= (int) ceil($n / $perPage));
+            })));
+        } elseif ($category !== null) {
             $altUrls = $page === 1
                 ? $this->altUrls('sv_blog_category', static fn (string $l): array => ['slug' => $category->slug($l) ?: '-'])
                 : $this->altUrls('sv_blog_category_page', static fn (string $l): array => ['slug' => $category->slug($l) ?: '-', 'page' => (string) $page]);
@@ -252,9 +314,12 @@ final class BlogController extends AbstractController
         return $this->render('services/content/list.html.twig', [
             'site' => $site,
             'city' => $city,
-            'posts' => $this->posts->findPublishedFiltered($site, $locale, $category, $author, $page, $perPage),
+            'posts' => $this->posts->findPublishedFiltered($site, $locale, $category, $author, $page, $perPage, $tag),
             'category' => $category,
             'author' => $author,
+            'tag' => $tag,
+            // тег з малою кількістю статей — тонка сторінка: noindex, follow (посилання на статті лишаються робочими)
+            'noindex' => $tag !== null && $total < ServicePostTag::INDEX_MIN_POSTS,
             'categories' => $this->categories->findActiveBySite($site, $locale),
             'page' => $page,
             'pages' => $pages,

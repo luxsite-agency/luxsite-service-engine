@@ -253,8 +253,9 @@ when@test:
         app.theme_lock_wait: 3
         # одне правило паку: тести, що адреса з мапи паку не «жива», переноситься в БД і правило БД стоїть у резерві
         app.legacy_redirects: { 'ci-pack-old': '/ci-pack-new/' }
-        # бренди з рубриками від кореня (BrandCategoryRootTest, StudioCategoryTest); решта брендів тестів — без запису, як було
-        app.brands: { 'ci-catroot': { category_url: root }, 'ci-studiocat': { category_url: root } }
+        # бренди з рубриками від кореня (BrandCategoryRootTest, StudioCategoryTest, StudioTagTest — ще й 2 статті на сторінку,
+        # щоб перевірити пагінацію тегу); решта брендів тестів — без запису, як було
+        app.brands: { 'ci-catroot': { category_url: root }, 'ci-studiocat': { category_url: root }, 'ci-studiotag': { category_url: root, blog_per_page: 2 } }
     services:
         App\Tests\Support\ThemeSmokeMock: ~
         app.theme_http_client:

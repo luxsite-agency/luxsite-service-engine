@@ -96,6 +96,8 @@ final class LiveThemePolicy
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
         // сторінки app.pages, мови й контентний сайт (stage/satellites); батька сторінки — змінною parent_page (parent заборонено)
         'aboutFor', 'active', 'author', 'brandName', 'existsIn', 'images', 'path', 'urls',
+        // теги статей контентного сайту (24.10.2026): лише читання активних тегів мовою сторінки
+        'tagsIn',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
