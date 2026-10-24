@@ -54,6 +54,7 @@ prices.from: от
 prices.title: Цены на услуги %in% %city%
 prices.col_service: Услуга
 prices.col_price: Цена, грн
+prices.note: Цены на сайте ориентировочные. Окончательную стоимость называет мастер после уточнения деталей.
 
 district.title: Районы обслуживания
 district.page_title: '%district_title% - %site% %city%'
@@ -141,7 +142,7 @@ calc.base_label: Основная стоимость
 calc.options_label: Дополнительные услуги
 calc.total_label: Итого
 calc.min_note: применён минимальный чек
-calc.disclaimer: Расчёт ориентировочный. Точную стоимость менеджер подтвердит по телефону после уточнения деталей.
+calc.disclaimer: Цены на сайте ориентировочные. Окончательную стоимость называет мастер после уточнения деталей.
 calc.submit: Отправить заявку
 calc.mini_title: Посчитайте стоимость
 calc.mini_title_service: Рассчитайте стоимость этой услуги
@@ -150,6 +151,23 @@ calc.service_label: Услуга
 calc.mini_result: Ориентировочная стоимость
 calc.mini_order: Заказать
 calc.mini_full: Полный расчёт с опциями
+calc.pricelist.intro: Выберите услуги и укажите объём - ориентировочная стоимость появится сразу. Окончательную сумму мастер назовёт после уточнения деталей.
+calc.pricelist.col_name: Услуга
+calc.pricelist.col_price: Цена, грн
+calc.pricelist.col_qty: Объём
+calc.pricelist.col_sum: Итого, грн
+calc.pricelist.unit_default: шт.
+calc.pricelist.price_tbd: цена уточняется
+calc.pricelist.other: Другие услуги
+calc.pricelist.subtotal: Сумма
+calc.pricelist.group_total: Всего
+calc.pricelist.selected: Выбрано позиций
+calc.pricelist.unpriced: + цена уточняется
+calc.pricelist.unpriced_count: позиций - цена уточняется
+calc.pricelist.submit: Отправить заявку с расчётом
+calc.pricelist.empty: Выберите хотя бы одну позицию и укажите объём.
+calc.pricelist.message_title: Расчёт по прайсу
+meta.calculator_pricelist: 'Онлайн-калькулятор стоимости в %city%: выберите услуги из прайса, укажите объём - и сразу узнайте ориентировочную цену.'
 meta.calculator: 'Онлайн-калькулятор стоимости в %city%: выберите тип работ, площадь и дополнительные услуги - и сразу узнайте ориентировочную цену.'
 meta.district: '%district%, %cityNom%: наши услуги с выездом мастера. Цена известна до начала работ.'
 meta.about: 'О компании: кто мы, как работаем в %city%, почему нам доверяют.'

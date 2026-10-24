@@ -57,6 +57,8 @@ prices.from: від
 prices.title: Ціни на послуги %in% %city%
 prices.col_service: Послуга
 prices.col_price: Ціна, грн
+# під таблицями цін (головна, сторінка послуги); порожньо = не показувати. Рішення власника 24.10.2026: дефолт рушія, пак перекриває
+prices.note: Ціни на сайті орієнтовні. Остаточну вартість називає майстер після уточнення деталей.
 
 district.title: Райони обслуговування
 # <title> і H1 сторінки /districts/: пак перекриває цілком (параметри %site%, %city%, %cityGen%, %cityLoc%)
@@ -147,7 +149,7 @@ calc.base_label: Основна вартість
 calc.options_label: Додаткові послуги
 calc.total_label: Разом
 calc.min_note: застосовано мінімальний чек
-calc.disclaimer: Розрахунок орієнтовний. Точну вартість менеджер підтвердить за телефоном після уточнення деталей.
+calc.disclaimer: Ціни на сайті орієнтовні. Остаточну вартість називає майстер після уточнення деталей.
 calc.submit: Надіслати заявку
 calc.mini_title: Порахуйте вартість
 calc.mini_title_service: Порахуйте вартість цієї послуги
@@ -156,6 +158,24 @@ calc.service_label: Послуга
 calc.mini_result: Орієнтовна вартість
 calc.mini_order: Замовити
 calc.mini_full: Повний розрахунок з опціями
+# калькулятор «за прайсом» (сайти без типів прибирання: позиції прайсу міста з in_calculator)
+calc.pricelist.intro: Оберіть послуги й вкажіть обсяг - орієнтовна вартість зʼявиться одразу. Остаточну суму майстер назве після уточнення деталей.
+calc.pricelist.col_name: Послуга
+calc.pricelist.col_price: Ціна, грн
+calc.pricelist.col_qty: Обсяг
+calc.pricelist.col_sum: Разом, грн
+calc.pricelist.unit_default: шт.
+calc.pricelist.price_tbd: ціна уточнюється
+calc.pricelist.other: Інші послуги
+calc.pricelist.subtotal: Сума
+calc.pricelist.group_total: Всього
+calc.pricelist.selected: Обрано позицій
+calc.pricelist.unpriced: + ціна уточнюється
+calc.pricelist.unpriced_count: позицій - ціна уточнюється
+calc.pricelist.submit: Надіслати заявку з розрахунком
+calc.pricelist.empty: Оберіть хоча б одну позицію й вкажіть обсяг.
+calc.pricelist.message_title: Розрахунок за прайсом
+meta.calculator_pricelist: 'Онлайн-калькулятор вартості %in% %city%: оберіть послуги з прайсу, вкажіть обсяг - і одразу дізнайтесь орієнтовну ціну.'
 meta.calculator: 'Онлайн-калькулятор вартості %in% %city%: оберіть тип робіт, площу й додаткові послуги - і одразу дізнайтесь орієнтовну ціну.'
 meta.district: '%district%, %cityNom%: наші послуги з виїздом майстра. Ціна відома до початку робіт.'
 meta.about: 'Про компанію: хто ми, як працюємо %in% %city%, чому нам довіряють.'

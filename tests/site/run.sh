@@ -48,6 +48,11 @@ t "validate: app.blog_prefix = зарезервований розділ — в�
 has "зарезервований"
 printf 'parameters:\n    app.blog_prefix: news\n    app.catalog.url_scheme: root\n' > "$bad/config/parameters.yaml"; rm -f "$bad/.env.local"
 t "validate: app.blog_prefix news + схема root — ок" 0 bin/site validate "$bad"
+printf 'parameters:\n    app.calculator.mode: area\n    app.calculator.path: { uk: "/kalkuliator/", ru: "/ru/kalkuliator/" }\n' > "$bad/config/parameters.yaml"
+t "validate: app.calculator.* коректні — ок" 0 bin/site validate "$bad"
+printf 'parameters:\n    app.calculator.mode: table\n    app.calculator.path: { uk: "/kalkuliator", ru: "/kalkuliator/" }\n' > "$bad/config/parameters.yaml"
+t "validate: app.calculator.mode і .path хибні — відмова" '!0' bin/site validate "$bad"
+has "app.calculator.mode"; has "app.calculator.path.uk"; has "app.calculator.path.ru"
 sed -e 's/^          proxy: edge$/          proxy: nginx/' tests/site/sites.yaml > "$bad/sites-proxy.yaml"
 t "validate: невідомий server.proxy — відмова" '!0' env SITES_FILE="$bad/sites-proxy.yaml" bin/site validate
 has "server.proxy"

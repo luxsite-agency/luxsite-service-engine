@@ -12,6 +12,7 @@ use App\Repository\ServiceCalcFactorRepository;
 use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\ServiceCityAware;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +31,7 @@ final class DistrictController extends AbstractController
         private readonly ServiceItemRepository $items,
         private readonly ServiceCalcTypeRepository $calcTypes,
         private readonly ServiceCalcFactorRepository $calcFactors,
+        private readonly CalculatorAvailability $calculator,
     ) {
     }
 
@@ -114,7 +116,8 @@ final class DistrictController extends AbstractController
             'city' => $city,
             'district' => $district,
             'items' => $this->items->findActiveBySite($this->serviceSite($request), $city),
-            'calcTypes' => $this->calcTypes->findActiveForCity($this->serviceSite($request), $city),
+            // міні-калькулятор лише в режимі «за площею»
+            'calcTypes' => $this->calculator->isArea($this->serviceSite($request), $city) ? $this->calcTypes->findActiveForCity($this->serviceSite($request), $city) : [],
             'calcFactors' => $this->calcFactors->findActiveBySiteGrouped($this->serviceSite($request)),
             // всередині району - його місцевості, всередині місцевості - сусіди
             'siblings' => $this->districts->findInGroup($district, $district->isPrimary() ? 40 : 12),

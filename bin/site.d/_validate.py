@@ -139,7 +139,7 @@ def engine_params(engine_dir):
 # Перші сегменти фіксованих маршрутів сайту — як CatalogUrls::RESERVED_SEGMENTS (src/ServiceSite/CatalogUrls.php)
 RESERVED_SEGMENTS = {
     "services", "districts", "blog", "news", "about", "contacts", "faq", "reviews", "privacy-policy",
-    "terms-of-service", "thank-you", "calculator-cleaning", "lead", "sitemap.xml", "robots.txt",
+    "terms-of-service", "thank-you", "calculator-cleaning", "calculator", "lead", "sitemap.xml", "robots.txt",
     "ru", "uk", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
 }
 
@@ -206,6 +206,19 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
             err(f"{where}: app.blog_prefix — сегмент [a-z0-9-] (blog, news…), отримано {blog!r}")
         elif blog in RESERVED_SEGMENTS - {"blog", "news"}:
             err(f"{where}: app.blog_prefix '{blog}' — зарезервований сегмент іншого розділу сайту")
+    # калькулятор (дзеркало App\ServiceSite\CalculatorRoutes::normalizePath і CalculatorAvailability::MODES)
+    mode = pp.get("app.calculator.mode")
+    if mode is not None and mode not in ("auto", "area", "pricelist", "off"):
+        err(f"{where}: app.calculator.mode має бути auto|area|pricelist|off")
+    cpath = pp.get("app.calculator.path")
+    if cpath not in (None, {}, "", []):
+        if not isinstance(cpath, dict) or not isinstance(cpath.get("uk"), str) or not isinstance(cpath.get("ru"), str):
+            err(f"{where}: app.calculator.path — мапа {{uk: '/…/', ru: '/ru/…/'}} або порожньо")
+        else:
+            if not re.fullmatch(r"(/[a-z0-9-]+)+/", cpath["uk"]):
+                err(f"{where}: app.calculator.path.uk — шлях із сегментів [a-z0-9-] зі слешем на кінці, отримано {cpath['uk']!r}")
+            if not re.fullmatch(r"/ru(/[a-z0-9-]+)+/", cpath["ru"]):
+                err(f"{where}: app.calculator.path.ru — шлях /ru/…/ із сегментів [a-z0-9-], отримано {cpath['ru']!r}")
     crm = pp.get("app.crm")
     if crm is not None:
         if not isinstance(crm, dict):

@@ -10,11 +10,12 @@ namespace App\Twig;
 use App\Entity\ServiceItem;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceCity;
-use App\Repository\ServiceCalcTypeRepository;
+use App\EventSubscriber\ServiceHostSubscriber;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -33,16 +34,13 @@ final class ServiceSiteExtension extends AbstractExtension
     /** @var array<int, bool> memo на запит: меню рендериться двічі (шапка + підвал) */
     private array $hasBlog = [];
 
-    /** @var array<int, bool> те саме для калькулятора */
-    private array $hasCalculator = [];
-
     /** @var array<int, int> memo на запит: активних міст сайту (title і H1 відгуків) */
     private array $activeCityCount = [];
 
     public function __construct(
         private readonly ServicePostRepository $posts,
         private readonly ServiceCityRepository $cities,
-        private readonly ServiceCalcTypeRepository $calcTypes,
+        private readonly CalculatorAvailability $calculator,
         private readonly CatalogUrls $catalogUrls,
         private readonly UrlGeneratorInterface $urls,
         private readonly ServiceItemCityRepository $itemTexts,
@@ -66,6 +64,7 @@ final class ServiceSiteExtension extends AbstractExtension
         return [
             new TwigFunction('site_has_blog', $this->siteHasBlog(...)),
             new TwigFunction('site_has_calculator', $this->siteHasCalculator(...)),
+            new TwigFunction('calculator_available', $this->calculatorAvailable(...)),
             new TwigFunction('service_path', $this->servicePath(...)),
             new TwigFunction('city_switcher', $this->citySwitcher(...)),
             new TwigFunction('city_in', $this->cityIn(...)),
@@ -214,11 +213,26 @@ final class ServiceSiteExtension extends AbstractExtension
     }
 
     /**
-     * Калькулятор — функція рушія, але наповнений він не в кожного бренду: без типів у БД пункт меню й посилання на сторінку не показуються.
+     * Чи є калькулятор у поточному місті (CalculatorAvailability: типи прибирання → «за площею», інакше позиції прайсу
+     * з in_calculator → «за прайсом»; app.calculator.mode). Без калькулятора посилання на sv_calculator не рендеряться
+     * (меню, футер, кнопка під цінами, міні-калькулятор) — сторінка відповіла б 404. Місто типово з запиту.
      */
+    public function calculatorAvailable(?ServiceCity $city = null): bool
+    {
+        $request = $this->requests->getMainRequest();
+        $site = $request?->attributes->get(ServiceHostSubscriber::ATTR_SITE);
+        $city ??= $request?->attributes->get(ServiceHostSubscriber::ATTR_CITY);
+        if (!$site instanceof ServiceSite || !$city instanceof ServiceCity) {
+            return false;
+        }
+
+        return $this->calculator->isAvailable($site, $city);
+    }
+
+    /** Старе ім'я calculator_available() (шаблони паків): тепер теж з урахуванням режиму «за прайсом» і міста запиту. */
     public function siteHasCalculator(ServiceSite $site): bool
     {
-        return $this->hasCalculator[$site->getId()] ??= $this->calcTypes->findActiveBySite($site) !== [];
+        return $this->calculatorAvailable();
     }
 
     /**

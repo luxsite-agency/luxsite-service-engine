@@ -1,0 +1,225 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Калькулятор «за прайсом» (CalculatorAvailability::MODE_PRICELIST; зразок — rabotniki.ua/uk/calculator/create):
+   акордеони категорія → послуга, у послузі нумерований список позицій прайсу міста з in_calculator.
+   Рядок: назва | ціна з прайсу (не редагується; без числа — «ціна уточнюється») | обсяг з одиницею (unit або «шт.»,
+   межа max_qty) | разом за рядок. Обсяг 0 = не обрано. Під послугою «Сума», під категорією «Всього», загалом — у підсумку.
+   Підрахунок наживо в JS, авторитетна сума — серверна (PricelistCalc у CalculatorController::submit). #}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ 'calc.title'|trans({}, 'servicesite') }} - {{ site.name }} {{ city.name(locale) }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.calculator_pricelist'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.calculator'|trans({}, 'servicesite')},
+    ]) }}
+{% endblock %}
+
+{% block meta %}
+    <style>
+        .calc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; align-items: start; margin-top: 1.5rem; }
+        .pl-group { border: 1px solid var(--border); border-radius: var(--radius); background: #fff; margin-bottom: 1rem; overflow: hidden; }
+        .pl-group > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .9rem 1.1rem; cursor: pointer; font-weight: 700; font-size: 1.05rem; color: var(--dark); }
+        .pl-group > summary::-webkit-details-marker, .pl-item > summary::-webkit-details-marker { display: none; }
+        .pl-group > summary::before, .pl-item > summary::before { content: '+'; display: inline-block; width: 1.2em; color: var(--accent); font-weight: 700; }
+        .pl-group[open] > summary::before, .pl-item[open] > summary::before { content: '−'; }
+        .pl-group > summary .pl-sum { margin-left: auto; font-size: .9rem; color: var(--muted-text); font-weight: 600; white-space: nowrap; }
+        .pl-group > summary .pl-sum b { color: var(--dark); }
+        .pl-item { border-top: 1px solid var(--bg-muted); }
+        .pl-item > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 1.1rem .7rem 1.6rem; cursor: pointer; font-weight: 600; color: var(--text); }
+        .pl-item > summary .pl-sum { margin-left: auto; font-size: .88rem; color: var(--muted-text); white-space: nowrap; }
+        .pl-item > summary .pl-sum b { color: var(--dark); }
+        .pl-rows { list-style: none; counter-reset: pl; margin: 0; padding: 0 1.1rem .6rem 1.6rem; }
+        .pl-row { counter-increment: pl; display: grid; grid-template-columns: minmax(0, 1fr) 110px 150px 110px; gap: .6rem 1rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--bg-muted); font-size: .95rem; }
+        .pl-row:first-child { border-top: 0; }
+        .pl-row .pl-name::before { content: counter(pl) '. '; color: var(--muted-text); }
+        .pl-row .pl-name .meta { display: block; margin-top: .15rem; }
+        .pl-row .pl-price { text-align: right; white-space: nowrap; color: var(--dark); font-weight: 600; }
+        .pl-row .pl-price.tbd { color: var(--muted-text); font-weight: 400; font-size: .85rem; white-space: normal; }
+        .pl-row .pl-qty { display: flex; align-items: center; gap: .35rem; justify-content: flex-end; }
+        .pl-row .pl-qty button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: #fff; color: var(--dark); font-size: 1rem; line-height: 1; cursor: pointer; }
+        .pl-row .pl-qty button:hover { border-color: var(--accent); color: var(--accent-ink); }
+        .pl-row .pl-qty input { width: 52px; text-align: center; padding: .3rem .2rem; border: 1px solid var(--border); border-radius: 8px; font-size: .95rem; }
+        .pl-row .pl-qty .pl-unit { font-size: .82rem; color: var(--muted-text); min-width: 2.2em; }
+        .pl-row .pl-total { text-align: right; font-weight: 700; color: var(--dark); white-space: nowrap; }
+        .pl-row.picked { background: var(--bg-muted); margin: 0 -1.1rem 0 -1.6rem; padding-left: 1.6rem; padding-right: 1.1rem; }
+        .pl-head { display: grid; grid-template-columns: minmax(0, 1fr) 110px 150px 110px; gap: 1rem; padding: 0 1.1rem .4rem 1.6rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-text); font-weight: 700; }
+        .pl-head span:not(:first-child) { text-align: right; }
+        .calc-summary { position: sticky; top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; box-shadow: 0 10px 30px -22px rgba(18, 58, 65, .5); padding: 1.3rem 1.4rem; }
+        .calc-summary .calc-summary-title { margin: 0 0 .8rem; font-size: 1.15rem; font-weight: 700; }
+        .calc-summary .btn { width: 100%; }
+        .calc-summary .row { display: flex; justify-content: space-between; gap: 1rem; margin: .35rem 0; color: var(--muted-text); font-size: .95rem; }
+        .calc-summary .row.total { border-top: 1px solid var(--border); margin-top: .7rem; padding-top: .7rem; color: var(--dark); font-size: 1.15rem; font-weight: 700; }
+        .calc-summary .row.total b { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+        .calc-summary .min-note { font-size: .82rem; color: var(--muted-text); margin: .2rem 0 0; }
+        .calc-summary form { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }
+        .calc-summary input[type=tel], .calc-summary input[type=text] { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; background: #fff; }
+        .calc-summary input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
+        .calc-summary .disclaimer { font-size: .8rem; color: var(--muted-text); margin: .6rem 0 0; }
+        @media (max-width: 900px) {
+            .calc-layout { grid-template-columns: 1fr; }
+            .calc-summary { position: static; }
+        }
+        @media (max-width: 640px) {
+            .pl-head { display: none; }
+            .pl-row { grid-template-columns: minmax(0, 1fr) auto; }
+            .pl-row .pl-name { grid-column: 1 / -1; }
+            .pl-row .pl-price { text-align: left; }
+            .pl-row .pl-total { grid-column: 2; }
+            .pl-row .pl-qty { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+            .pl-row .pl-price { grid-row: 3; }
+            .pl-row .pl-total { grid-row: 3; }
+        }
+        /* плаваюча CTA не потрібна: форма заявки вже в підсумку */
+        .floating-cta { display: none; }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.calculator'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'calc.title'|trans({}, 'servicesite') }}</h1>
+    <p class="hero-sub">{{ 'calc.pricelist.intro'|trans({}, 'servicesite') }}</p>
+
+    {% for msg in app.flashes('lead_error') %}
+    <p style="color:#b00020;font-weight:600">{{ msg }}</p>
+    {% endfor %}
+
+    {% set tbd = 'calc.pricelist.price_tbd'|trans({}, 'servicesite') %}
+    {% set uah = 'catalog.uah'|trans({}, 'servicesite') %}
+    <div class="calc-layout">
+        <div id="pl-groups">
+            {% for group in groups %}
+            {% set firstGroup = loop.first %}
+            <details class="pl-group" data-group{{ firstGroup ? ' open' }}>
+                <summary>
+                    <span>{{ group.category ? group.category.loc('title', locale) : 'calc.pricelist.other'|trans({}, 'servicesite') }}</span>
+                    <span class="pl-sum">{{ 'calc.pricelist.group_total'|trans({}, 'servicesite') }}: <b data-group-sum>0</b> {{ uah }}</span>
+                </summary>
+                {% for entry in group.items %}
+                <details class="pl-item" data-item{{ loop.first and firstGroup ? ' open' }}>
+                    <summary>
+                        <span>{{ entry.item ? entry.item.loc('title', locale) : 'calc.pricelist.other'|trans({}, 'servicesite') }}</span>
+                        <span class="pl-sum">{{ 'calc.pricelist.subtotal'|trans({}, 'servicesite') }}: <b data-item-sum>0</b> {{ uah }}</span>
+                    </summary>
+                    <div class="pl-head">
+                        <span>{{ 'calc.pricelist.col_name'|trans({}, 'servicesite') }}</span>
+                        <span>{{ 'calc.pricelist.col_price'|trans({}, 'servicesite') }}</span>
+                        <span>{{ 'calc.pricelist.col_qty'|trans({}, 'servicesite') }}</span>
+                        <span>{{ 'calc.pricelist.col_sum'|trans({}, 'servicesite') }}</span>
+                    </div>
+                    <ol class="pl-rows">
+                        {% for price in entry.rows %}
+                        {% set unit = price.loc('unit', locale)|default('')|trim ?: 'calc.pricelist.unit_default'|trans({}, 'servicesite') %}
+                        <li class="pl-row" data-row>
+                            <span class="pl-name">{{ price.loc('name', locale) }}
+                                {%- if price.loc('desc', locale) %}<span class="meta">{{ price.loc('desc', locale) }}</span>{% endif -%}
+                            </span>
+                            {% if price.price is not null %}
+                            <span class="pl-price">{% if price.pricePrefix %}{{ 'prices.from'|trans({}, 'servicesite') }} {% endif %}{{ price.price|number_format(0, '.', ' ') }}</span>
+                            {% else %}
+                            <span class="pl-price tbd">{{ price.loc('priceText', locale) ?? tbd }}</span>
+                            {% endif %}
+                            <span class="pl-qty">
+                                <button type="button" data-step="-1" aria-label="−">−</button>
+                                <input type="number" form="calc-form" name="qty[{{ price.id }}]" value="0" min="0" max="{{ max(1, price.maxQty) }}" inputmode="numeric"
+                                       data-price="{{ price.price ?? '' }}" aria-label="{{ 'calc.pricelist.col_qty'|trans({}, 'servicesite') }}: {{ price.loc('name', locale) }}">
+                                <button type="button" data-step="1" aria-label="+">+</button>
+                                <span class="pl-unit">{{ unit }}</span>
+                            </span>
+                            <span class="pl-total" data-row-sum>{{ price.price is null ? '—' : '0' }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </details>
+                {% endfor %}
+            </details>
+            {% endfor %}
+        </div>
+
+        <aside class="calc-summary">
+            <p class="calc-summary-title">{{ 'calc.summary_title'|trans({}, 'servicesite') }}</p>
+            <div class="row"><span>{{ 'calc.pricelist.selected'|trans({}, 'servicesite') }}</span><span id="calc-count">0</span></div>
+            <div class="row total"><span>{{ 'calc.total_label'|trans({}, 'servicesite') }}</span>
+                <b>{{ 'prices.from'|trans({}, 'servicesite') }} <span id="calc-total">0</span> {{ uah }}</b></div>
+            <p class="min-note" id="calc-tbd-note" hidden>{{ 'calc.pricelist.unpriced'|trans({}, 'servicesite') }} (<span id="calc-tbd-count">0</span>)</p>
+
+            <form id="calc-form" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form>
+                <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+                <input type="hidden" name="loc" value="{{ locale }}">
+                <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+                <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
+                <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+                <button class="btn" type="submit">{{ 'calc.pricelist.submit'|trans({}, 'servicesite') }}</button>
+            </form>
+            {%- set _disclaimer = 'calc.disclaimer'|trans({}, 'servicesite') %}
+            {%- if _disclaimer %}
+            <p class="disclaimer">{{ _disclaimer }}</p>
+            {%- endif %}
+        </aside>
+    </div>
+
+    <script>
+        // Підрахунок наживо: обсяг × ціна з прайсу (data-price); позиції без ціни лічаться окремо як «ціна уточнюється».
+        // Авторитетним є сервер (PricelistCalc) — він перераховує суму при відправці заявки з id і обсягу.
+        (function () {
+            var root = document.getElementById('pl-groups');
+            var fmt = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+            var clamp = function (input) {
+                var v = parseInt(input.value, 10) || 0;
+                return Math.min(Math.max(v, 0), parseInt(input.max, 10) || 1);
+            };
+            var recompute = function () {
+                var total = 0, count = 0, tbd = 0;
+                root.querySelectorAll('[data-group]').forEach(function (group) {
+                    var gSum = 0;
+                    group.querySelectorAll('[data-item]').forEach(function (item) {
+                        var iSum = 0;
+                        item.querySelectorAll('[data-row]').forEach(function (row) {
+                            var input = row.querySelector('input[type=number]');
+                            var qty = clamp(input);
+                            var price = input.dataset.price === '' ? null : parseFloat(input.dataset.price);
+                            row.classList.toggle('picked', qty > 0);
+                            if (qty > 0) { count++; }
+                            if (price === null) {
+                                if (qty > 0) { tbd++; }
+                                return;
+                            }
+                            var sum = Math.ceil(price * qty);
+                            row.querySelector('[data-row-sum]').textContent = fmt(sum);
+                            iSum += sum;
+                        });
+                        item.querySelector('[data-item-sum]').textContent = fmt(iSum);
+                        gSum += iSum;
+                    });
+                    group.querySelector('[data-group-sum]').textContent = fmt(gSum);
+                    total += gSum;
+                });
+                document.getElementById('calc-total').textContent = fmt(total);
+                document.getElementById('calc-count').textContent = String(count);
+                document.getElementById('calc-tbd-count').textContent = String(tbd);
+                document.getElementById('calc-tbd-note').hidden = tbd === 0;
+            };
+            root.addEventListener('click', function (e) {
+                var btn = e.target.closest('.pl-qty button');
+                if (!btn) { return; }
+                var input = btn.parentElement.querySelector('input');
+                input.value = (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.step, 10);
+                input.value = clamp(input);
+                recompute();
+            });
+            root.addEventListener('input', function (e) {
+                if (e.target.matches('input[type=number]')) { recompute(); }
+            });
+            root.addEventListener('change', function (e) {
+                if (e.target.matches('input[type=number]')) { e.target.value = clamp(e.target); recompute(); }
+            });
+            recompute();
+        })();
+    </script>
+{% endblock %}

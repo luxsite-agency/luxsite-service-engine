@@ -36,6 +36,12 @@ parameters:
     app.catalog.url_scheme: flat
     # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
     app.blog_prefix: blog
+    # Калькулятор (docs/site-pack.md «Калькулятор»): режим auto = «за площею», якщо в сайту є типи прибирання (service_calc_type),
+    # інакше «за прайсом» — позиції прайсу міста з in_calculator=1 (стандарт рушія з 24.10.2026); area|pricelist — примусово; off — нема.
+    app.calculator.mode: auto
+    # Адреса калькулятора {uk: '/…/', ru: '/ru/…/'}; порожньо = дефолт за режимом: площа — /calculator-cleaning/, прайс — /calculator/.
+    # Задана паком — обидві типові адреси відповідають 301 на неї (з переносом query).
+    app.calculator.path: {}
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
     #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
@@ -176,6 +182,10 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+
+    # маршрути калькулятора (адреса з паку або типова за режимом) — Kernel::configureRoutes імпортує тип «calculator»
+    App\ServiceSite\CalculatorRouteLoader:
+        tags: [routing.loader]
 
     # Активна CRM сайту за app.crm.system - те, що отримують LeadController/CalculatorController.
     # autoconfigure: false - інакше аліас сам потрапив би в тег app.lead_crm (циклічна залежність реєстру).

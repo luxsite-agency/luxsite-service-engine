@@ -161,9 +161,16 @@
             </table>
         </div>
         {% endfor %}
+        {#- примітка «ціни орієнтовні» (ключ prices.note; пак перекриває, порожньо = нема) #}
+        {%- set _pricesNote = 'prices.note'|trans({}, 'servicesite') %}
+        {%- if _pricesNote %}
+        <p class="meta prices-note">{{ _pricesNote }}</p>
+        {%- endif %}
+        {#- кнопка повного розрахунку лише коли калькулятор у місті є (за площею або за прайсом), інакше вона вела б на 404 #}
+        {%- if calculator_available() %}
         <p class="prices-calc-link">
             <a class="btn" href="{{ path('sv_calculator') }}">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>
-        </p>
+        </p>{% endif %}
     </section>
     {% endif %}
 
