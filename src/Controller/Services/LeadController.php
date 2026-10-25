@@ -13,6 +13,7 @@ use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Заявка з форми (телефон + ім'я + повідомлення). Виправляє типовий борг
  * Joomla-сайтів: персистенція в БД, маршрутизація на email МІСТА (не хардкод),
- * rate limit + honeypot + CSRF. Мейл шле LeadNotifier (best effort: заявка
+ * rate limit + CSRF + LeadSpamGuard (honeypot, мітка часу, сміття в полях). Мейл шле LeadNotifier (best effort: заявка
  * вже в БД, падіння SMTP її не втрачає).
  */
 final class LeadController extends AbstractController
@@ -40,6 +41,7 @@ final class LeadController extends AbstractController
         private readonly LeadAttribution $attribution,
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadSpamGuard $spamGuard,
     ) {
     }
 
@@ -63,8 +65,14 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
+        // honeypot, мітка часу показу форми, сміття в полях (SQL-проби сканерів) - див. LeadSpamGuard
+        if (null !== $reason = $this->spamGuard->blockReason($request)) {
+            $this->spamGuard->logBlocked($request, $reason, 'lead');
+            if (str_starts_with($reason, 'too-fast')) {
+                // людина з автозаповненням теж може встигнути - повтор пройде
+                $this->addFlash('lead_error', 'Не вдалося надіслати, спробуйте ще раз.');
+            }
+
             return $this->redirect($back);
         }
 
