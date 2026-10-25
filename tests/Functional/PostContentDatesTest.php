@@ -73,6 +73,9 @@ final class PostContentDatesTest extends HttpKernelTestCase
         self::assertLessThan(60, abs(time() - $post->getContentUpdatedAt()->getTimestamp()));
         self::assertTrue($post->isUpdated(), 'оновлено через 30 днів після публікації');
         self::assertSame($post->getContentUpdatedAt()->format('c'), $this->dateModified());
+        // sitemap: lastmod статті — теж дата змістовного оновлення, а не публікації
+        $sitemap = (string) $this->http('GET', 'https://' . $this->host . '/sitemap.xml')->getContent();
+        self::assertMatchesRegularExpression('~/blog/stattia/</loc>\s*<lastmod>' . $post->getContentUpdatedAt()->format('Y-m-d') . '</lastmod>~', $sitemap);
     }
 
     public function testModifiedAtAndNormalize(): void
@@ -85,6 +88,8 @@ final class PostContentDatesTest extends HttpKernelTestCase
         $p->setContentUpdatedAt(new \DateTimeImmutable('2026-09-01'));
         self::assertSame('2026-10-01', $p->modifiedAt()?->format('Y-m-d'), 'оновлення раніше за публікацію — дата публікації');
         self::assertSame(PostContentDateListener::normalize('<p>Тест — «так»&nbsp;Ok</p>'), PostContentDateListener::normalize('Тест - "так" ok'));
+        self::assertSame(PostContentDateListener::normalize("\u{0439}"), PostContentDateListener::normalize("\u{0438}\u{0306}"), 'й у NFC і NFD — те саме');
+        self::assertNotSame(PostContentDateListener::normalize("a\xff"), PostContentDateListener::normalize("b\xff"), 'невалідний UTF-8 не зводиться до порожнього рядка');
     }
 
     private function dateModified(): string

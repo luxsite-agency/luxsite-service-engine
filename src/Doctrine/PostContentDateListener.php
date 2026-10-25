@@ -41,11 +41,16 @@ final class PostContentDateListener
         }
     }
 
-    /** Лише літери й цифри в нижньому регістрі: відкидає розмітку й типографіку */
+    /**
+     * Лише літери й цифри в нижньому регістрі: відкидає розмітку й типографіку. NFC — щоб «й» у розкладеній формі (NFD) не
+     * читалось як зміна; невалідний UTF-8 (preg → null) лишає текст як є, а не порожній рядок (інакше два різні невалідні
+     * тексти збіглися б).
+     */
     public static function normalize(string $html): string
     {
         $text = html_entity_decode(strip_tags($html), \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+        $text = \Normalizer::normalize($text, \Normalizer::FORM_C) ?: $text;
 
-        return mb_strtolower((string) preg_replace('~[^\p{L}\p{N}]+~u', '', $text));
+        return mb_strtolower(preg_replace('~[^\p{L}\p{N}]+~u', '', $text) ?? $text);
     }
 }
