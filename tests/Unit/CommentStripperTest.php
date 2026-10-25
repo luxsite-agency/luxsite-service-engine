@@ -197,7 +197,10 @@ final class CommentStripperTest extends TestCase
     {
         $css = (string) file_get_contents(\dirname(__DIR__, 2) . '/templates/services/base.html.twig');
         preg_match('~<style>(.*?)</style>~s', $css, $m);
-        $src = (string) preg_replace('~\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}~s', 'x', $m[1]);
+        // коментарі в стилях рушія — Twig {# … #} (у вивід не потрапляють, stage/satellites #32); для перевірки стриппера на
+        // живому CSS повертаємо їх на ті самі місця як /* … */ (без дужок усередині, щоб лічильник { нижче був чесним)
+        $src = (string) preg_replace_callback('~\{#-?\s*(.*?)\s*-?#\}~s', static fn (array $c): string => '/* ' . strtr($c[1], ['{' => '(', '}' => ')']) . ' */', $m[1]);
+        $src = (string) preg_replace('~\{\{.*?\}\}|\{%.*?%\}~s', 'x', $src);
         self::assertGreaterThan(20, substr_count($src, '/*'), 'у стилях рушія є коментарі');
         $out = $this->s->css($src);
         self::assertStringNotContainsString('/*', $out);

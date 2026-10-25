@@ -257,3 +257,25 @@ legal.terms_html: |
     <p>Unless stated otherwise, all text and image content on %domain% belongs to %site%. You may quote short excerpts from our articles provided that you include an active link to the original page on %domain%.</p>
     <h2>Contact Us</h2>
     <p>If you have any questions about these terms, please send a message through the <a href="%contact%">contact form</a>.</p>
+
+# Калькулятор за прайсом і примітка під цінами (main v0.9.40, #29); у контентних брендів не рендеряться
+prices.note: Prices on the site are indicative. The final cost is confirmed by the specialist after the details are clarified.
+calc.h1: '%title% %in% %city%'
+calc.city_note: 'Calculator prices are for %cityGen%. In other cities where we work, the cost may differ.'
+calc.pricelist.intro: Select services and enter the quantity - the estimated cost appears right away. The final amount is confirmed by the specialist after the details are clarified.
+calc.pricelist.col_name: Service
+calc.pricelist.col_price: Price, UAH
+calc.pricelist.col_qty: Quantity
+calc.pricelist.col_sum: Total, UAH
+calc.pricelist.unit_default: pcs
+calc.pricelist.price_tbd: price on request
+calc.pricelist.other: Other services
+calc.pricelist.subtotal: Subtotal
+calc.pricelist.group_total: Total
+calc.pricelist.selected: Items selected
+calc.pricelist.unpriced: + price on request
+calc.pricelist.unpriced_count: items - price on request
+calc.pricelist.submit: Send request with estimate
+calc.pricelist.empty: Select at least one item and enter the quantity.
+calc.pricelist.message_title: Price list estimate
+meta.calculator_pricelist: 'Online cost calculator %in% %city%: choose services from the price list, enter the quantity and see the estimated price right away.'

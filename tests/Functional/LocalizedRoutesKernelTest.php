@@ -46,7 +46,8 @@ final class LocalizedRoutesKernelTest extends KernelTestCase
             self::assertSame($routes->get($g . '.uk')?->getPath(), $route->getPath(), "$g: шлях без префікса той самий");
             $params = [];
             foreach ($route->compile()->getPathVariables() as $var) {
-                $params[$var] = $var === 'page' ? '2' : 'x';
+                // _calc — сегмент калькулятора (вимога calculator-cleaning|calculator, у запиті його ставить CalculatorRouteSubscriber)
+                $params[$var] = match ($var) { 'page' => '2', '_calc' => 'calculator', default => 'x' };
             }
             self::assertStringNotContainsString('/en/', $gen->generate($g, $params), "$g генерується без префікса");
         }
