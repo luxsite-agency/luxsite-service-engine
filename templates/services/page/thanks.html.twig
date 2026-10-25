@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block body %}
-    {# конверсія: подія летить у dataLayer, звідти GTM робить ціль GA4. Перелік подій — app.lead_events паку
+    {#- конверсія: подія летить у dataLayer, звідти GTM робить ціль GA4. Перелік подій — app.lead_events паку
        (дефолт [generate_lead]; чужий контейнер може чекати form_submit) — усі з тими самими полями.
        src=dup - повторна відправка того самого номера: конверцію вдруге не рахуємо #}
     {% if app.request.query.get('src') != 'dup' %}

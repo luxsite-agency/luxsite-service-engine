@@ -1,5 +1,5 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Інлайн-форма заявки: телефон обов'язковий, ім'я/повідомлення опційні.
+{#- Інлайн-форма заявки: телефон обов'язковий, ім'я/повідомлення опційні.
    Honeypot-поле website приховане; CSRF-токен sv_lead.
    Параметри include: magnet (bool, головна — лід-магніт: абзац lead.subtitle під заголовком і месенджери міста з підписом
    lead.messengers_hint під формою; порожні ключі = елементів нема), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
@@ -7,7 +7,7 @@
 {% set magnet = magnet|default(false) %}
 {% set lead_type = lead_type|default('form') %}
 <section class="block lead-form{% if magnet %} lead-magnet{% endif %}" id="lead">
-    {# не h2: заголовок форми не входить у смислову структуру сторінки (SEO) #}
+    {#- не h2: заголовок форми не входить у смислову структуру сторінки (SEO) #}
     <p class="form-title">{{ 'lead.title'|trans({}, 'servicesite') }}</p>
     {% if magnet %}{% set _sub = 'lead.subtitle'|trans({}, 'servicesite') %}{% if _sub and _sub != 'lead.subtitle' %}<p class="form-sub">{{ _sub }}</p>{% endif %}{% endif %}
     {% for msg in app.flashes('lead_success') %}

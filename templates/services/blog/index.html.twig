@@ -6,7 +6,7 @@
 {% block metaDescription %}{{ 'meta.blog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
 
 {% block meta %}
-    {# сторінки списку: prev/next для обходу (Google їх не вимагає, але не шкодять); canonical — своя адреса на апексі #}
+    {#- сторінки списку: prev/next для обходу (Google їх не вимагає, але не шкодять); canonical — своя адреса на апексі #}
     {% if page|default(1) > 1 %}<link rel="prev" href="{{ page == 2 ? url('sv_blog', {_locale: locale}) : url('sv_blog_page', {page: page - 1, _locale: locale}) }}">{% endif %}
     {% if page|default(1) < pages|default(1) %}<link rel="next" href="{{ url('sv_blog_page', {page: page|default(1) + 1, _locale: locale}) }}">{% endif %}
 {% endblock %}

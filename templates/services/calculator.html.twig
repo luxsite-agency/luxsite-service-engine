@@ -73,7 +73,7 @@
     <p style="color:#b00020;font-weight:600">{{ msg }}</p>
     {% endfor %}
 
-    {# id типу з передвибору міні-калькулятора або перший у списку #}
+    {#- id типу з передвибору міні-калькулятора або перший у списку #}
     {% set checkedTypeId = (types|filter(t => t.id == presetType)|first ?: types|first).id %}
     {% set areaValue = presetArea >= areaMin and presetArea <= areaMax ? presetArea : 50 %}
 

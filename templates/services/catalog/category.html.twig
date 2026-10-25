@@ -1,11 +1,11 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Сторінка категорії: схеми URL nested (/services/<кат>/) і root (/<кат>/), маршрут sv_category з config/routes/catalog/*.yaml #}
+{#- Сторінка категорії: схеми URL nested (/services/<кат>/) і root (/<кат>/), маршрут sv_category з config/routes/catalog/*.yaml #}
 {% extends 'services/base.html.twig' %}
 
-{# міський текст категорії (override = ServiceCategoryCity) має пріоритет; порожні поля падають на категорію #}
+{#- міський текст категорії (override = ServiceCategoryCity) має пріоритет; порожні поля падають на категорію #}
 {% block title %}{{ ov(override|default(null), category, 'metaTitle', locale) ?? (ov(override|default(null), category, 'title', locale) ~ ' - ' ~ site.name ~ ' ' ~ city.name(locale)) }}{% endblock %}
 
-{# meta description: своя → лід (desc без HTML) → загальний текст каталогу #}
+{#- meta description: своя → лід (desc без HTML) → загальний текст каталогу #}
 {% block metaDescription %}{{ ov(override|default(null), category, 'metaDesc', locale) ?? (ov(override|default(null), category, 'desc', locale) ? ov(override|default(null), category, 'desc', locale)|striptags|trim|slice(0, 300) : ('meta.catalog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale)}, 'servicesite'))) }}{% endblock %}
 {% block meta %}{% if not category.landing %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block ogImage %}{{ category.imageName ? '/media/service_category/' ~ category.imageName : (theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '') }}{% endblock %}
@@ -27,9 +27,9 @@
         {{ ov(override|default(null), category, 'title', locale) }}
     </nav>
     {% set _cdesc = ov(override|default(null), category, 'desc', locale) %}
-    {# лід категорії (якщо є) іде під H1, а опис — повним HTML після карток; без ліду — як було: опис без HTML під H1 #}
+    {#- лід категорії (якщо є) іде під H1, а опис — повним HTML після карток; без ліду — як було: опис без HTML під H1 #}
     {% set _clead = category.loc('lead', locale) %}
-    {# верх як на сторінці послуги (на всіх сайтах, рішення власника 11.10.2026): H1 + лід (desc без HTML) + кнопки; картинка справа #}
+    {#- верх як на сторінці послуги (на всіх сайтах, рішення власника 11.10.2026): H1 + лід (desc без HTML) + кнопки; картинка справа #}
     <div class="hero">
         <div class="hero-content">
             <h1>{{ ov(override|default(null), category, 'title', locale) }}</h1>
@@ -52,9 +52,9 @@
     <div class="grid">
         {% for item in items %}
         <div class="card">
-            {# назва — з самої послуги (без міста: «у списку назва міста виглядає спамно», власник 11.10.2026); лід — з перевизначення міста #}
-            {# h2: на сторінці категорії після h1 одразу картки — h3 ламав порядок заголовків (Lighthouse heading-order) #}
-            {# коротка назва (name), якщо задана; інакше повна — як було #}
+            {#- назва — з самої послуги (без міста: «у списку назва міста виглядає спамно», власник 11.10.2026); лід — з перевизначення міста #}
+            {#- h2: на сторінці категорії після h1 одразу картки — h3 ламав порядок заголовків (Lighthouse heading-order) #}
+            {#- коротка назва (name), якщо задана; інакше повна — як було #}
             <h2 class="card-name"><a href="{{ service_path(item, locale) }}">{{ item.shortName(locale) }}</a></h2>
             {% set _ispecs = custom_fields(item, locale)|filter(f => not f.filter) %}
             {% if _ispecs is not empty %}

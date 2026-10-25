@@ -1,18 +1,18 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Єдина точка рендера зображень: якщо колись переїдемо на Thumbor/img.<домен>,
+{#- Єдина точка рендера зображень: якщо колись переїдемо на Thumbor/img.<домен>,
    міняємо URL тільки тут. type = news|event|place, filter = teaser|hero|thumb #}
 {% macro img(type, item, filter, style = '') %}
     {%- if item.imageName -%}
         <img src="{{ asset('media/' ~ type ~ '/' ~ item.imageName)|imagine_filter(filter) }}"
              alt="{{ item.imageAlt ?: item }}"
-             {# hero — LCP-елемент: lazy зіпсує метрику, тому пріоритет замість відкладання #}
+             {#- hero — LCP-елемент: lazy зіпсує метрику, тому пріоритет замість відкладання #}
              {% if filter == 'hero' %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
              {% if filter == 'teaser' %}width="480" height="270"{% elseif filter == 'hero' %}width="1200" height="630"{% endif %}
              {% if style %}style="{{ style }}"{% endif %}>
     {%- endif -%}
 {% endmacro %}
 
-{# URL зображення під og:image / JSON-LD (порожньо, якщо зображення нема).
+{#- URL зображення під og:image / JSON-LD (порожньо, якщо зображення нема).
    imagine_filter повертає абсолютний URL з поточним хостом. #}
 {% macro imageUrl(type, item, filter = 'hero') %}
     {%- if item.imageName -%}{{ asset('media/' ~ type ~ '/' ~ item.imageName)|imagine_filter(filter) }}{%- endif -%}

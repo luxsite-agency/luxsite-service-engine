@@ -1,7 +1,7 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends 'services/base.html.twig' %}
 
-{# title/H1 — ключі паку faq.page_title / faq.page_h1 (дефолт рушія = «Питання й відповіді - Бренд Місто»);
+{#- title/H1 — ключі паку faq.page_title / faq.page_h1 (дефолт рушія = «Питання й відповіді - Бренд Місто»);
    параметри всередині кожного блоку: set поза блоком дочірнього шаблону в блоках не видно #}
 {% block title %}{{ 'faq.page_title'|trans({'%faq_title%': 'nav.faq'|trans({}, 'servicesite'), '%site%': site.name, '%city%': city.name(locale), '%cityGen%': city.loc('nameGen', locale) ?? city.name(locale), '%cityLoc%': city.loc('nameLoc', locale) ?? city.name(locale)}, 'servicesite') }}{% endblock %}
 

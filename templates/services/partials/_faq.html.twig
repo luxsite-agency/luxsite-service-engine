@@ -1,5 +1,5 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Акордеон FAQ: faq = list of {q, a}. JSON-LD FAQPage — на етапі SEO (S7). #}
+{#- Акордеон FAQ: faq = list of {q, a}. JSON-LD FAQPage — на етапі SEO (S7). #}
 {% if faq is not empty %}
 <section class="block{% if muted|default(false) %} muted{% endif %}{% if centerTitle|default(false) %} center{% endif %}">
     {% if faqTitle is not defined or faqTitle is not same as(false) %}
