@@ -29,6 +29,7 @@ use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -65,6 +66,7 @@ final class CalculatorController extends AbstractController
         private readonly LeadCrmConnector $crm,
         private readonly TranslatorInterface $translator,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadSpamGuard $spamGuard,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceLeadRepository $leads,
         private readonly CalculatorAvailability $availability,
@@ -179,8 +181,14 @@ final class CalculatorController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
+        // honeypot, мітка часу показу форми, сміття в полях (SQL-проби сканерів) - див. LeadSpamGuard
+        if (null !== $reason = $this->spamGuard->blockReason($request)) {
+            $this->spamGuard->logBlocked($request, $reason, 'calculator');
+            if (str_starts_with($reason, 'too-fast')) {
+                // людина з автозаповненням теж може встигнути - повтор пройде
+                $this->addFlash('lead_error', 'Не вдалося надіслати, спробуйте ще раз.');
+            }
+
             return $this->redirect($back);
         }
 
