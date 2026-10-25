@@ -128,7 +128,7 @@ final class SitemapController extends AbstractController
         if ($posts !== [] && $blogBelongsHere) {
             $add('sv_blog');
             foreach ($posts as $post) {
-                $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l)], $post->getPublishedAt());
+                $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l)], $post->modifiedAt());
             }
         }
         if ($site->aboutFor($this->container->get(SiteLocales::class)->default()) !== null) {
@@ -196,7 +196,7 @@ final class SitemapController extends AbstractController
             }
             $withPosts = ['cat' => [], 'author' => []];
             foreach ($posts as $post) {
-                $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l) ?: '-'], $post->getPublishedAt(), $post->existsIn(...));
+                $add('sv_blog_post', static fn (string $l): array => ['slug' => $post->slug($l) ?: '-'], $post->modifiedAt(), $post->existsIn(...));
                 if ($post->getCategory() !== null) {
                     $withPosts['cat'][$post->getCategory()->getId()] = true;
                 }
