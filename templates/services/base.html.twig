@@ -26,7 +26,8 @@
         {% if theme.url('favicon_ico') %}<link rel="icon" href="{{ theme.url('favicon_ico') }}" sizes="32x32">{% endif ~%}
         {% if theme.url('favicon_png') %}<link rel="icon" type="image/png" href="{{ theme.url('favicon_png') }}" sizes="192x192">{% endif ~%}
         {% if theme.url('apple_touch_icon') %}<link rel="apple-touch-icon" href="{{ theme.url('apple_touch_icon') }}">{% endif ~%}
-        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% endif ~%}
+        {# pageNoindex — сторінка, однакова на всіх хостах, поза індексом лише на цьому місті (юридичні: app.legal_noindex_cities) -#}
+        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% elseif pageNoindex|default(false) %}<meta name="robots" content="noindex, follow">{% endif ~%}
         {# canonicalUrls приходить лише там, де сторінка однакова в усіх містах
            (блог): тоді і canonical, і hreflang ведуть на головний домен, щоб
            чотири копії не конкурували між собою. Перемикач мов у підвалі

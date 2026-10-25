@@ -131,9 +131,12 @@ final class SitemapController extends AbstractController
         $add('sv_faq');
         $add('sv_contacts');
         $add('sv_reviews');
-        // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія
-        $add('sv_privacy');
-        $add('sv_terms');
+        // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія; на неапексних містах пак може
+        // закрити їх від індексу (app.legal_noindex_cities) — тоді й у карті їм не місце
+        if (!$this->getParameter('app.legal_noindex_cities') || $apex === null || $apex->getId() === $city->getId()) {
+            $add('sv_privacy');
+            $add('sv_terms');
+        }
 
         $response = $this->render('services/sitemap.xml.twig', ['entries' => $entries]);
         $response->headers->set('Content-Type', 'application/xml; charset=UTF-8');

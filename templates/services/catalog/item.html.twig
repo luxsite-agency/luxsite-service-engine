@@ -99,7 +99,8 @@
         }}) %}
     {% endif %}
     {{ schema.ld(svc) }}
-    {{ schema.faqPage((override is defined and override and override.loc('faq', locale)) ? override.loc('faq', locale) : (item.loc('faq', locale) ?? [])) }}
+    {# serviceFaq — з контролера: FAQ міста або FAQ послуги, коли це апекс чи пак дозволяє (app.catalog.faq_city_fallback) -#}
+    {{ schema.faqPage(serviceFaq is defined ? serviceFaq : ((override is defined and override and override.loc('faq', locale)) ? override.loc('faq', locale) : (item.loc('faq', locale) ?? []))) }}
 {% endblock %}
 
 {# міський текст має пріоритет; порожні поля падають на загальні -#}
@@ -218,7 +219,7 @@
     } %}
     {% endif %}
 
-    {% include 'services/partials/_faq.html.twig' with {faq: (txt and txt.loc('faq', locale)) ? txt.loc('faq', locale) : (item.loc('faq', locale) ?? [])} %}
+    {% include 'services/partials/_faq.html.twig' with {faq: serviceFaq is defined ? serviceFaq : ((txt and txt.loc('faq', locale)) ? txt.loc('faq', locale) : (item.loc('faq', locale) ?? []))} %}
 
     {% include 'services/partials/_lead_form.html.twig' %}
 
