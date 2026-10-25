@@ -204,7 +204,7 @@ final class BlogController extends AbstractController
 
     /**
      * Тег контентного сайту: /<блог>/tag/<slug>/ (24.10.2026, люди з прямою мовою від студії). Адреса однакова й при
-     * рубриках від кореня. Менше ніж ServicePostTag::INDEX_MIN_POSTS статей мовою сторінки — noindex, follow.
+     * рубриках від кореня. Індексується з ServicePostTag::INDEX_MIN_POSTS статей мовою сторінки (з першої), без статей — noindex, follow.
      */
     #[Route(
         path: ['uk' => '/{_blog}/tag/{slug}/', 'ru' => '/ru/{_blog}/tag/{slug}/'],
@@ -318,7 +318,7 @@ final class BlogController extends AbstractController
             'category' => $category,
             'author' => $author,
             'tag' => $tag,
-            // тег з малою кількістю статей — тонка сторінка: noindex, follow (посилання на статті лишаються робочими)
+            // тег без статей мовою сторінки (менше INDEX_MIN_POSTS) — порожня сторінка: noindex, follow
             'noindex' => $tag !== null && $total < ServicePostTag::INDEX_MIN_POSTS,
             'categories' => $this->categories->findActiveBySite($site, $locale),
             'page' => $page,

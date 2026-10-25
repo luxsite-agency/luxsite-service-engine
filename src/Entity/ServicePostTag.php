@@ -35,8 +35,11 @@ class ServicePostTag implements TimestampableInterface
     use LocalizedFieldsTrait;
     use TimestampsTrait;
 
-    /** Сторінка тегу з меншою кількістю статей мовою сторінки — noindex, follow і поза sitemap */
-    public const INDEX_MIN_POSTS = 3;
+    /**
+     * Сторінка тегу з меншою кількістю статей мовою сторінки — noindex, follow і поза sitemap. 1 — індексується з першої статті
+     * (рішення власника 25.10.2026: збирати трафік на особистості); noindex лише тег без статей.
+     */
+    public const INDEX_MIN_POSTS = 1;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

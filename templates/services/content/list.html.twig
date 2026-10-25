@@ -35,7 +35,7 @@
 {% block metaDescription %}{{ _desc }}{% endblock %}
 
 {% block meta %}
-    {# тег з малою кількістю статей (BlogController: noindex) — не в індекс, але посилання на статті рахуються #}
+    {# тег без статей мовою сторінки (BlogController: noindex) — не в індекс; з першої статті індексується #}
     {% if noindex|default(false) and not city.noindex %}<meta name="robots" content="noindex, follow">{% endif %}
     {% if page > 1 %}<link rel="prev" href="{{ page == 2 ? url(_route, _params|merge({_locale: locale})) : url(_pageRoute, _params|merge({page: page - 1, _locale: locale})) }}">{% endif %}
     {% if page < pages %}<link rel="next" href="{{ url(_pageRoute, _params|merge({page: page + 1, _locale: locale})) }}">{% endif %}

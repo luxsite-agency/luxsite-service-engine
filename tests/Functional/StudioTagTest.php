@@ -20,7 +20,7 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Теги статей з панелі (24.10.2026, новинні бренди — люди з прямою мовою): tags = [{name, slug}] шукається за слагом серед
  * тегів бренду, нового нема — створюється з назвою; набір поста замінюється повністю ([] — без тегів), без поля — не
- * чіпається; рубрика окремо. Сторінка /<блог>/tag/<slug>/ з пагінацією: до 3 статей — noindex, follow і поза sitemap.
+ * чіпається; рубрика окремо. Сторінка /<блог>/tag/<slug>/ з пагінацією індексується з першої статті (25.10.2026); без статей — noindex, follow і поза sitemap.
  */
 final class StudioTagTest extends HttpKernelTestCase
 {
@@ -231,29 +231,36 @@ final class StudioTagTest extends HttpKernelTestCase
         $oleh = ['name' => 'Олег Григоров', 'slug' => 'oleh-hryhorov'];
         $url = 'https://' . $this->host . '/novyny/tag/oleh-hryhorov/';
         self::assertSame(201, $this->put('p1', '00000000-0000-4000-8000-000000000101', 'novyna-1', ['tags' => [$oleh]])->getStatusCode());
-        self::assertSame(201, $this->put('p2', '00000000-0000-4000-8000-000000000102', 'novyna-2', ['tags' => [$oleh]])->getStatusCode());
 
         $page = $this->get($url);
         self::assertSame(200, $page->getStatusCode());
         $html = (string) $page->getContent();
-        self::assertStringContainsString('<meta name="robots" content="noindex, follow">', $html, 'дві статті — noindex');
+        self::assertStringNotContainsString('noindex', $html, 'одна стаття — індексується (рішення власника 25.10.2026)');
         self::assertStringContainsString('<link rel="canonical" href="' . $url . '">', $html);
         self::assertStringContainsString('<h1>Олег Григоров</h1>', $html);
         self::assertStringContainsString('"@type":"BreadcrumbList"', $html);
         self::assertStringContainsString('/novyny/novyna-1/', $html);
-        self::assertStringNotContainsString('/novyny/tag/oleh-hryhorov/', $this->sitemap(), 'noindex-тег поза sitemap');
+        self::assertStringContainsString('<loc>' . $url . '</loc>', $this->sitemap(), 'тег з першої статті — у sitemap');
+
+        // тег без статей (стаття прибрала його) — сторінка є, але noindex, follow і поза sitemap
+        $empty = 'https://' . $this->host . '/novyny/tag/bez-statei/';
+        self::assertSame(201, $this->put('p0', '00000000-0000-4000-8000-000000000100', 'novyna-0', ['tags' => [['name' => 'Без статей', 'slug' => 'bez-statei']]])->getStatusCode());
+        self::assertSame(200, $this->put('p0', '00000000-0000-4000-8000-000000000100', 'novyna-0', ['tags' => []])->getStatusCode());
+        $html = (string) $this->get($empty)->getContent();
+        self::assertStringContainsString('<meta name="robots" content="noindex, follow">', $html);
+        self::assertStringNotContainsString($empty, $this->sitemap());
 
         // стаття показує тег посиланням і в keywords
         $post = (string) $this->get('https://' . $this->host . '/novyny/novyna-1/')->getContent();
         self::assertStringContainsString('<a href="/novyny/tag/oleh-hryhorov/" rel="tag">Олег Григоров</a>', $post);
         self::assertStringContainsString('"keywords":["Олег Григоров"]', $post);
 
-        // третя стаття — сторінка індексується й потрапляє в sitemap; 2 на сторінку (app.brands) — друга сторінка
+        // три статті при 2 на сторінку (app.brands) — друга сторінка
+        self::assertSame(201, $this->put('p2', '00000000-0000-4000-8000-000000000102', 'novyna-2', ['tags' => [$oleh]])->getStatusCode());
         self::assertSame(201, $this->put('p3', '00000000-0000-4000-8000-000000000103', 'novyna-3', ['tags' => [$oleh]])->getStatusCode());
         $html = (string) $this->get($url)->getContent();
         self::assertStringNotContainsString('noindex', $html);
         self::assertStringContainsString('<link rel="next" href="' . $url . 'page/2/">', $html);
-        self::assertStringContainsString('<loc>' . $url . '</loc>', $this->sitemap());
         self::assertSame(200, $this->get($url . 'page/2/')->getStatusCode());
         $first = $this->get($url . 'page/1/');
         self::assertSame(301, $first->getStatusCode());
