@@ -62,6 +62,12 @@ parameters:
         uk: { hreflang: uk-UA, og: uk_UA, schema: uk-UA, label: UA }
         ru: { hreflang: ru-UA, og: ru_UA, schema: ru-UA, label: RU }
         en: { hreflang: en, og: en_US, schema: en, label: EN }
+    # Калькулятор (docs/site-pack.md «Калькулятор»): режим auto = «за площею», якщо в сайту є типи прибирання (service_calc_type),
+    # інакше «за прайсом» — позиції прайсу міста з in_calculator=1 (стандарт рушія з 24.10.2026); area|pricelist — примусово; off — нема.
+    app.calculator.mode: auto
+    # Адреса калькулятора {uk: '/…/', ru: '/ru/…/'}; порожньо = дефолт за режимом: площа — /calculator-cleaning/, прайс — /calculator/.
+    # Задана паком — обидві типові адреси відповідають 301 на неї (з переносом query).
+    app.calculator.path: {}
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
     #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
@@ -80,6 +86,8 @@ parameters:
     # автентифікацій з IP за хвилину
     app.admin_api_token_max_days: 90
     app.admin_api_auth_rate_limit: 30
+    # фото через API (…/image): завантажень на токен за хвилину
+    app.admin_api_image_rate_limit: 30
     # скільки секунд другий запис живої теми чекає, поки перший (з рендером сторінок) відпустить замок; далі 409
     app.theme_lock_wait: 30
     # Microsoft Clarity (id проєкту, напр. qo204yt1uv) — тег у <head> поруч із GTM на всіх хостах сайту; порожньо = без тега.
@@ -94,6 +102,12 @@ parameters:
     # Події dataLayer після успішної заявки (/thanks): кожна з тими самими полями lead_type, city, site_host. Пак із чужим
     # GTM, де ціль GA4 висить на іншій події, додає її: [generate_lead, form_submit]
     app.lead_events: [generate_lead]
+    # Чистий HTML на хостах сайтів (вимога власника 25.10.2026, docs/site-pack.md «Чистий HTML»): з відповідей text/html прибираються
+    # коментарі розробника — HTML <!-- -->, CSS /* */ у <style>, JS /* */ і // в інлайн-скриптах (HtmlCommentsSubscriber);
+    # статика теми в релізі — app:html:strip-static при deploy. Не чіпає <pre>/<textarea>/<code>, JSON-LD, умовні коментарі.
+    # strip_comments: false — лишити як є (пак, якому коментарі потрібні, напр. для чужого інструменту)
+    app.html:
+        strip_comments: true
     # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}
@@ -132,6 +146,12 @@ parameters:
     app.home_faq_limit: 8
     # Район без власного FAQ показує FAQ міста (так робить типовий Joomla-шаблон: FAQPage на кожній сторінці району)
     app.district_faq_fallback: false
+    # Послуга в місті без власного FAQ (service_item_city.faq_*) показує FAQ послуги — однаковий на всіх хостах. false — на
+    # неапексних містах лише місцевий FAQ, без нього нема ні блоку, ні FAQPage (апекс завжди бере FAQ послуги). Спільний FAQ
+    # робить сторінки послуг міст майже копіями апексу.
+    app.catalog.faq_city_fallback: true
+    # Юридичні сторінки (privacy, terms) на неапексних містах — noindex, follow і поза sitemap: текст однаковий на всіх хостах
+    app.legal_noindex_cities: false
     # /districts/: групи (group_uk) з цього списку — «Передмістя» (акордеон як є); решта груп — «Райони %cityGen%»:
     # акордеон адмінрайонів із чипами місцевостей, назва групи веде на її primary-сторінку (якщо є). Порожньо = стара
     # поведінка (картки лише primary-районів + усі групи без primary у «передмісті»).
@@ -201,6 +221,10 @@ services:
     App\:
         resource: '../src/'
 
+    # маршрути калькулятора (адреса з паку або типова за режимом) — Kernel::configureRoutes імпортує тип «calculator»
+    App\ServiceSite\CalculatorRouteLoader:
+        tags: [routing.loader]
+
     # Активна CRM сайту за app.crm.system - те, що отримують LeadController/CalculatorController.
     # autoconfigure: false - інакше аліас сам потрапив би в тег app.lead_crm (циклічна залежність реєстру).
     App\ServiceSite\Crm\LeadCrmConnector:
@@ -217,6 +241,9 @@ services:
     # Живий дизайн (ThemeService): HTTP-клієнт рендера сторінок після запису (у тестах — MockHttpClient) і замок живої
     # теми — flock у var/theme (на сервері shared/theme сайту: спільний для всіх fpm-воркерів і релізів сайту).
     app.theme_http_client:
+        alias: http_client
+    # Фото через admin API за URL (ImageFetcher): окремий клієнт, щоб у тестах підмінити MockHttpClient-ом
+    app.image_http_client:
         alias: http_client
     app.theme_lock_store:
         class: Symfony\Component\Lock\Store\FlockStore
@@ -258,6 +285,10 @@ when@test:
         app.brands: { 'ci-catroot': { category_url: root }, 'ci-studiocat': { category_url: root }, 'ci-studiotag': { category_url: root, blog_per_page: 2 }, 'ci-feed': { category_url: root } }
     services:
         App\Tests\Support\ThemeSmokeMock: ~
+        App\Tests\Support\ImageFetchMock: ~
+        app.image_http_client:
+            class: Symfony\Component\HttpClient\MockHttpClient
+            arguments: ['@App\Tests\Support\ImageFetchMock']
         app.theme_http_client:
             class: Symfony\Component\HttpClient\MockHttpClient
             arguments: ['@App\Tests\Support\ThemeSmokeMock']

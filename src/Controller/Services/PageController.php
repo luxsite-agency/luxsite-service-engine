@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceTeamMemberRepository;
 use App\ServiceSite\ServiceCityAware;
@@ -24,6 +25,7 @@ final class PageController extends AbstractController
     use ServiceCityAware;
 
     public function __construct(
+        private readonly ServiceCityRepository $cityRepo,
         private readonly ServiceReviewRepository $reviews,
         private readonly \App\ServiceSite\ReviewsRating $reviewsRating,
         private readonly ServiceTeamMemberRepository $team,
@@ -166,6 +168,7 @@ final class PageController extends AbstractController
     private function legal(Request $request, string $field, string $route): Response
     {
         $site = $this->serviceSite($request);
+        $city = $this->serviceCity($request);
         $text = $site->loc($field, $request->getLocale());
         if ($site->isContent()) {
             // контентний сайт: свій каркас і типовий текст під форму зв'язку (без телефонів, відгуків і заявок)
@@ -178,21 +181,43 @@ final class PageController extends AbstractController
                 'altUrls' => $this->altUrls($route),
             ]);
         }
+        // текст однаковий на всіх хостах: на неапексних містах — noindex, follow (пак: app.legal_noindex_cities). Заголовок
+        // X-Robots-Tag — щоб працювало й з паком/живою темою, що перекриває base.html.twig без pageNoindex.
+        // Лише сервісний сайт: у контентного (один хост на бренд) прапорець не застосовується — без зайвого запиту апексу.
+        $noindex = $this->legalNoindex($city);
         if ($text === null || trim($text) === '') {
-            return $this->render('services/page/' . $field . '.html.twig', [
+            $response = $this->render('services/page/' . $field . '.html.twig', [
                 'site' => $site,
-                'city' => $this->serviceCity($request),
+                'city' => $city,
                 'altUrls' => $this->altUrls($route),
+                'pageNoindex' => $noindex,
+            ]);
+        } else {
+            $response = $this->render('services/page/legal.html.twig', [
+                'site' => $site,
+                'city' => $city,
+                'heading' => 'nav.' . $field,
+                'text' => $text,
+                'altUrls' => $this->altUrls($route),
+                'pageNoindex' => $noindex,
             ]);
         }
+        if ($noindex) {
+            $response->headers->set('X-Robots-Tag', 'noindex, follow');
+        }
 
-        return $this->render('services/page/legal.html.twig', [
-            'site' => $site,
-            'city' => $this->serviceCity($request),
-            'heading' => 'nav.' . $field,
-            'text' => $text,
-            'altUrls' => $this->altUrls($route),
-        ]);
+        return $response;
+    }
+
+    /** Юридична сторінка поза індексом: пак увімкнув app.legal_noindex_cities і це не апекс (сайт без активного апексу — ні). */
+    private function legalNoindex(\App\Entity\ServiceCity $city): bool
+    {
+        if (!$this->getParameter('app.legal_noindex_cities')) {
+            return false;
+        }
+        $apex = $this->cityRepo->findActiveApex($city->getSite());
+
+        return $apex !== null && $apex->getId() !== $city->getId();
     }
 
     /**

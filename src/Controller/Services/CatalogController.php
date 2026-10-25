@@ -7,6 +7,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Entity\ServiceCity;
+use App\Entity\ServiceItem;
+use App\Entity\ServiceItemCity;
 use App\Repository\ServiceCalcFactorRepository;
 use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCategoryRepository;
@@ -18,6 +21,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePriceRepository;
 use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceWorkRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CrossCityDistricts;
 use App\ServiceSite\LegacyUrls;
@@ -46,6 +50,7 @@ final class CatalogController extends AbstractController
         private readonly ServicePriceRepository $prices,
         private readonly ServiceCalcTypeRepository $calcTypes,
         private readonly ServiceCalcFactorRepository $calcFactors,
+        private readonly CalculatorAvailability $calculator,
         private readonly ServiceDistrictRepository $districts,
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly ServiceCategoryCityRepository $categoryTexts,
@@ -158,8 +163,10 @@ final class CatalogController extends AbstractController
         }
 
         // міні-калькулятор показуємо лише там, де послуга рахується за площею
-        // (у неї в адмінці обрано тип прибирання)
-        $calcTypes = $item->getCalcType() !== null ? $this->calcTypes->findActiveForCity($site, $city) : [];
+        // (у неї в адмінці обрано тип прибирання і калькулятор у режимі «за площею»)
+        $calcTypes = $item->getCalcType() !== null && $this->calculator->isArea($site, $city) ? $this->calcTypes->findActiveForCity($site, $city) : [];
+        $override = $this->itemTexts->findOneByItemAndCity($item, $city);
+        $serviceFaq = $this->serviceFaq($item, $override, $city, $locale);
 
         return $this->render('services/catalog/item.html.twig', [
             'site' => $site,
@@ -167,7 +174,8 @@ final class CatalogController extends AbstractController
             'category' => $cat,
             'item' => $item,
             // текст під місто: порожньо - лишається загальний текст послуги
-            'override' => $this->itemTexts->findOneByItemAndCity($item, $city),
+            'override' => $override,
+            'serviceFaq' => $serviceFaq,
             // ціни не публікуємо в цьому місті — без таблиці й Offer у розмітці (прайс лишається в адмінці)
             'prices' => $item->showsPricesIn($city) ? $this->prices->findActiveByItemAndCity($item, $city) : [],
             // ротований блок локацій: різні послуги ведуть на різні райони,
@@ -193,6 +201,29 @@ final class CatalogController extends AbstractController
     }
 
     /** @return array<int, \App\Entity\ServiceItem[]> Ключ — id категорії */
+    /**
+     * FAQ сторінки послуги: FAQ міста (ServiceItemCity) першим, FAQ послуги — спільний для всіх хостів — лише на апексі
+     * (сайт без активного апексу — будь-яке місто) або коли пак дозволяє (app.catalog.faq_city_fallback). Порядок мов — як
+     * у ov(): override.ru → item.ru → override.uk → item.uk, щоб /ru/ не брав українське, поки є російське.
+     *
+     * @return list<array{q?: string, a?: string}>
+     */
+    private function serviceFaq(ServiceItem $item, ?ServiceItemCity $override, ServiceCity $city, string $locale): array
+    {
+        $apex = $this->cityRepo->findActiveApex($city->getSite());
+        $itemAllowed = $apex === null || $apex->getId() === $city->getId() || $this->getParameter('app.catalog.faq_city_fallback');
+        foreach (array_unique([$locale, 'uk']) as $l) {
+            if ($override !== null && \is_array($v = $override->locRaw('faq', $l)) && $v !== []) {
+                return $v;
+            }
+            if ($itemAllowed && \is_array($v = $item->locRaw('faq', $l)) && $v !== []) {
+                return $v;
+            }
+        }
+
+        return [];
+    }
+
     private function itemsByCategory(Request $request): array
     {
         $grouped = [];

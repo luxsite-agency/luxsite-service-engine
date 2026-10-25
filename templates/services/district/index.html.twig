@@ -2,10 +2,10 @@
 {% extends 'services/base.html.twig' %}
 
 {# title/H1 — ключі паку district.page_title / district.page_h1 (дефолт рушія = «Райони обслуговування - Бренд Місто»);
-   параметри всередині кожного блоку: set поза блоком дочірнього шаблону в блоках не видно #}
+   параметри всередині кожного блоку: set поза блоком дочірнього шаблону в блоках не видно -#}
 {% block title %}{{ 'district.page_title'|trans({'%district_title%': 'district.title'|trans({}, 'servicesite'), '%site%': site.name, '%city%': city.name(locale), '%cityGen%': city.loc('nameGen', locale) ?? city.name(locale), '%cityLoc%': city.loc('nameLoc', locale) ?? city.name(locale)}, 'servicesite') }}{% endblock %}
 
-{# %cityGen% — родовий відмінок («райони Києва»); %city% = місцевий лишається для паків зі своєю будовою речення #}
+{# %cityGen% — родовий відмінок («райони Києва»); %city% = місцевий лишається для паків зі своєю будовою речення -#}
 {% block metaDescription %}{{ 'meta.districts'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%cityGen%': city.loc('nameGen', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
 
 {% block schema %}
@@ -25,7 +25,7 @@
     {% if city.loc('districtsIntro', locale) %}<div>{{ city.loc('districtsIntro', locale)|raw }}</div>{% endif %}
 
     {% if primary is not empty %}
-    {# верхній рівень: офіційні райони. Місцевості всередині - на сторінці району #}
+    {# верхній рівень: офіційні райони. Місцевості всередині - на сторінці району -#}
     <section class="block">
         <h2>{{ 'district.official_title'|trans({'%cityGen%': city.loc('nameGen', locale) ?? city.name(locale)}, 'servicesite') }}</h2>
         <div class="grid">
@@ -41,7 +41,7 @@
 
     {% if cityGroups|default([]) is not empty %}
     {# схема «адмінрайони + передмістя» (пак: app.district_suburb_groups): кожен район — акордеон з місцевостями,
-       назва району веде на його сторінку, якщо вона є (is_primary) #}
+       назва району веде на його сторінку, якщо вона є (is_primary) -#}
     <section class="block">
         <h2>{{ 'district.official_title'|trans({'%cityGen%': city.loc('nameGen', locale) ?? city.name(locale)}, 'servicesite') }}</h2>
         {% include 'services/partials/_districts_accordion.html.twig' with {districtGroups: cityGroups, allOpen: true, linkPrimary: true} %}

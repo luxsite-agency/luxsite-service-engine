@@ -26,12 +26,12 @@
         {{ 'nav.about'|trans({}, 'servicesite') }}
     </nav>
     <h1>{{ site.loc('aboutTitle', locale) ?? 'nav.about'|trans({}, 'servicesite') }}</h1>
-    {# текст «Про нас»: міський (ServiceCity.about, 10.2026) має пріоритет над спільним ServiceSite.about #}
+    {# текст «Про нас»: міський (ServiceCity.about, 10.2026) має пріоритет над спільним ServiceSite.about -#}
     {% set _about = city.loc('about', locale) ?: site.loc('about', locale) %}
     {% if _about %}
-        {# райони й передмістя - свої в кожного міста; у спільному тексті на їхньому місці маркер #}
+        {# райони й передмістя - свої в кожного міста; у спільному тексті на їхньому місці маркер -#}
         {% set where = city.loc('aboutWhere', locale) %}
-        {# about.cities / about.legal - бренд-рядки з перекладів паку; порожні = абзаців нема #}
+        {# about.cities / about.legal - бренд-рядки з перекладів паку; порожні = абзаців нема -#}
         {% set _cities = 'about.cities'|trans({'%brand%': site.name}, 'servicesite') %}
         {% set _citiesHtml = _cities and _cities != 'about.cities' ? '<p><!--city-raw-->' ~ (_cities|e) ~ '<!--/city-raw--></p>' : '' %}
         {% set whereHtml = where
@@ -45,6 +45,6 @@
         <p class="meta"> - </p>
     {% endif %}
 
-    {# команда — тут за замовчуванням (правило власника 11.10.2026; пак: app.team_pages) #}
+    {# команда — тут за замовчуванням (правило власника 11.10.2026; пак: app.team_pages) -#}
     {% include 'services/partials/_team.html.twig' %}
 {% endblock %}

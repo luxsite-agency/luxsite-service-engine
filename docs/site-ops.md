@@ -80,7 +80,8 @@ bin/site deploy example --pack ~/site-example
 ```
 
 Порядок на сервері: shared/перший запуск → симлінки → `composer install` → бекап `pre-deploy` (якщо реліз уже був) →
-міграції → `cache:warmup` → `lint:twig` шаблонів паку (якщо в паку є `templates/`) → smoke кандидата → перемикання →
+міграції → `cache:warmup` → `app:html:strip-static public/themes` (коментарі зі статики теми в релізі; оригінали паку не
+змінюються, збій — лише WARN) → `lint:twig` шаблонів паку (якщо в паку є `templates/`) → smoke кандидата → перемикання →
 `fpm_reload` → перевірка через nginx → cron бекапу → прибирання.
 Провал до перемикання не чіпає робочий реліз (але міграції вже застосовані — для схеми є `pre-deploy`); провал після —
 відкат на попередній тег. Міграції мають бути зворотно сумісні з попереднім релізом.
@@ -127,7 +128,10 @@ bin/site deploy example --pack ~/site-example
 cron, диск (85% WARN, 95% FAIL), php і `date.timezone` (має бути Europe/Kyiv), збіги слагів у корені сайту
 (`bin/console app:site:slugs`: дві послуги / послуга й категорія / сторінка й категорія на одній адресі або запис на адресі
 фіксованого розділу — FAIL з переліком; рушій без команди — рядка нема), TLS сайту, адмінки й кожного хоста `domains.extra`
-(< 14 днів — WARN). Код виходу 1 при FAIL.
+(< 14 днів — WARN), коментарі розробника у HTML (з 25.10.2026, `docs/site-pack.md` «Чистий HTML»): GET головної й однієї
+послуги з sitemap, лічильники `<!--`, `/*`, `^\s*//` поза JSON-LD (`bin/site.d/_htmlcomments.py`, лише stdlib) — `0` OK,
+інакше WARN із числом на сторінку (рушій без чистки або `app.html.strip_comments: false` у паку); `SITE_NO_HTTP=1` — пропустити.
+Код виходу 1 при FAIL.
 
 **Місто на окремому домені** (не піддомен апекса; `ServiceCity.host` = інший домен): допишіть хост у реєстр —
 `domains.extra: [klinika-misto.example]` — і docroot панелі в `server.docroot_extra` (cutover перемикає всі). Тоді smoke

@@ -9,7 +9,6 @@ namespace App\Controller\Services;
 
 use App\Entity\ServicePostTag;
 use App\Repository\ServiceAuthorRepository;
-use App\Repository\ServiceCalcTypeRepository;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
@@ -19,6 +18,7 @@ use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\Repository\ServicePostTagRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
 use App\ServiceSite\SiteLocales;
@@ -46,11 +46,11 @@ final class SitemapController extends AbstractController
         private readonly ServiceCityRepository $cities,
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly CatalogUrls $catalogUrls,
-        private readonly ServiceCalcTypeRepository $calcTypes,
         private readonly ServicePageRepository $pages,
         private readonly ServicePostCategoryRepository $postCategories,
         private readonly ServiceAuthorRepository $authors,
         private readonly ServicePostTagRepository $postTags,
+        private readonly CalculatorAvailability $calculator,
     ) {
     }
 
@@ -140,16 +140,19 @@ final class SitemapController extends AbstractController
                 $add('sv_page', static fn (string $l): array => ['path' => $page->path($l)], $page->getUpdatedAt());
             }
         }
-        // калькулятор є лише в брендів, де він наповнений (типи в БД)
-        if ($this->calcTypes->findActiveBySite($site) !== []) {
+        // калькулятор є, де він наповнений (типи прибирання або позиції прайсу з in_calculator); адреса — дійсна для режиму
+        if ($this->calculator->isAvailable($site, $city)) {
             $add('sv_calculator');
         }
         $add('sv_faq');
         $add('sv_contacts');
         $add('sv_reviews');
-        // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія
-        $add('sv_privacy');
-        $add('sv_terms');
+        // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія; на неапексних містах пак може
+        // закрити їх від індексу (app.legal_noindex_cities) — тоді й у карті їм не місце
+        if (!$this->getParameter('app.legal_noindex_cities') || $apex === null || $apex->getId() === $city->getId()) {
+            $add('sv_privacy');
+            $add('sv_terms');
+        }
 
         return $this->xml($entries);
     }

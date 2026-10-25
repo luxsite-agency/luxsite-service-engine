@@ -31,7 +31,7 @@ final class CatalogUrls
      */
     public const RESERVED_SEGMENTS = [
         'services', 'districts', 'blog', 'news', 'about', 'contacts', 'faq', 'reviews', 'privacy-policy',
-        'terms-of-service', 'thank-you', 'calculator-cleaning', 'lead', 'sitemap.xml', 'robots.txt',
+        'terms-of-service', 'thank-you', 'calculator-cleaning', 'calculator', 'lead', 'sitemap.xml', 'robots.txt',
         'ru', 'uk', 'en', 'author', 'feed', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
     ];
 
@@ -40,6 +40,8 @@ final class CatalogUrls
         private readonly string $scheme = 'flat',
         #[Autowire('%app.blog_prefix%')]
         private readonly string $blogPrefix = 'blog',
+        #[Autowire('%app.calculator.path%')]
+        private readonly mixed $calculatorPath = [],
     ) {
     }
 
@@ -49,14 +51,15 @@ final class CatalogUrls
     }
 
     /**
-     * Перші сегменти, зайняті фіксованими розділами сайту: RESERVED_SEGMENTS разом із префіксом блогу паку.
+     * Перші сегменти, зайняті фіксованими розділами сайту: RESERVED_SEGMENTS разом із префіксом блогу паку
+     * і першим сегментом адреси калькулятора паку (app.calculator.path).
      * Їх не може мати ніщо, що живе в корені: категорія (root, slug), послуга (slug), сторінка (app.pages).
      *
      * @return list<string>
      */
     public function reservedSegments(): array
     {
-        return array_values(array_unique([...self::RESERVED_SEGMENTS, $this->blogPrefix]));
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
     }
 
     /**

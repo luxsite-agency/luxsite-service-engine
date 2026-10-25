@@ -3,7 +3,7 @@
    Очікує districtGroups (з findActiveByCityGrouped) і locale;
    allOpen: true — всі групи розгорнуті одразу (сторінка /districts/);
    linkPrimary: true — якщо в групі є primary-район (group.primary), його назва в заголовку стає посиланням на його
-   сторінку, а сам він не дублюється чипом (схема app.district_suburb_groups). #}
+   сторінку, а сам він не дублюється чипом (схема app.district_suburb_groups). -#}
 <div class="district-groups">
     {% for group in districtGroups %}
     {% set label = (group.districts|first).loc('group', locale) %}
