@@ -86,7 +86,7 @@ final class ContentSiteTest extends HttpKernelTestCase
             }
             foreach ($scripts[1] as $js) {
                 self::assertStringNotContainsString('/*', $js, $url . ' — коментар у <script>');
-                self::assertDoesNotMatchRegularExpression('~(^|[\s;{}])//\s~m', $js, $url . ' — //-коментар у <script>');
+                self::assertDoesNotMatchRegularExpression('~(^|[\s;{}])//(?!/)~m', $js, $url . ' — //-коментар у <script>');
             }
         }
     }

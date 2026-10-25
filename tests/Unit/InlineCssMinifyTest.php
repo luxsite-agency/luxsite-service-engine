@@ -38,6 +38,31 @@ final class InlineCssMinifyTest extends TestCase
         self::assertStringStartsWith('@font-face{', $out);
     }
 
+    /** Рядки в лапках — недоторкані; апостроф у коментарі не відкриває рядок; порожня кастомна властивість зберігає пробіл */
+    public function testStringsAndEdgeCases(): void
+    {
+        $css = "/* прев'ю зображень: в'юпорт */ a[href^=\"/*\"] { color: red; } .keep { content: \" ; {x}  y \"; }\n"
+            . ".q { font-family: 'Segoe UI', sans-serif; } .t { --on: ; } /* кінець з апострофом ' */ .z { x: 1 }";
+        $out = SiteTheme::minifyCss($css);
+
+        self::assertSame("a[href^=\"/*\"]{color: red}.keep{content: \" ; {x}  y \"}.q{font-family: 'Segoe UI', sans-serif}.t{--on: }.z{x: 1}", $out);
+    }
+
+    public function testInlineCssUsesMinifier(): void
+    {
+        $dir = sys_get_temp_dir() . '/inline-css-' . bin2hex(random_bytes(4));
+        mkdir($dir . '/public/themes/t', 0777, true);
+        file_put_contents($dir . '/public/themes/t/theme.css', "/* згенеровано tools/build.py — не правити */\n.a { b: url(fonts/x.woff2); }\n");
+        $theme = new SiteTheme(['stylesheet' => 'themes/t/theme.css', 'stylesheet_inline' => true], $dir);
+
+        self::assertSame('.a{b: url(/themes/t/fonts/x.woff2)}', $theme->inlineCss());
+        unlink($dir . '/public/themes/t/theme.css');
+        rmdir($dir . '/public/themes/t');
+        rmdir($dir . '/public/themes');
+        rmdir($dir . '/public');
+        rmdir($dir);
+    }
+
     public function testEmptyAndCommentOnly(): void
     {
         self::assertSame('', SiteTheme::minifyCss(''));
