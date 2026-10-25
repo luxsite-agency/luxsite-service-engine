@@ -99,6 +99,9 @@ class ServiceSiteCrudController extends AbstractCrudController
         }
         yield TextField::new('blogPrefix', 'Розділ статей')->hideOnIndex()
             ->setHelp(sprintf('Сегмент адреси статей: /<розділ>/<стаття>/. Порожньо — «%s» (параметр паку app.blog_prefix). Зміна міняє адреси всіх статей бренду — старі без 301.', $this->blogPrefix));
+        yield ChoiceField::new('listThumbs', 'Прев\'ю зображень у списках')->hideOnIndex()
+            ->setChoices(['Вимкнено' => 'off', 'Лише головна' => 'home', 'Лише стрічка й рубрики (а також теги й автори)' => 'lists', 'Скрізь' => 'all'])
+            ->setHelp('Контентний сайт: мініатюра обкладинки біля статті на головній і в списках. Стаття без обкладинки — без мініатюри. Діє одразу, без деплою.');
         yield TextField::new('heroImagePath', 'Ілюстрація хіро')->hideOnIndex()
             ->setHelp('Шлях від кореня сайту, напр. /themes/<ключ-паку>/hero.webp; порожньо = без ілюстрації');
 

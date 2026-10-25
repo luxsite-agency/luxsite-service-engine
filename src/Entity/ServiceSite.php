@@ -29,6 +29,11 @@ class ServiceSite implements TimestampableInterface
     public const MODE_SERVICES = 'services';
     public const MODE_CONTENT = 'content';
 
+    public const THUMBS_OFF = 'off';
+    public const THUMBS_HOME = 'home';
+    public const THUMBS_LISTS = 'lists';
+    public const THUMBS_ALL = 'all';
+
     use LocalizedFieldsTrait;
     use TimestampsTrait;
 
@@ -99,6 +104,14 @@ class ServiceSite implements TimestampableInterface
     #[ORM\Column(length: 32, nullable: true)]
     #[Assert\Regex(pattern: '/^[a-z0-9-]+$/', message: 'Лише латиниця в нижньому регістрі, цифри й дефіс: blog, novyny.')]
     private ?string $blogPrefix = null;
+
+    /**
+     * Прев'ю зображень статей у списках контентного сайту (25.10.2026, перемикач в адмінці без деплою): off — без мініатюр
+     * (типово, як було), home — лише головна, lists — стрічка розділу статей, рубрики, теги й автори, all — скрізь.
+     * Мініатюра — лише в статті з обкладинкою; без обкладинки рядок як без прев'ю.
+     */
+    #[ORM\Column(length: 8, options: ['default' => 'off'])]
+    private string $listThumbs = self::THUMBS_OFF;
 
     // — Сторінка «Про нас» (спільна на всі міста бренду) —
 
@@ -289,6 +302,32 @@ class ServiceSite implements TimestampableInterface
     public function getBlogPrefix(): ?string
     {
         return $this->blogPrefix;
+    }
+
+    public function getListThumbs(): string
+    {
+        return $this->listThumbs;
+    }
+
+    public function setListThumbs(?string $listThumbs): self
+    {
+        $listThumbs = $listThumbs ?: self::THUMBS_OFF;
+        if (!\in_array($listThumbs, [self::THUMBS_OFF, self::THUMBS_HOME, self::THUMBS_LISTS, self::THUMBS_ALL], true)) {
+            throw new \InvalidArgumentException(sprintf('Прев\'ю зображень: off, home, lists або all, отримано «%s».', $listThumbs));
+        }
+        $this->listThumbs = $listThumbs;
+
+        return $this;
+    }
+
+    /** Чи показувати мініатюри статей на сторінці: home — головна, lists — стрічка, рубрика, тег, автор; інше — false */
+    public function showsThumbs(string $where): bool
+    {
+        if (!\in_array($where, [self::THUMBS_HOME, self::THUMBS_LISTS], true)) {
+            return false;
+        }
+
+        return $this->listThumbs === self::THUMBS_ALL || $this->listThumbs === $where;
     }
 
     public function setBlogPrefix(?string $blogPrefix): self

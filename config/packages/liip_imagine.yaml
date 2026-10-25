@@ -47,6 +47,25 @@ liip_imagine:
             format: webp
             filters:
                 thumbnail: { size: [460, 307], mode: outbound }
+        # картка статті рушія (services/content/_card, прев'ю зображень бренду, 25.10.2026): 16:9, як обкладинки статей
+        # (1200×675) і кадр картки — без подвійного обрізання; 640 — колонка сітки 1x, post_card_lg — srcset для 2x/телефона
+        post_card:
+            quality: 80
+            format: webp
+            filters:
+                thumbnail: { size: [640, 360], mode: outbound }
+        post_card_lg:
+            quality: 78
+            format: webp
+            filters:
+                thumbnail: { size: [1280, 720], mode: outbound }
+        # мініатюра статті в рядку стрічки контентного сайту (прев'ю зображень бренду, 25.10.2026): ~120×80 на сторінці, 2x —
+        # 240×160 (3:2, як item_hero); картки й головна новина паку — item_hero_sm і item_hero
+        post_thumb:
+            quality: 78
+            format: webp
+            filters:
+                thumbnail: { size: [240, 160], mode: outbound }
         # галерея сторінки app.pages (скани ліцензій, сертифікати — переважно А4 книжкою): вписати без обрізання (inset),
         # клік веде на оригінал
         page_gallery:
