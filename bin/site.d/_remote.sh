@@ -329,6 +329,13 @@ do_deploy() {
         die "міграції не пройшли; поточний реліз лишився ${prev:-—}. Бекап перед деплоєм — $ROOT/backups (*-pre-deploy.tar)"
     fi
     console "$rel" cache:clear >/dev/null
+    # статика теми паку в релізі (public/themes/<key>/*.css|*.js, nginx віддає з ?v=): коментарі розробника геть тією ж логікою,
+    # що й у HTML-відповідях (вимога власника 25.10.2026). Оригінали в паку не змінюються; збій — лише попередження
+    if [ "$DRY_RUN" = 1 ] || [ -d "$rel/public/themes" ]; then
+        themes_dir="public/themes"
+        [ "$RUNTIME" = docker ] || themes_dir="$rel/public/themes"
+        console "$rel" app:html:strip-static "$themes_dir" || warn "app:html:strip-static не пройшов — статика теми лишилась із коментарями"
+    fi
     fpm_reload # docker: живий php-fpm уже на новому релізі — скинути opcache старого контейнера DI
     # свій дизайн паку (templates/site/): синтаксис усіх шаблонів, не лише тих, що відкриває smoke
     if [ -n "$(find "$rel/templates/site" -name '*.twig' -print -quit 2>/dev/null)" ]; then

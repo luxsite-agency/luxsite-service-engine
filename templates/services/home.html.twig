@@ -7,7 +7,7 @@
 
 {% block schema %}
     {% import 'services/partials/_schema.html.twig' as schema %}
-    {# бізнес міста + рейтинг і ПОВНИЙ список відгуків (на сторінці карток лише 4) #}
+    {# бізнес міста + рейтинг і ПОВНИЙ список відгуків (на сторінці карток лише 4) -#}
     {% set extra = {} %}
     {% if reviewsAggregate %}
         {% set reviewLd = [] %}
@@ -60,7 +60,7 @@
             <p><button class="btn" onclick="document.getElementById('lead-modal').showModal()">{{ 'lead.cta'|trans({}, 'servicesite') }}</button></p>
         </div>
         {# ілюстрація хіро - з теми паку (hero_image) або шлях із БД (ServiceSite.heroImagePath); srcset/розміри - з теми;
-           підпис (ім'я/роль людини на фото) - ключі hero.person_* з перекладів паку, порожні = без підпису #}
+           підпис (ім'я/роль людини на фото) - ключі hero.person_* з перекладів паку, порожні = без підпису -#}
         {% set _person = 'hero.person_name'|trans({}, 'servicesite') %}
         {% set _role = 'hero.person_role'|trans({}, 'servicesite') %}
         {% set _hasPerson = _person and _person != 'hero.person_name' %}
@@ -77,7 +77,7 @@
                 {% if _role and _role != 'hero.person_role' %}<span>{{ _role }}</span>{% endif %}
             </figcaption>
             {% endif %}
-            {# лічильники (5120 задоволених клієнтів…) — ключі паку hero.stat1..3_value / _label; порожній value = пункту нема #}
+            {# лічильники (5120 задоволених клієнтів…) — ключі паку hero.stat1..3_value / _label; порожній value = пункту нема -#}
             {% set _stats = [] %}
             {% for i in 1..3 %}
                 {% set _v = ('hero.stat' ~ i ~ '_value')|trans({}, 'servicesite') %}
@@ -96,7 +96,7 @@
     </div>
 
     {# лід-магніт: та сама форма, але з підзаголовком і месенджерами (lead.subtitle / lead.messengers_hint з паку);
-       місце — app.home_lead_position: after_hero (одразу під першим екраном) | after_works (типово, як було). Блок один. #}
+       місце — app.home_lead_position: after_hero (одразу під першим екраном) | after_works (типово, як було). Блок один. -#}
     {% set _leadForm %}{% include 'services/partials/_lead_form.html.twig' with {magnet: true, lead_type: 'magnet'} %}{% endset %}
     {% if home_lead_position == 'after_hero' %}{{ _leadForm }}{% endif %}
 
@@ -128,7 +128,7 @@
             '%city%': city.loc('nameLoc', locale) ?? city.name(locale),
         }, 'servicesite') }}</h2>
         {# запит на головній загальний («клінінг»), тому прайс показуємо
-           повністю, а чіпи лишаємо як швидкі переходи до потрібної послуги #}
+           повністю, а чіпи лишаємо як швидкі переходи до потрібної послуги -#}
         <div class="chips price-jump">
             {% for group in pricesByItem %}
             <a href="#pt-{{ group.item.id }}">{{ group.item.loc('tabTitle', locale) ?? group.item.loc('title', locale) }}</a>
@@ -140,7 +140,7 @@
                 <a href="{{ service_path(group.item, locale) }}">{{ group.item.loc('title', locale) }}</a>
             </h3>
             {# без шапки «Послуга / Ціна»: на сторінці 17 таблиць, і повторений
-               заголовок лише засмічує. Назва й сума зрозумілі без підпису #}
+               заголовок лише засмічує. Назва й сума зрозумілі без підпису -#}
             <table class="prices">
                 {% for price in group.rows %}
                 <tr>
@@ -150,7 +150,7 @@
                     </td>
                     <td class="price" style="text-align:right">
                         {% if price.price is not null %}
-                            {# ціни цілі, копійок у прайсі не буває #}
+                            {# ціни цілі, копійок у прайсі не буває -#}
                             {% if price.pricePrefix %}{{ ('prices.from'|trans({}, 'servicesite'))|capitalize }} {% endif %}{{ price.price|number_format(0, '.', ' ') }} {{ 'catalog.uah'|trans({}, 'servicesite') }}
                         {% else %}
                             {{ price.loc('priceText', locale) ?? 'catalog.price_free_text'|trans({}, 'servicesite') }}
@@ -171,12 +171,12 @@
     {% endif %}</section>
     {% endif %}
 
-    {# розгорнутий СЕО-текст під цінами (правиться в адмінці: Міста сервісів → Блок 3) #}
+    {# розгорнутий СЕО-текст під цінами (правиться в адмінці: Міста сервісів → Блок 3) -#}
     {# Міні-калькулятора тут немає навмисно: на головній уже стоїть повний
        прайс, і другий спосіб дізнатись ціну лише роздвоює увагу. Кому
-       потрібен розрахунок під свою квартиру - переходить на калькулятор. #}
+       потрібен розрахунок під свою квартиру - переходить на калькулятор. -#}
     {# власні кадри з об'єктів: на головній вони йдуть загальним рядом,
-       бо запит тут широкий - «клінінг», а не конкретна послуга #}
+       бо запит тут широкий - «клінінг», а не конкретна послуга -#}
     {% include 'services/partials/_works.html.twig' with {works: works|default([])} %}
 
     {% if home_lead_position != 'after_hero' %}{{ _leadForm }}{% endif %}
@@ -195,27 +195,27 @@
     </section>
     {% endif %}
 
-    {# команда: після відгуків, якщо пак додав home у app.team_pages (10.2026); типово лише на «Про нас» #}
+    {# команда: після відгуків, якщо пак додав home у app.team_pages (10.2026); типово лише на «Про нас» -#}
     {% include 'services/partials/_team.html.twig' %}
 
     {% if homeDistricts is not empty %}
     <section class="block center">
         <h2>{{ 'home.districts_title'|trans({'%cityGen%': city.loc('nameGen', locale) ?? city.name(locale)}, 'servicesite') }}</h2>
         {% if city.loc('districtsIntro', locale) %}<div>{{ city.loc('districtsIntro', locale)|raw }}</div>{% endif %}
-        {# типово лише офіційні райони (118 посилань з головної розмивали вагу); пак може задати свій список — app.home_districts #}
+        {# типово лише офіційні райони (118 посилань з головної розмивали вагу); пак може задати свій список — app.home_districts -#}
         <div class="chips chips-center">
             {% for d in homeDistricts %}
             {# у назві злиті масив і район («Голосіїв і Голосіївський район») - на
-               головній лишаємо коротку частину, інакше на телефоні кожен чип займає рядок #}
+               головній лишаємо коротку частину, інакше на телефоні кожен чип займає рядок -#}
             <a href="{{ path('sv_district', {slug: d.slug(locale)}) }}">{{ d.loc('name', locale)|split(locale == 'ru' ? ' и ' : ' і ')|first|replace({' район': ''}) }}</a>
             {% endfor %}
-            {# посилання на повний список - тим самим рядком, а не окремою кнопкою #}
+            {# посилання на повний список - тим самим рядком, а не окремою кнопкою -#}
             <a class="more" href="{{ path('sv_districts') }}">{{ 'district.all_link'|trans({}, 'servicesite') }}</a>
         </div>
     </section>
     {% endif %}
 
-    {# на головній — перші app.home_faq_limit питань (0 = усі); повний список на /faq/ #}
+    {# на головній — перші app.home_faq_limit питань (0 = усі); повний список на /faq/ -#}
     {% include 'services/partials/_faq.html.twig' with {faq: homeFaq, centerTitle: true, muted: true} %}
     {% if homeFaq is not empty and faqTotal|default(0) > homeFaq|length %}
     <p class="center"><a class="more faq-all" href="{{ path('sv_faq') }}">{{ 'home.faq_all'|trans({}, 'servicesite') }}</a></p>

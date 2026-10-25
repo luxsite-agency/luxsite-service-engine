@@ -4,7 +4,7 @@
    помаранчевий #f98111) з градієнтом, pill-кнопки CTA,
    топбар години/email/телефон, бенефіти-іконки, muted-секції #f2f6f8,
    бордери #d5dce3. Контролери передають altUrls = {uk, ru} — з нього
-   будуються hreflang, canonical і перемикач мов. #}
+   будуються hreflang, canonical і перемикач мов. -#}
 {% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
 {#~ Аналітика й коди сайту (site_tags: лічильник міста > GTM/GA4/Ads з адмінки → Налаштування; Clarity і верифікація —
    адмінка > пак). Без налаштувань значення ті самі, що давали city.gtmId, app.clarity_id і app.site_verification. #}
@@ -13,24 +13,24 @@
 <html lang="{{ locale }}">
     <head>
         <meta charset="UTF-8">
-        {% block meta_generator %}<meta name="generator" content="LuxSite Service Engine">{% endblock %}
+        {% block meta_generator %}<meta name="generator" content="LuxSite Service Engine">{% endblock ~%}
         <meta name="viewport" content="width=device-width, initial-scale=1">
         {# Підтвердження прав у Search Console (адмінка → Налаштування > app.site_verification паку; Bing — лише адмінка). Саме тут,
            а не через GTM: перевірник Google не виконує JavaScript, тому тег, вставлений
-           менеджером тегів, він просто не побачить. Покриває всі хости бренду, бо шаблон спільний. #}
-        {% if _svTags.googleVerification %}<meta name="google-site-verification" content="{{ _svTags.googleVerification }}">{% endif %}{% if _svTags.bingVerification %}<meta name="msvalidate.01" content="{{ _svTags.bingVerification }}">{% endif %}
-        {# app.page_meta паку перекриває title/description фіксованих сторінок (паритет після міграції) #}
-        {% set _pmTitle = page_meta('title') %}
+           менеджером тегів, він просто не побачить. Покриває всі хости бренду, бо шаблон спільний. -#}
+        {% if _svTags.googleVerification %}<meta name="google-site-verification" content="{{ _svTags.googleVerification }}">{% endif %}{% if _svTags.bingVerification %}<meta name="msvalidate.01" content="{{ _svTags.bingVerification }}">{% endif ~%}
+        {# app.page_meta паку перекриває title/description фіксованих сторінок (паритет після міграції) -#}
+        {% set _pmTitle = page_meta('title') ~%}
         <title>{% if _pmTitle %}{{ _pmTitle }}{% else %}{% block title %}{{ site.name }}{% endblock %}{% endif %}</title>
-        {# фавікони - з теми паку (public/themes/<key>/); без теми тегів нема #}
-        {% if theme.url('favicon_ico') %}<link rel="icon" href="{{ theme.url('favicon_ico') }}" sizes="32x32">{% endif %}
-        {% if theme.url('favicon_png') %}<link rel="icon" type="image/png" href="{{ theme.url('favicon_png') }}" sizes="192x192">{% endif %}
-        {% if theme.url('apple_touch_icon') %}<link rel="apple-touch-icon" href="{{ theme.url('apple_touch_icon') }}">{% endif %}
-        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+        {# фавікони - з теми паку (public/themes/<key>/); без теми тегів нема -#}
+        {% if theme.url('favicon_ico') %}<link rel="icon" href="{{ theme.url('favicon_ico') }}" sizes="32x32">{% endif ~%}
+        {% if theme.url('favicon_png') %}<link rel="icon" type="image/png" href="{{ theme.url('favicon_png') }}" sizes="192x192">{% endif ~%}
+        {% if theme.url('apple_touch_icon') %}<link rel="apple-touch-icon" href="{{ theme.url('apple_touch_icon') }}">{% endif ~%}
+        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% endif ~%}
         {# canonicalUrls приходить лише там, де сторінка однакова в усіх містах
            (блог): тоді і canonical, і hreflang ведуть на головний домен, щоб
            чотири копії не конкурували між собою. Перемикач мов у підвалі
-           лишається на altUrls - він має тримати людину на своєму хості. #}
+           лишається на altUrls - він має тримати людину на своєму хості. -#}
         {% set _canon = canonicalUrls|default(null) ?: (altUrls|default(null)) %}
         {% if _canon and _canon[locale] is defined %}
         <link rel="canonical" href="{{ _canon[locale] }}">
@@ -40,24 +40,24 @@
         <link rel="alternate" hreflang="ru-UA" href="{{ _canon.ru }}">
         <link rel="alternate" hreflang="x-default" href="{{ _canon.uk }}">
         {% endif %}
-        {# опис сторінки: один блок живить і <meta description>, і og:description #}
+        {# опис сторінки: один блок живить і <meta description>, і og:description -#}
         {% set _desc %}{% block metaDescription %}{% endblock %}{% endset %}
         {% set _desc = _desc|striptags|trim|replace({
             '&nbsp;': ' ', '&#039;': "'", '&#39;': "'", '&quot;': '"',
             '&lt;': '<', '&gt;': '>', '&amp;': '&',
         }) %}
         {% set _desc = page_meta('desc') ?? _desc %}
-        {% if _desc %}<meta name="description" content="{{ _desc }}">{% endif %}
-        {# og:image за замовчуванням - з теми паку; без теми - ілюстрація хіро бренду #}
+        {% if _desc %}<meta name="description" content="{{ _desc }}">{% endif ~%}
+        {# og:image за замовчуванням - з теми паку; без теми - ілюстрація хіро бренду -#}
         {% set _ogImage %}{% block ogImage %}{{ theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '' }}{% endblock %}{% endset %}
-        {% set _ogImage = _ogImage|trim %}
+        {% set _ogImage = _ogImage|trim ~%}
         <meta property="og:type" content="{% block ogType %}website{% endblock %}">
         <meta property="og:title" content="{{ (_pmTitle ?: block('title'))|striptags|trim }}">
-        {% if _desc %}<meta property="og:description" content="{{ _desc }}">{% endif %}
+        {% if _desc %}<meta property="og:description" content="{{ _desc }}">{% endif ~%}
         <meta property="og:url" content="{{ _canon[locale]|default(app.request.uri) }}">
         <meta property="og:site_name" content="{{ site.name }}">
         <meta property="og:locale" content="{{ locale == 'ru' ? 'ru_UA' : 'uk_UA' }}">
-        {% if _ogImage %}<meta property="og:image" content="{{ _ogImage starts with 'http' ? _ogImage : app.request.schemeAndHttpHost ~ _ogImage }}">{% endif %}
+        {% if _ogImage %}<meta property="og:image" content="{{ _ogImage starts with 'http' ? _ogImage : app.request.schemeAndHttpHost ~ _ogImage }}">{% endif ~%}
         <meta name="twitter:card" content="{{ _ogImage ? 'summary_large_image' : 'summary' }}">
         {% block meta %}{% endblock %}
         {% block schema %}{% endblock %}
@@ -440,11 +440,11 @@
             }
         </style>
         {% endblock %}
-        {# CSS теми паку: inline у <style> (app.theme.stylesheet_inline — без render-blocking запиту) або <link> з ?v= #}
+        {# CSS теми паку: inline у <style> (app.theme.stylesheet_inline — без render-blocking запиту) або <link> з ?v= -#}
         {% set _inlineCss = theme.inlineCss() %}
         {% if _inlineCss %}<style>{{ _inlineCss|raw }}</style>
         {% elseif theme.url('stylesheet') %}<link rel="stylesheet" href="{{ theme.url('stylesheet') }}">{% endif %}
-        {# живий CSS під токеном менеджера (ThemeService, theme.css) — після стилів рушія й паку #}
+        {# живий CSS під токеном менеджера (ThemeService, theme.css) — після стилів рушія й паку -#}
         {% if theme.liveCssUrl() %}<link rel="stylesheet" href="{{ theme.liveCssUrl() }}">{% endif %}
         <script>
             var FORM_MSG = {
@@ -481,12 +481,12 @@
         {% block analytics %}
         {# Який саме код вставляти, вирішує site_tags(city): лічильник міста (GTM-… - контейнер Tag Manager, G-…/AW-… -
            лічильник напряму; у поле можна вставити цілий сніпет Google) > GTM сайту з адмінки → Налаштування; GA4 і Ads
-           сайту — gtag.js на сторінках без GTM. Clarity: адмінка > app.clarity_id паку. #}
+           сайту — gtag.js на сторінках без GTM. Clarity: адмінка > app.clarity_id паку. -#}
         {% if analytics_defer and (_svTags.kind or _svTags.clarityId or _svTags.pixelId) %}
         {# app.analytics_defer: GTM/gtag і Clarity стартують після window.load + 800 мс (таймер — пасивні візити рахуються,
            вимога /analytics-healthcheck) або раніше на першу взаємодію; прапорець проти подвійного старту. dataLayer.push
            до старту лягає в чергу, яку контейнер підхопить, тож phone_click/generate_lead не губляться. PSI сайту
-           з Joomla-імпортом: 310 КБ gtm+gtag у ланцюжку LCP → +1,0–1,4 с render delay; з відкладенням 69–75 → 89–94. #}
+           з Joomla-імпортом: 310 КБ gtm+gtag у ланцюжку LCP → +1,0–1,4 с render delay; з відкладенням 69–75 → 89–94. -#}
         <script>
         (function () {
             window.dataLayer = window.dataLayer || [];
@@ -525,7 +525,7 @@
         <script async src="https://www.googletagmanager.com/gtag/js?id={{ _svTags.gtagLoaderId }}"></script>
         <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());{% for _svId in _svTags.gtagIds %}gtag('config','{{ _svId }}');{% endfor %}{{ (_svTags.runtime ? "svTags.go('gtag');" : '')|raw }}</script>
         {% endif %}
-        {# Microsoft Clarity (адмінка > app.clarity_id паку) — окремо від GTM, бо до чужого контейнера доступу може не бути #}
+        {# Microsoft Clarity (адмінка > app.clarity_id паку) — окремо від GTM, бо до чужого контейнера доступу може не бути -#}
         {% if _svTags.clarityId %}
         <script>{% if _svTags.consentBanner %}svTags.run('consent',function(){ {% endif %}(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","{{ _svTags.clarityId }}");{% if _svTags.consentBanner %}});{% endif %}</script>
         {% endif %}
@@ -550,14 +550,14 @@
         {{ _svTags.htmlBodyStart|raw }}
         {%~ endif %}
         {# шапка (топбар, бренд, меню, перемикач мов): пак перекриває весь блок через
-           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається #}
+           {% extends '@engine/services/base.html.twig' %} + {% block header %}…{% endblock %}; block nav усередині лишається -#}
         {% block header %}
         <div class="topbar">
             <div class="container">
                 {% set _cities = city_switcher(site, city) %}
                 {% if _cities|length > 1 %}
                 {# вибір міста - контекст усієї сторінки, тому стоїть найпершим зліва.
-                   Маркер city-raw просить CityWordsSubscriber не підміняти тут назви. #}
+                   Маркер city-raw просить CityWordsSubscriber не підміняти тут назви. -#}
                 <!--city-raw-->
                 <details class="city-switch">
                     <summary><span class="ico">📍</span>{{ city.name(locale) }}</summary>
@@ -586,13 +586,13 @@
         <div class="brandbar">
             <div class="container">
                 <a class="brand" href="{{ path('sv_home') }}">
-                    {# лого - з теми паку; без нього квадрат з першою літерою назви бренду #}
+                    {# лого - з теми паку; без нього квадрат з першою літерою назви бренду -#}
                     {% if theme.url('logo') %}
                     <span class="logo"><img src="{{ asset(theme.url('logo')) }}" alt="{{ site.name }}" width="42" height="42"></span>
                     {% else %}
                     <span class="logo logo-letter" aria-hidden="true">{{ site.name|slice(0, 1)|upper }}</span>
                     {% endif %}
-                    {# назва - з БД (ServiceSite.name); слоган - ключ brand.tagline з перекладів паку, порожній = без слогана #}
+                    {# назва - з БД (ServiceSite.name); слоган - ключ brand.tagline з перекладів паку, порожній = без слогана -#}
                     {% set _tagline = 'brand.tagline'|trans({}, 'servicesite') %}
                     <span class="name">{{ site.name }}{% if _tagline and _tagline != 'brand.tagline' %}<span class="tagline">{{ _tagline }}</span>{% endif %}</span>
                 </a>
@@ -638,11 +638,11 @@
         </main>
         <footer class="site">
             <div class="container">
-                {# пак може дописати/перекрити футер через {% extends '@engine/services/base.html.twig' %} + block footer #}
+                {# пак може дописати/перекрити футер через {% extends '@engine/services/base.html.twig' %} + block footer -#}
                 {% block footer %}
                 {% if footer_catalog %}{% set _fc = footer_catalog(site) %}{% if _fc %}
                 {# app.footer_catalog: повний каталог колонками за категоріями (назви послуг без міста, як у списках);
-                   на мобільному категорії згорнуті (details), на десктопі розкриті скриптом нижче #}
+                   на мобільному категорії згорнуті (details), на десктопі розкриті скриптом нижче -#}
                 <div class="footer-catalog">
                     {% set _fct = 'footer.catalog_title'|trans({}, 'servicesite') %}
                     {% if _fct and _fct != 'footer.catalog_title' %}<p class="footer-catalog-title">{{ _fct }}</p>{% endif %}
@@ -672,13 +672,13 @@
                 {% if city.email %}· <a href="mailto:{{ city.email }}">{{ city.email }}</a>{% endif %}
                 {% if city.hasMessengers %}· {% include 'services/partials/_messengers.html.twig' %}{% endif %}</p>
                 {# перелік міст - ключ footer.cities з перекладів паку, порожній = рядка нема;
-                   city-raw, інакше CityWordsSubscriber зробить з «Києві» поточне місто #}
+                   city-raw, інакше CityWordsSubscriber зробить з «Києві» поточне місто -#}
                 {% set _cities = 'footer.cities'|trans({}, 'servicesite') %}
                 {% if _cities and _cities != 'footer.cities' %}<p class="footer-cities"><!--city-raw-->{{ _cities }}<!--/city-raw--></p>{% endif %}
                 {% if city.address(locale) %}{# адреса - як її записали в адмінці; city-raw, інакше CityWordsSubscriber зробить з «Київ» поточне місто #}
                 <p class="footer-address"><!--city-raw-->{{ city.address(locale)|nl2br }}<!--/city-raw--></p>{% endif %}
                 <p class="footer-copyright">{{ 'footer.copyright'|trans({}, 'servicesite') }}</p>
-                {# юридичні сторінки є завжди: текст із адмінки (ServiceSite) або типовий текст рушія #}
+                {# юридичні сторінки є завжди: текст із адмінки (ServiceSite) або типовий текст рушія -#}
                 <p class="footer-legal">
                     <a href="{{ path('sv_privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
                     · <a href="{{ path('sv_terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>

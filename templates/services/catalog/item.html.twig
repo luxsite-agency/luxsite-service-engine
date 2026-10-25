@@ -1,7 +1,7 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends 'services/base.html.twig' %}
 
-{# міський текст (override = ServiceItemCity) має пріоритет у кожному полі; порожні падають на послугу: ov(override, item, …) #}
+{# міський текст (override = ServiceItemCity) має пріоритет у кожному полі; порожні падають на послугу: ov(override, item, …) -#}
 {% block title %}{{ ov(override|default(null), item, 'metaTitle', locale)
     ?? (ov(override|default(null), item, 'title', locale) ~ ' ' ~ city_in(city, locale) ~ ' '
         ~ (city.loc('nameLoc', locale) ?? city.name(locale)) ~ ' - ' ~ site.name) }}{% endblock %}
@@ -29,7 +29,7 @@
             'url': altUrls[locale],
         } %}
         {# ціна за одиницю без одиниці читається як ціна за роботу цілком:
-           «160 грн» замість «160 грн за м²» #}
+           «160 грн» замість «160 грн за м²» -#}
         {% if price.perUnit and price.loc('unit', locale) %}
             {% set offer = offer|merge({'priceSpecification': {
                 '@type': 'UnitPriceSpecification',
@@ -43,12 +43,12 @@
         {% endif %}
         {% set offers = offers|merge([offer]) %}
     {% endfor %}
-    {# рахуємо числами: sort по рядках ставив «1000.00» попереду «99.00» #}
+    {# рахуємо числами: sort по рядках ставив «1000.00» попереду «99.00» -#}
     {% set amounts = prices|filter(p => p.price)|map(p => p.price + 0)|sort %}
     {# Тип залежить від того, чи є прайс. Є ціни - Product: тільки цьому типу
        Google показує зірочки й діапазон цін, для LocalBusiness і Organization
        відгуки з власного сайту вважаються self-serving і не рендеряться.
-       Немає цін - лишається Service, бо Product без offers беззмістовний. #}
+       Немає цін - лишається Service, бо Product без offers беззмістовний. -#}
     {% set isProduct = offers is not empty %}
     {% set svc = {
         '@context': 'https://schema.org',
@@ -62,7 +62,7 @@
             'category': ov(override|default(null), item, 'title', locale),
         }) %}
         {# рейтинг рахується з наших же відгуків: число має збігатися з тим,
-           що людина побачить на /reviews/, інакше це вигадка #}
+           що людина побачить на /reviews/, інакше це вигадка -#}
         {% if reviewsAggregate|default(null) %}
             {% set svc = svc|merge({'aggregateRating': {
                 '@type': 'AggregateRating',
@@ -102,15 +102,15 @@
     {{ schema.faqPage((override is defined and override and override.loc('faq', locale)) ? override.loc('faq', locale) : (item.loc('faq', locale) ?? [])) }}
 {% endblock %}
 
-{# міський текст має пріоритет; порожні поля падають на загальні #}
+{# міський текст має пріоритет; порожні поля падають на загальні -#}
 {% set txt = override|default(null) %}
 
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {# root (категорії від кореня): загального каталогу в крихтах нема — одразу категорія #}
+        {# root (категорії від кореня): загального каталогу в крихтах нема — одразу категорія -#}
         {% if catalog_url_scheme != 'root' %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
-        {# у nested/root у категорії є сторінка — крихта активна; у flat сторінки нема #}
+        {# у nested/root у категорії є сторінка — крихта активна; у flat сторінки нема -#}
         {% if catalog_url_scheme in ['nested', 'root'] and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{{ category.loc('title', locale) }}</a>{% else %}<span>{{ category.loc('title', locale) }}</span>{% endif %} →
         {{ ov(txt, item, 'title', locale) }}
     </nav>
@@ -131,7 +131,7 @@
         {% if item.imageName %}
         <div class="hero-img">
             {# LCP-кандидат: webp через Liip (item_hero 920 / item_hero_sm 460), не оригінал; перший запит іде через
-               /media/cache/resolve і редірект, далі статика з кешу (shared/media) і CF #}
+               /media/cache/resolve і редірект, далі статика з кешу (shared/media) і CF -#}
             {% set _src = asset('media/service_item/' ~ item.imageName) %}
             <img src="{{ _src|imagine_filter('item_hero_sm') }}" srcset="{{ _src|imagine_filter('item_hero_sm') }} 460w, {{ _src|imagine_filter('item_hero') }} 920w"
                  sizes="(max-width: 759px) 100vw, 420px" alt="{{ item.imageAlt ?? ov(txt, item, 'title', locale) }}"
@@ -140,7 +140,7 @@
         {% endif %}
     </div>
 
-    {# додаткові поля запису з паку (app.custom_fields; тип авто: вантажопідйомність, габарити, об'єм…); нема = блоку нема #}
+    {# додаткові поля запису з паку (app.custom_fields; тип авто: вантажопідйомність, габарити, об'єм…); нема = блоку нема -#}
     {% set _specs = custom_fields(item, locale) %}
     {% if _specs is not empty %}
     <section class="block">
@@ -159,7 +159,7 @@
     {% if prices is not empty %}
     <section class="block">
         {# «Скільки коштує хімчистка килимів у Києві» - так це питання ставлять
-           у пошуку. Назва послуги йде з малої літери, бо стоїть усередині речення. #}
+           у пошуку. Назва послуги йде з малої літери, бо стоїть усередині речення. -#}
         {% set _svcName = ov(txt, item, 'title', locale) %}
         {% set _svcName = _svcName|slice(0, 1)|lower ~ _svcName|slice(1) %}
         <h2>{{ 'catalog.prices_title_full'|trans({
@@ -192,10 +192,10 @@
     {% set _desc3 = ov(txt, item, 'desc3', locale) %}{% if _desc3 %}<section class="block">{{ _desc3|raw }}</section>{% endif %}
 
     {# власні фото стоять після тексту й перед калькулятором: людина вже
-       прочитала, що робимо, і бачить це на реальних кадрах, перш ніж рахувати #}
+       прочитала, що робимо, і бачить це на реальних кадрах, перш ніж рахувати -#}
     {# заголовок галереї - окремий ключ під кожну послугу: «Як ми
        прибираємо квартиру» замість склеєного «<послуга>: як це виглядає
-       в нас». Немає ключа - лишається нейтральне «Наші роботи». #}
+       в нас». Немає ключа - лишається нейтральне «Наші роботи». -#}
     {% set _wKey = 'works.h2.' ~ item.slug('uk') %}
     {% set _wTitle = _wKey|trans({}, 'servicesite') %}
     {% include 'services/partials/_works.html.twig' with {

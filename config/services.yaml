@@ -76,6 +76,12 @@ parameters:
     # Події dataLayer після успішної заявки (/thanks): кожна з тими самими полями lead_type, city, site_host. Пак із чужим
     # GTM, де ціль GA4 висить на іншій події, додає її: [generate_lead, form_submit]
     app.lead_events: [generate_lead]
+    # Чистий HTML на хостах сайтів (вимога власника 25.10.2026, docs/site-pack.md «Чистий HTML»): з відповідей text/html прибираються
+    # коментарі розробника — HTML <!-- -->, CSS /* */ у <style>, JS /* */ і // в інлайн-скриптах (HtmlCommentsSubscriber);
+    # статика теми в релізі — app:html:strip-static при deploy. Не чіпає <pre>/<textarea>/<code>, JSON-LD, умовні коментарі.
+    # strip_comments: false — лишити як є (пак, якому коментарі потрібні, напр. для чужого інструменту)
+    app.html:
+        strip_comments: true
     # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}

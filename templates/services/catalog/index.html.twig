@@ -22,7 +22,7 @@
     <div class="grid">
         {% for category in categories %}
         <div class="card">
-            {# сторінка категорії є лише в схемі nested; у flat картинка без посилання #}
+            {# сторінка категорії є лише в схемі nested; у flat картинка без посилання -#}
             {% if category.imageName %}
             {% if catalog_url_scheme == 'nested' and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{% endif %}
                 <img src="/media/service_category/{{ category.imageName }}" alt="{{ category.imageAlt ?? category.loc('title', locale) }}"

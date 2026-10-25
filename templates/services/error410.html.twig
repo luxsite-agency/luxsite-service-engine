@@ -1,6 +1,6 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Брендована 410 рушія: сторінку прибрано свідомо (правило 410 менеджера редиректів). Рендериться ErrorController-ом
-   поза контекстом тенанта, тому самодостатня, як error404; пак перекриває її файлом templates/services/error410.html.twig. #}
+   поза контекстом тенанта, тому самодостатня, як error404; пак перекриває її файлом templates/services/error410.html.twig. -#}
 {% set isRu = app.request is not null and app.request.pathInfo starts with '/ru/' %}
 <!DOCTYPE html>
 <html lang="{{ isRu ? 'ru' : 'uk' }}">

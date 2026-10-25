@@ -43,7 +43,7 @@
     </section>
 
     {% if city.mapEmbedUrl or city.mapLinkUrl %}
-    {# карту вантажимо лише після кліку: інакше вона тягне ~1 МБ чужих скриптів #}
+    {# карту вантажимо лише після кліку: інакше вона тягне ~1 МБ чужих скриптів -#}
     <section class="block map-block" id="map-block" data-src="{{ city.mapEmbedUrl }}"
              data-title="{{ 'contacts.map_title'|trans({}, 'servicesite') }}">
         <div class="map-canvas">
