@@ -143,8 +143,11 @@ final class BlogController extends AbstractController
     )]
     public function category(Request $request, string $slug): Response
     {
-        // бренд з рубриками від кореня: стара адреса /<блог>/category/<slug>/ — один 301 на /<slug>/ (BrandRouter)
+        // бренд з рубриками від кореня: стара адреса /<блог>/category/<slug>/ — один 301 на /<slug>/ (BrandRouter); лише для
+        // активної рубрики — адреса вимкненої віддає 404, щоб спрацювало правило редиректу (рев'ю #36)
         if ($this->brandSettings->categoryRoot($this->serviceSite($request))) {
+            $this->requireCategory($request, $slug);
+
             return $this->redirectToRoute('sv_blog_category', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
         }
 
@@ -194,6 +197,7 @@ final class BlogController extends AbstractController
     public function categoryPaged(Request $request, string $slug, int $page): Response
     {
         if ($page === 1 || $this->brandSettings->categoryRoot($this->serviceSite($request))) {
+            $this->requireCategory($request, $slug);
             $params = ['slug' => $slug, '_locale' => $request->getLocale()];
 
             return $this->redirectToRoute($page === 1 ? 'sv_blog_category' : 'sv_blog_category_page', $page === 1 ? $params : $params + ['page' => $page], 301);
@@ -254,11 +258,14 @@ final class BlogController extends AbstractController
 
     private function categoryPage(Request $request, string $slug, int $page): Response
     {
-        $site = $this->serviceSite($request);
-        $category = $this->categories->findOneActiveBySlug($site, $slug, $request->getLocale())
-            ?? throw $this->createNotFoundException('Рубрику не знайдено.');
+        return $this->contentList($request, $this->serviceSite($request), $page, $this->requireCategory($request, $slug), null);
+    }
 
-        return $this->contentList($request, $site, $page, $category, null);
+    /** Активна рубрика за слагом мови сторінки; нема (чи вимкнена) — 404 */
+    private function requireCategory(Request $request, string $slug): ServicePostCategory
+    {
+        return $this->categories->findOneActiveBySlug($this->serviceSite($request), $slug, $request->getLocale())
+            ?? throw $this->createNotFoundException('Рубрику не знайдено.');
     }
 
     private function tagPage(Request $request, string $slug, int $page): Response
