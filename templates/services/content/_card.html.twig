@@ -1,7 +1,8 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{# Картка статті в списках контентного сайту: post, locale; heading — h2|h3 #}
+{# Картка статті в списках контентного сайту: post, locale; heading — h2|h3; thumb — мініатюра обкладинки (прев'ю зображень
+   бренду, sv_thumbs у шаблоні сторінки; без обкладинки — без мініатюри); eager — без lazy (перша картка над першим екраном) #}
 <article class="c-post">
-    {% if post.imageName %}<a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}" tabindex="-1"><img src="/media/service_post/{{ post.imageName }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}" width="640" height="360" loading="lazy"></a>{% endif %}
+    {% if thumb|default(false) and post.imageName %}<a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}" tabindex="-1"><img src="{{ asset('media/service_post/' ~ post.imageName)|imagine_filter('item_hero_sm') }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}" width="460" height="307"{% if not eager|default(false) %} loading="lazy"{% endif %}></a>{% endif %}
     <div class="in">
         <{{ heading|default('h2') }}><a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}">{{ post.loc('title', locale) }}</a></{{ heading|default('h2') }}>
         <p class="c-meta">

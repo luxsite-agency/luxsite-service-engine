@@ -46,7 +46,7 @@ final class LiveThemePolicy
         'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         // сторінки app.pages, мови розгортання й бренду, контентний сайт (stage/satellites); sv_layout — лише ім'я шаблону
-        'footer_pages', 'sv_categories', 'sv_date', 'sv_default_locale', 'sv_layout', 'sv_locale', 'sv_locale_code', 'sv_locales',
+        'footer_pages', 'sv_categories', 'sv_date', 'sv_default_locale', 'sv_layout', 'sv_locale', 'sv_locale_code', 'sv_locales', 'sv_thumbs',
         'sv_path_locale',
     ];
 

@@ -108,6 +108,9 @@ final class ServiceSiteExtension extends AbstractExtension
             // блоки рубрик на головній новинного сайту: $limit найбільших рубрик бренду (за кількістю статей мовою сторінки)
             // по $perCategory свіжих статей — [{category, posts, count}]; порожні рубрики пропускаються
             new TwigFunction('sv_category_posts', $this->categoryPosts(...)),
+            // мініатюри статей у списках (ServiceSite.listThumbs, адмінка → бренд, 25.10.2026): sv_thumbs('home') — головна,
+            // sv_thumbs('lists') — стрічка, рубрика, тег, автор; без бренду — false
+            new TwigFunction('sv_thumbs', fn (string $where): bool => (bool) $this->locales()->currentSite()?->showsThumbs($where)),
             new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }

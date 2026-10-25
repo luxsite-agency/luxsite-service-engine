@@ -22,6 +22,8 @@
 {% endblock %}
 
 {% block body %}
+    {# прев'ю зображень бренду (адмінка → бренд → «Прев'ю зображень у списках»): головна — home або all #}
+    {% set _thumbs = sv_thumbs('home') %}
     <section class="c-intro">
         <h1>{{ city.loc('introTitle', locale) ?? (site.brandName(locale) ?? site.name) }}</h1>
         {% if city.loc('introText', locale) %}<div>{{ city.loc('introText', locale)|raw }}</div>{% endif %}
@@ -30,7 +32,7 @@
     {% if featured is not empty %}
     <section class="c-featured">
         <div class="c-posts">
-            {% for post in featured %}{% include 'services/content/_card.html.twig' with {heading: 'h2'} %}{% endfor %}
+            {% for post in featured %}{% include 'services/content/_card.html.twig' with {heading: 'h2', thumb: _thumbs, eager: loop.first} %}{% endfor %}
         </div>
     </section>
     {% endif %}
@@ -44,7 +46,7 @@
     {% if posts is not empty %}
     <section class="c-latest">
         <div class="c-posts">
-            {% for post in posts %}{% include 'services/content/_card.html.twig' with {heading: 'h2'} %}{% endfor %}
+            {% for post in posts %}{% include 'services/content/_card.html.twig' with {heading: 'h2', thumb: _thumbs, eager: featured is empty and loop.first} %}{% endfor %}
         </div>
         {% if hasMore %}<p><a class="btn" href="{{ path('sv_blog_page', {page: 2}) }}">{{ 'blog.next'|trans({}, 'servicesite') }}</a></p>{% endif %}
     </section>

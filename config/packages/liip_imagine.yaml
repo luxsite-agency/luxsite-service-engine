@@ -47,6 +47,13 @@ liip_imagine:
             format: webp
             filters:
                 thumbnail: { size: [460, 307], mode: outbound }
+        # мініатюра статті в рядку стрічки контентного сайту (прев'ю зображень бренду, 25.10.2026): ~120×80 на сторінці, 2x —
+        # 240×160 (3:2, як item_hero); картки й головна новина — item_hero_sm і item_hero
+        post_thumb:
+            quality: 78
+            format: webp
+            filters:
+                thumbnail: { size: [240, 160], mode: outbound }
         # галерея сторінки app.pages (скани ліцензій, сертифікати — переважно А4 книжкою): вписати без обрізання (inset),
         # клік веде на оригінал
         page_gallery:

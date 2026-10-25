@@ -81,7 +81,8 @@
     {% endif %}
 
     <div class="c-posts">
-        {% for post in posts %}{% include 'services/content/_card.html.twig' with {heading: 'h2'} %}{% endfor %}
+        {% set _thumbs = sv_thumbs('lists') %}
+        {% for post in posts %}{% include 'services/content/_card.html.twig' with {heading: 'h2', thumb: _thumbs, eager: loop.first} %}{% endfor %}
     </div>
 
     {% if pages > 1 %}
