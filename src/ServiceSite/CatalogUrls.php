@@ -32,7 +32,7 @@ final class CatalogUrls
     public const RESERVED_SEGMENTS = [
         'services', 'districts', 'blog', 'news', 'about', 'contacts', 'faq', 'reviews', 'privacy-policy',
         'terms-of-service', 'thank-you', 'calculator-cleaning', 'lead', 'sitemap.xml', 'robots.txt',
-        'ru', 'uk', 'en', 'author', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
+        'ru', 'uk', 'en', 'author', 'feed', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
     ];
 
     public function __construct(

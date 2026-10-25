@@ -98,6 +98,8 @@ final class LiveThemePolicy
         'aboutFor', 'active', 'author', 'brandName', 'existsIn', 'images', 'path', 'urls',
         // теги статей контентного сайту (24.10.2026): лише читання активних тегів мовою сторінки
         'tagsIn',
+        // RSS контентного сайту в <head> (25.10.2026)
+        'isContent',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
