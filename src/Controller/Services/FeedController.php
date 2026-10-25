@@ -64,8 +64,10 @@ final class FeedController extends AbstractController
     )]
     public function category(Request $request, string $slug): Response
     {
-        // бренд з рубриками від кореня: одна адреса стрічки — /<рубрика>/feed/ (як і сторінки рубрики)
+        // бренд з рубриками від кореня: одна адреса стрічки — /<рубрика>/feed/ (як і сторінки рубрики); вимкнена рубрика — 404
         if ($this->brandSettings->categoryRoot($this->serviceSite($request))) {
+            $this->categories->findOneActiveBySlug($this->serviceSite($request), $slug, $request->getLocale()) ?? throw $this->createNotFoundException('Рубрику не знайдено.');
+
             return $this->redirectToRoute('sv_blog_category_feed', ['slug' => $slug, '_locale' => $request->getLocale()], 301);
         }
 

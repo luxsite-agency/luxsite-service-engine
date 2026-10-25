@@ -24,6 +24,7 @@ final class RedirectInactiveCategoryTest extends HttpKernelTestCase
 {
     private string $host;
     private int $siteId = 0;
+    private int $extraSiteId = 0;
 
     protected function setUp(): void
     {
@@ -46,7 +47,7 @@ final class RedirectInactiveCategoryTest extends HttpKernelTestCase
 
     protected function tearDown(): void
     {
-        $this->em()->getConnection()->executeStatement('DELETE FROM service_site WHERE id = ?', [$this->siteId]);
+        $this->em()->getConnection()->executeStatement('DELETE FROM service_site WHERE id IN (?, ?)', [$this->siteId, $this->extraSiteId]);
         parent::tearDown();
     }
 
@@ -58,6 +59,20 @@ final class RedirectInactiveCategoryTest extends HttpKernelTestCase
         $live = self::getContainer()->get(SiteLiveUrls::class);
 
         self::assertSame(404, $this->http('GET', 'https://' . $this->host . '/blog/category/stara/')->getStatusCode(), 'вимкнена рубрика — 404');
+        // бренд з рубриками від кореня (ci-feed у when@test): стара адреса під розділом для вимкненої рубрики — теж 404, а не 301
+        $rootHost = 'ci-feed-' . bin2hex(random_bytes(3)) . '.example';
+        $root = (new ServiceSite())->setSlug('ci-feed')->setName('Root CI')->setApexDomain($rootHost)->setMode(ServiceSite::MODE_CONTENT)->setBlogPrefix('novyny');
+        $this->em()->getConnection()->executeStatement('DELETE FROM service_site WHERE slug = ?', ['ci-feed']);
+        $this->em()->persist($root);
+        $this->em()->persist((new ServiceCity())->setSite($root)->setHost($rootHost)->setSlug('main')->setIsApex(true)->setNameNomUk('Київ'));
+        $this->em()->persist((new ServicePostCategory())->setSite($root)->setSlugUk('zakryta')->setTitleUk('Закрита')->setActive(false));
+        $this->em()->persist((new ServicePostCategory())->setSite($root)->setSlugUk('zhyva')->setTitleUk('Жива'));
+        $this->em()->flush();
+        $this->extraSiteId = (int) $root->getId();
+        foreach (['/novyny/category/zakryta/', '/novyny/category/zakryta/page/2/', '/novyny/category/zakryta/feed/'] as $path) {
+            self::assertSame(404, $this->http('GET', 'https://' . $rootHost . $path)->getStatusCode(), $path . ' — вимкнена рубрика root-бренду: 404, не 301');
+        }
+        self::assertSame(301, $this->http('GET', 'https://' . $rootHost . '/novyny/category/zhyva/')->getStatusCode(), 'активна — 301 на /zhyva/, як було');
         foreach (['/blog/category/stara/', '/blog/category/stara/page/2/', '/blog/category/stara/feed/', '/blog/category/nemaye/'] as $path) {
             self::assertFalse($live->isLive($site, $city, $path), $path . ' — не жива, правило можна завести');
         }
