@@ -30,7 +30,9 @@ final class RedirectResponder
             $location = $request->getSchemeAndHttpHost() . $request->getBaseUrl() . RedirectPath::encode($target);
         }
         if (!str_contains($location, '?')) {
-            $location .= $this->legacy->queryFor($request, (string) parse_url($location, \PHP_URL_PATH));
+            // query за правилами цілі; параметри, які зрізались би для адреси-джерела (?Itemid=, ?option= старої CMS), на ціль
+            // теж не їдуть — інакше правило з кореневої адреси тягнуло б сміття на головну (рев'ю #37)
+            $location .= $this->legacy->queryFor($request, (string) parse_url($location, \PHP_URL_PATH), $request->getPathInfo());
         }
         $response = new RedirectResponse($location, $code->value);
         // правила змінні (адмінка): 301 без заголовків кешу браузер тримав би назавжди (див. LegacyUrlSubscriber)

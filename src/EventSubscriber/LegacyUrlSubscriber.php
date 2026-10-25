@@ -24,12 +24,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\TerminateEvent;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Гігієна старих адрес на хостах сервісних сайтів — до роутингу (пріоритет 33: після
- * ServiceHostSubscriber 34, перед RouterListener 32), щоб правило спрацьовувало незалежно від
+ * ServiceHostSubscriber 35 і SiteLocaleSubscriber 34, перед RouterListener 32), щоб правило спрацьовувало незалежно від
  * того, чи збігся шлях із якимось маршрутом (/services/<старий-слаг>/ ловив би sv_category → 404).
  * Порядок: 410 для прибраних розділів → /index.php[/шлях] на чистий шлях → 301 з мапи паку → замикаючий слеш і зайвий
  * query одним 301 (/services?task=no → /services/ за один крок; на першому Joomla-сайті таких було 6 074 покази в GSC).
@@ -163,7 +164,9 @@ final class LegacyUrlSubscriber implements EventSubscriberInterface, ResetInterf
         $request = $event->getRequest();
         $site = $request->attributes->get(ServiceHostSubscriber::ATTR_SITE);
         $city = $request->attributes->get(ServiceHostSubscriber::ATTR_CITY);
-        $normalized = RedirectPath::fromRequest($path);
+        // шукаємо за формою зі слешем (як на 404 після слеш-редиректу): точний збіг у ORDER BY — зі слешем, тож правило міста
+        // «/x/» і далі перемагає правило сайту «/x»; у isLive — та сама нормалізована форма (без повторного кодування)
+        $normalized = RedirectPath::fromRequest($slashed);
         if (!$site instanceof ServiceSite || !$city instanceof ServiceCity || $normalized === null) {
             return false;
         }
@@ -172,14 +175,19 @@ final class LegacyUrlSubscriber implements EventSubscriberInterface, ResetInterf
         } catch (DbalException) {
             return false;
         }
-        if ($rule === null || $this->live->isLive($site, $city, $slashed)) {
+        if ($rule === null || $this->live->isLive($site, $city, $normalized)) {
             return false;
         }
-        $this->pendingHit = $rule['id'];
         if ($rule['code']->isRedirect() && $rule['target'] !== null) {
+            $this->pendingHit = $rule['id'];
             $event->setResponse($this->responder->redirect($request, $rule['target'], $rule['code']));
         } elseif (RedirectCode::Gone === $rule['code']) {
+            $this->pendingHit = $rule['id'];
             throw new GoneHttpException('Сторінку видалено');
+        } else {
+            // правило 404 (чи 301 без цілі): одразу 404 без слеш-301 роутера; лічильник і журнал — NotFoundRedirectSubscriber,
+            // який знайде те саме правило на 404 (тут hit не ставимо, інакше рахувалось би двічі)
+            throw new NotFoundHttpException('Сторінку не знайдено (правило редиректу).');
         }
 
         return true;

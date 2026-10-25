@@ -36,8 +36,10 @@ final class RedirectRuleBeforeSlashTest extends HttpKernelTestCase
         $em->flush();
         $this->siteId = (int) $site->getId();
         $em->clear();
-        foreach ([['/stara-storinka', 301, '/blog/persha/'], ['/zi-slashem/', 301, '/blog/persha/'], ['/vydalena', 410, null], ['/old-page.php', 301, '/blog/']] as [$source, $code, $target]) {
-            $this->db()->insert('service_redirect', ['site_id' => $this->siteId, 'city_key' => 0, 'source' => $source, 'target' => $target,
+        $cityId = (int) $this->db()->fetchOne('SELECT id FROM service_city WHERE site_id = ?', [$this->siteId]);
+        foreach ([['/stara-storinka', 301, '/blog/persha/', 0], ['/zi-slashem/', 301, '/blog/persha/', 0], ['/vydalena', 410, null, 0], ['/old-page.php', 301, '/blog/', 0],
+            ['/vidoma-404', 404, null, 0], ['/misto', 301, '/blog/', 0], ['/misto/', 301, '/blog/persha/', $cityId], ['/blog/stara-kategoriia', 301, '/', 0]] as [$source, $code, $target, $cityKey]) {
+            $this->db()->insert('service_redirect', ['site_id' => $this->siteId, 'city_key' => $cityKey, 'source' => $source, 'target' => $target,
                 'target_path' => $target, 'code' => $code, 'kind' => 'manual', 'hits' => 0, 'created_at' => date('Y-m-d H:i:s')]);
         }
     }
@@ -69,6 +71,14 @@ final class RedirectRuleBeforeSlashTest extends HttpKernelTestCase
 
         $hits = (int) $this->db()->fetchOne('SELECT hits FROM service_redirect WHERE site_id = ? AND source = ?', [$this->siteId, '/stara-storinka']);
         self::assertSame(2, $hits, 'лічильник спрацювань (два запити до /stara-storinka)');
+
+        // правило 404: одразу 404 без слеш-301, лічильник — один раз (NotFoundRedirectSubscriber)
+        self::assertSame(404, $this->http('GET', $base . '/vidoma-404')->getStatusCode());
+        self::assertSame(1, (int) $this->db()->fetchOne('SELECT hits FROM service_redirect WHERE site_id = ? AND source = ?', [$this->siteId, '/vidoma-404']));
+        // правило міста зі слешем перемагає правило сайту без слеша — як і було на 404
+        self::assertSame($base . '/blog/persha/', $this->http('GET', $base . '/misto')->headers->get('Location'));
+        // сміття старої CMS, зайве для адреси-джерела (strip_query_paths: /blog…), не їде й на ціль поза правилом (/), трекінг — їде
+        self::assertSame($base . '/?utm_source=x', $this->http('GET', $base . '/blog/stara-kategoriia?Itemid=5&option=com_content&utm_source=x')->headers->get('Location'));
     }
 
     private function db(): Connection
