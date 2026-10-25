@@ -1,0 +1,36 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# RSS 2.0 контентного сайту (FeedController): items — підготовлені масиви (title, link, guid, pubDate, description, category,
+   image, imageType, imageLength); channelTitle, channelDescription, channelLink, selfUrl, lastBuild — рядки, очищені для XML.
+   Обкладинка — enclosure (з довжиною файлу) і media:content. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+{% set locale = sv_locale() %}
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+    <title>{{ channelTitle }}</title>
+    <link>{{ channelLink }}</link>
+    <description>{{ channelDescription }}</description>
+    <language>{{ locale }}</language>
+    <lastBuildDate>{{ lastBuild }}</lastBuildDate>
+    <atom:link href="{{ selfUrl }}" rel="self" type="application/rss+xml"/>
+{% for item in items %}
+    <item>
+        <title>{{ item['title'] }}</title>
+        <link>{{ item['link'] }}</link>
+        <guid isPermaLink="false">{{ item['guid'] }}</guid>
+        <pubDate>{{ item['pubDate'] }}</pubDate>
+{% if item['description'] %}
+        <description>{{ item['description'] }}</description>
+{% endif %}
+{% if item['category'] %}
+        <category>{{ item['category'] }}</category>
+{% endif %}
+{% if item['image'] %}
+{% if item['imageLength'] %}
+        <enclosure url="{{ item['image'] }}" length="{{ item['imageLength'] }}" type="{{ item['imageType'] }}"/>
+{% endif %}
+        <media:content url="{{ item['image'] }}" medium="image" type="{{ item['imageType'] }}"/>
+{% endif %}
+    </item>
+{% endfor %}
+</channel>
+</rss>

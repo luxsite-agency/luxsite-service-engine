@@ -58,6 +58,12 @@
         <meta property="og:locale" content="{{ sv_locale_code(locale, 'og') }}">
         {% if _ogImage %}<meta property="og:image" content="{{ _ogImage starts with 'http' ? _ogImage : app.request.schemeAndHttpHost ~ _ogImage }}">{% endif %}
         <meta name="twitter:card" content="{{ _ogImage ? 'summary_large_image' : 'summary' }}">
+        {# RSS контентного сайту (25.10.2026): стрічка бренду на всіх сторінках, на сторінці рубрики — ще й стрічка рубрики;
+           поза блоком meta, бо паки його перекривають #}
+        {% if site is defined and site and site.isContent() %}{% set _feedTitle = site.brandName(locale) ?? site.name %}
+        <link rel="alternate" type="application/rss+xml" title="{{ _feedTitle }}" href="{{ url('sv_feed') }}">
+        {% if category is defined and category %}<link rel="alternate" type="application/rss+xml" title="{{ _feedTitle ~ ': ' ~ category.loc('title', locale) }}" href="{{ url('sv_blog_category_feed', {slug: category.slug(locale)}) }}">{% endif %}
+        {% endif %}
         {% block meta %}{% endblock %}
         {% block schema %}{% endblock %}
         {% block stylesheets %}

@@ -26,7 +26,7 @@ use Symfony\Component\Routing\RouterInterface;
 final class BrandRouter implements RouterInterface, RequestMatcherInterface, WarmableInterface
 {
     /** Маршрут рубрики → його варіант від кореня */
-    public const ROOT_ROUTES = ['sv_blog_category' => 'sv_blog_category_root', 'sv_blog_category_page' => 'sv_blog_category_root_page'];
+    public const ROOT_ROUTES = ['sv_blog_category' => 'sv_blog_category_root', 'sv_blog_category_page' => 'sv_blog_category_root_page', 'sv_blog_category_feed' => 'sv_blog_category_root_feed'];
 
     public function __construct(
         #[AutowireDecorated]
