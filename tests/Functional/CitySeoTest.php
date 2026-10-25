@@ -82,7 +82,8 @@ final class CitySeoTest extends SeoTestCase
         $r = $this->http('GET', 'https://' . $this->branch . '/privacy-policy/');
         self::assertSame(200, $r->getStatusCode());
         self::assertStringNotContainsString('name="robots"', (string) $r->getContent(), 'типово юридичні сторінки міст індексуються');
-        self::assertNull($r->headers->get('X-Robots-Tag'));
+        // у debug-ядрі Symfony сам ставить «X-Robots-Tag: noindex» (disallow_search_engine_index) — дивимось лише на наш
+        self::assertNotSame('noindex, follow', $r->headers->get('X-Robots-Tag'));
 
         $sitemap = (string) $this->http('GET', 'https://' . $this->branch . '/sitemap.xml')->getContent();
         self::assertStringContainsString('https://' . $this->branch . '/privacy-policy/', $sitemap);
@@ -123,7 +124,7 @@ final class CitySeoTest extends SeoTestCase
             self::assertStringNotContainsString('terms-of-service', $sitemap);
 
             $r = $get('https://' . $this->apex . '/privacy-policy/');
-            self::assertNull($r->headers->get('X-Robots-Tag'), 'апекс індексується');
+            self::assertNotSame('noindex, follow', $r->headers->get('X-Robots-Tag'), 'апекс індексується');
             self::assertStringNotContainsString('name="robots"', (string) $r->getContent());
             self::assertStringContainsString('https://' . $this->apex . '/privacy-policy/', (string) $get('https://' . $this->apex . '/sitemap.xml')->getContent());
         } finally {
