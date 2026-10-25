@@ -63,9 +63,9 @@
         {% block stylesheets %}
         <style>
             :root {
-                /* кольори бренду - з теми паку (app.theme.colors): accent, accent2, accent-ink
+                {# кольори бренду - з теми паку (app.theme.colors): accent, accent2, accent-ink
                    (текстовий відтінок акценту з контрастом 4.5+ на білому), dark, navy, footer-bg,
-                   footer-line, footer-text; решта - спільні для всіх сайтів */
+                   footer-line, footer-text; решта - спільні для всіх сайтів #}
                 {{ theme.cssVars()|raw }}
                 --text: #2b3134; --muted-text: #48474c; --border: #d5dce3; --bg-muted: #f2f6f8; --radius: 12px;
             }
@@ -76,18 +76,18 @@
             h1, h2, h3 { color: var(--dark); line-height: 1.25; }
             h1 { font-size: 2.3rem; font-weight: 800; margin: 1.2rem 0 .8rem; }
             h2 { font-size: 1.6rem; font-weight: 700; }
-            /* підпис службового блоку (не заголовок розділу): виглядає як h2 */
+            {# підпис службового блоку (не заголовок розділу): виглядає як h2 #}
             .block-title { font-size: 1.6rem; font-weight: 700; color: var(--dark);
                 line-height: 1.25; margin: 1.4rem 0 .8rem; }
             .btn { display: inline-block; background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; padding: .7rem 1.8rem; border-radius: 999px; text-decoration: none; border: 0; cursor: pointer; font-size: 1rem; font-weight: 600; box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent); transition: box-shadow .15s, transform .15s; }
             .btn:hover { box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 50%, transparent); transform: translateY(-1px); }
-            /* - Топбар - */
+            {# - Топбар - #}
             .topbar { background: var(--bg-muted); border-bottom: 1px solid var(--border); font-size: .88rem; color: var(--muted-text); }
             .topbar .container { display: flex; align-items: center; gap: 1.4rem; padding-top: .55rem; padding-bottom: .55rem; flex-wrap: wrap; }
             .topbar a { color: var(--muted-text); text-decoration: none; }
             .topbar a.phone { font-weight: 700; color: var(--text); }
             .topbar .ico { color: var(--accent); margin-right: .3rem; }
-            /* месенджери міста (partials/_messengers): крапка в кольорі бренду месенджера */
+            {# месенджери міста (partials/_messengers): крапка в кольорі бренду месенджера #}
             a.msgr { font-weight: 600; text-decoration: none; white-space: nowrap; }
             a.msgr .ico { margin-right: .3rem; }
             a.msgr-viber .ico { color: #7360f2; } a.msgr-telegram .ico { color: #2aabee; } a.msgr-whatsapp .ico { color: #25d366; }
@@ -107,12 +107,12 @@
             .city-switch li a:hover { background: var(--bg-muted); color: var(--accent-ink); }
             .city-switch li span.active { color: var(--muted-text); cursor: default; }
             .topbar .btn { margin-left: auto; padding: .45rem 1.3rem; font-size: .88rem; }
-            /* - Шапка: бренд + нав - */
+            {# - Шапка: бренд + нав - #}
             .brandbar .container { display: flex; align-items: center; gap: 1rem; padding-top: .8rem; padding-bottom: .8rem; }
             .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
             .brand .logo { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
             .brand .logo img { width: 42px; height: 42px; object-fit: contain; display: block; }
-            /* без лого в темі - квадрат у кольорах бренду з першою літерою назви */
+            {# без лого в темі - квадрат у кольорах бренду з першою літерою назви #}
             .brand .logo.logo-letter { border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 1.4rem; font-weight: 800; }
             .brand .name { font-size: 1.45rem; font-weight: 800; color: var(--dark); letter-spacing: -.02em; }
             .brand .tagline { display: block; font-size: .72rem; font-weight: 400; color: var(--muted-text); letter-spacing: 0; }
@@ -131,7 +131,7 @@
             .lang-switch a { text-decoration: none; color: var(--muted-text); margin-left: .5rem; }
             .lang-switch a.active { color: var(--accent-ink); }
             main { padding: .5rem 0 1.5rem; }
-            /* - Хіро/бенефіти - */
+            {# - Хіро/бенефіти - #}
             .hero { display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap; }
             .hero-content { flex: 1 1 420px; min-width: 0; width: 100%; }
             .hero-img { flex: 0 1 420px; margin: 0; text-align: center; }
@@ -140,12 +140,12 @@
             .hero-img figcaption span { color: var(--muted-text); font-size: .88rem; }
             .hero-img img { width: 100%; height: auto; display: block; }
             .hero-img img { border-radius: var(--radius); }
-            /* пагінація списку блогу (/blog/page/N/) */
+            {# пагінація списку блогу (/blog/page/N/) #}
             .pagination { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 1.5rem 0; }
             .pagination a, .pagination .pg-cur, .pagination .pg-gap { min-width: 2.2rem; padding: .4rem .6rem; text-align: center; border-radius: var(--radius); border: 1px solid var(--line, #d5dce3); text-decoration: none; }
             .pagination .pg-cur { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
             .pagination .pg-gap { border: 0; min-width: auto; }
-            /* лічильники під ілюстрацією хіро (ключі паку hero.stat*_value/label; порожні = блоку нема) */
+            {# лічильники під ілюстрацією хіро (ключі паку hero.stat*_value/label; порожні = блоку нема) #}
             .hero-stats { display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; margin: .9rem 0 0; padding: 0; list-style: none; }
             .hero-stats li { text-align: center; min-width: 6.5rem; }
             .hero-stats b { display: block; font-size: 1.5rem; line-height: 1.1; color: var(--accent-ink); }
@@ -160,19 +160,19 @@
             .benefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 1rem 1.2rem; margin: 1.6rem 0; }
             .benefit { display: flex; align-items: center; gap: .6rem; font-size: .88rem; line-height: 1.35; color: var(--muted-text); }
             .benefit .bico { flex: 0 0 auto; width: 38px; height: 38px; border: 2px solid var(--accent); border-radius: 50%; color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
-            /* - Секції/картки - */
+            {# - Секції/картки - #}
             section.block { margin: 3.2rem 0; }
             section.block:first-child { margin-top: 1rem; }
-            /* повноширинна сіра смуга (full-bleed з центрованого контейнера) */
+            {# повноширинна сіра смуга (full-bleed з центрованого контейнера) #}
             section.block.muted { background: var(--bg-muted); margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding: 2.4rem calc(50vw - 50%); }
-            /* центровані заголовки секцій */
+            {# центровані заголовки секцій #}
             section.block.center > h2:first-child { text-align: center; font-size: 1.8rem; margin: 0 0 1.6rem; }
             body { overflow-x: hidden; }
             .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 1.1rem; }
-            /* --- стрічка відгуків: скрол по горизонталі + розкривання --- */
-            /* широкий банер, не постер: обкладинка на всю ширину, але
+            {# --- стрічка відгуків: скрол по горизонталі + розкривання --- #}
+            {# широкий банер, не постер: обкладинка на всю ширину, але
                низька, щоб не з'їдати перший екран. Однаково для району
-               й статті - формат у них спільний */
+               й статті - формат у них спільний #}
             .district-cover, .post-cover {
                 width: 100%; height: clamp(160px, 24vw, 300px); object-fit: cover;
                 border-radius: 8px; margin: 1.2rem 0 .6rem;
@@ -180,12 +180,12 @@
             .reviews-strip { position: relative; }
             .reviews-row {
                 display: flex; gap: 1.1rem; overflow-x: auto; scroll-behavior: smooth;
-                /* без scroll-snap: коли лишається прогорнути менше, ніж
+                {# без scroll-snap: коли лишається прогорнути менше, ніж
                    ширина картки, снап тягнув стрічку назад на початок
-                   і стрілка «вперед» не давала жодного руху */
+                   і стрілка «вперед» не давала жодного руху #}
                 padding: .2rem; margin: 0 -.2rem;
-                /* смугу прокрутки ховаємо: гортання дають стрілки й палець,
-                   а сама смуга під картками виглядала як службовий елемент */
+                {# смугу прокрутки ховаємо: гортання дають стрілки й палець,
+                   а сама смуга під картками виглядала як службовий елемент #}
                 scrollbar-width: none; -ms-overflow-style: none;
             }
             .reviews-row::-webkit-scrollbar { width: 0; height: 0; }
@@ -194,21 +194,21 @@
                 gap: 1.1rem; align-items: stretch;
             }
             .review-card { display: flex; flex-direction: column; text-align: left; }
-            /* ширину задає лише стрічка; у сітці її диктує колонка */
+            {# ширину задає лише стрічка; у сітці її диктує колонка #}
             .reviews-row .review-card { flex: 0 0 clamp(240px, 78vw, 320px); }
             .review-card .card-name { display: flex; align-items: center; gap: .6rem; }
             .review-card .card-name img { width: 44px; height: 44px; object-fit: cover; border-radius: 50%; }
             .review-card .stars { color: var(--accent); font-size: .9rem; }
             .review-card .meta { margin: 0 0 .5rem; }
             .review-text { margin: 0; white-space: pre-line; }
-            /* обрізаємо лише коли JS підтвердив, що текст справді довший */
+            {# обрізаємо лише коли JS підтвердив, що текст справді довший #}
             .review-text.is-clamped {
                 display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical;
                 overflow: hidden;
             }
             .review-more {
                 align-self: flex-start; margin-top: .6rem; padding: 0; border: 0; background: none;
-                font: inherit; font-size: .92rem; font-weight: 600; color: var(--accent-ink); /* accent-ink: контраст 4.5+ на білому (a11y) */
+                font: inherit; font-size: .92rem; font-weight: 600; color: var(--accent-ink); {# accent-ink: контраст 4.5+ на білому (a11y) #}
                 cursor: pointer; text-decoration: underline;
             }
             .reviews-nav {
@@ -219,8 +219,8 @@
             }
             .reviews-nav:hover { color: var(--accent); border-color: var(--accent); }
             .reviews-nav.is-edge { opacity: .35; }
-            /* на десктопі стрічці лишаємо поля під стрілки, щоб кнопка
-               стояла в порожньому місці, а не поверх тексту відгуку */
+            {# на десктопі стрічці лишаємо поля під стрілки, щоб кнопка
+               стояла в порожньому місці, а не поверх тексту відгуку #}
             @media (min-width: 721px) {
                 .reviews-strip:not(.is-grid) { padding: 0 52px; }
                 .reviews-nav.prev { left: 0; }
@@ -236,10 +236,10 @@
             .card ul { margin: .3rem 0 0; padding-left: 1.1rem; }
             .card li { margin: .25rem 0; }
             .card li a { color: var(--muted-text); font-weight: 400; }
-            /* - Прайс - */
-            /* Прайс на головній показується повністю: запит там загальний,
+            {# - Прайс - #}
+            {# Прайс на головній показується повністю: запит там загальний,
                і людині потрібен весь перелік, а не один таб. Чіпи згори -
-               швидкі переходи до потрібної послуги. */
+               швидкі переходи до потрібної послуги. #}
             .price-jump { margin-bottom: 1.4rem; }
             .prices-calc-link { margin: .4rem 0 0; }
 
@@ -247,7 +247,7 @@
             .price-pane-title { margin: 0 0 .2rem; font-size: 1.08rem; text-align: left; }
             .price-pane-title a { color: var(--dark); text-decoration: none; }
             .price-pane-title a:hover { color: var(--accent); text-decoration: underline; }
-            /* характеристики послуги (тип авто): таблиця на сторінці й компактний список у картці категорії */
+            {# характеристики послуги (тип авто): таблиця на сторінці й компактний список у картці категорії #}
             table.specs { border-collapse: collapse; margin: .6rem 0; }
             table.specs th, table.specs td { text-align: left; padding: .45rem 1.2rem .45rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
             table.specs th { font-weight: 600; color: var(--dark); }
@@ -257,41 +257,41 @@
             table.prices td, table.prices th { border-bottom: 1px solid var(--border); padding: .65rem .7rem; text-align: left; }
             table.prices tr:nth-child(odd) td { background: var(--bg-muted); }
             table.prices td.price { white-space: nowrap; font-weight: 700; color: var(--dark); }
-            /* - Наші роботи: сітка власних фото - */
+            {# - Наші роботи: сітка власних фото - #}
             .works-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
             .work-card { margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; }
             .work-card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
             .work-card figcaption { padding: .6rem .8rem .75rem; font-size: .93rem; color: var(--dark); }
             .work-card figcaption .meta { display: block; margin-top: .15rem; font-size: .84rem; color: var(--muted-text); }
-            /* сторінки app.pages: галерея сканів (А4 книжкою, без обрізання), додаткові поля */
+            {# сторінки app.pages: галерея сканів (А4 книжкою, без обрізання), додаткові поля #}
             .page-gallery .work-card img { aspect-ratio: 210 / 297; object-fit: contain; background: #fff; }
             .page-fields { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.2rem; margin: 1.2rem 0; }
             .page-fields dt { font-weight: 600; } .page-fields dd { margin: 0; }
-            /* «до/після» - дві половини одного кадру, підпис поверх знімка */
+            {# «до/після» - дві половини одного кадру, підпис поверх знімка #}
             .work-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
             .work-shot { position: relative; display: block; }
             .work-shot b { position: absolute; left: .4rem; bottom: .4rem; padding: .1rem .5rem; border-radius: 999px; font-size: .78rem; background: rgba(255, 255, 255, .88); color: var(--dark); }
 
-            /* - Шеврон-іконка акордеонів (оригінал uk-accordion, у нашому акценті) - */
-            /* колір шеврона - акцент теми: SVG як маска, заливка через background-color (у data-URI var() не працює) */
+            {# - Шеврон-іконка акордеонів (оригінал uk-accordion, у нашому акценті) - #}
+            {# колір шеврона - акцент теми: SVG як маска, заливка через background-color (у data-URI var() не працює) #}
             .acc-chevron::after { content: ''; width: 26px; height: 26px; background-color: var(--accent); -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%2017.4-7-7%201.4-1.4%205.6%205.6%205.6-5.6%201.4%201.4z%27%2F%3E%3C%2Fsvg%3E") no-repeat 50% 50% / cover; mask: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%2017.4-7-7%201.4-1.4%205.6%205.6%205.6-5.6%201.4%201.4z%27%2F%3E%3C%2Fsvg%3E") no-repeat 50% 50% / cover; }
             details[open] > summary.acc-chevron::after { -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%207.6-7%207%201.4%201.4%205.6-5.6%205.6%205.6%201.4-1.4z%27%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2732%27%20height%3D%2732%27%20fill%3D%27%23000%27%3E%3Cpath%20d%3D%27M16%2030a14%2014%200%201%201%200-28%2014%2014%200%200%201%200%2028m0-26a12%2012%200%201%200%200%2024%2012%2012%200%200%200%200-24m0%207.6-7%207%201.4%201.4%205.6-5.6%205.6%205.6%201.4-1.4z%27%2F%3E%3C%2Fsvg%3E"); }
-            /* - FAQ-акордеон - */
+            {# - FAQ-акордеон - #}
             details.faq { border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1.1rem; margin: .6rem 0; background: #fff; }
             details.faq summary { cursor: pointer; font-weight: 700; color: var(--dark); list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
             details.faq summary::after { flex: 0 0 auto; }
             details.faq > div { padding-top: .6rem; color: var(--muted-text); }
-            /* - Чипси районів - */
+            {# - Чипси районів - #}
             .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
             .chips a { border: 1px solid var(--border); border-radius: 999px; padding: .35rem .95rem; text-decoration: none; color: var(--muted-text); font-size: .9rem; background: #fff; }
             .chips a:hover { border-color: var(--accent); color: var(--accent-ink); }
-            /* клас використовувався в шаблоні, але правила не було - чипи стояли
-               ліворуч під центрованим заголовком */
+            {# клас використовувався в шаблоні, але правила не було - чипи стояли
+               ліворуч під центрованим заголовком #}
             .chips-center { justify-content: center; }
             .chips a.more { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-            /* «Усі питання» під FAQ головної — як чип .more */
+            {# «Усі питання» під FAQ головної — як чип .more #}
             a.faq-all { display: inline-block; margin-top: .6rem; padding: .35rem .9rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent-ink); font-weight: 600; text-decoration: none; }
-            /* міні-калькулятор унизу головної: параметри ліворуч, підсумок праворуч */
+            {# міні-калькулятор унизу головної: параметри ліворуч, підсумок праворуч #}
             .calc-mini { background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.6rem; }
             .calc-mini-body { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1.6rem 2rem; align-items: start; }
             .calc-mini-params { display: grid; gap: 1.1rem; }
@@ -322,16 +322,16 @@
                 .calc-mini-body { grid-template-columns: 1fr; }
             }
             .chips a.active { background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; font-weight: 600; }
-            /* - Акордеон «Де ми працюємо» - */
+            {# - Акордеон «Де ми працюємо» - #}
             .district-groups { border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem 1.4rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 2.5rem; background: #fff; }
             .district-groups details { padding: .55rem 0; border-bottom: 1px solid var(--bg-muted); }
             .district-groups summary { cursor: pointer; font-weight: 600; color: var(--dark); list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
             .district-groups summary::after { flex: 0 0 auto; }
             .district-groups .chips { padding: .7rem 0 .3rem; }
-            /* одна група в блоці (передмістя) - розтягуємо на всю ширину,
-               інакше сітка лишає її в колонці 280px і поруч порожньо */
+            {# одна група в блоці (передмістя) - розтягуємо на всю ширину,
+               інакше сітка лишає її в колонці 280px і поруч порожньо #}
             .district-groups details:only-child { grid-column: 1 / -1; }
-            /* - СЕО-картки - */
+            {# - СЕО-картки - #}
             .seo-text .seo-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.6rem; margin: 1.2rem 0; background: #fff; }
             .seo-text .seo-card h2 { margin-top: 0; font-size: 1.35rem; }
             .seo-text .seo-card p { color: var(--muted-text); }
@@ -361,7 +361,7 @@
             .map-facade-title { font-weight: 700; }
             .map-facade-hint { font-size: .85rem; color: var(--muted-text); }
             @media (max-width: 760px) { .contacts-cols { grid-template-columns: 1fr; } }
-            /* - Список блогу: рядок з мініатюрою, на телефоні - колонка - */
+            {# - Список блогу: рядок з мініатюрою, на телефоні - колонка - #}
             .post-card { display: flex; gap: 1.2rem; align-items: flex-start; margin-bottom: 1rem; }
             .post-card .post-thumb { flex: 0 0 220px; max-width: 220px; display: block; }
             .post-card .post-thumb img { width: 100%; height: auto; aspect-ratio: 1200 / 630;
@@ -381,7 +381,7 @@
             .breadcrumbs a { color: var(--muted-text); text-decoration: none; }
             .breadcrumbs a:hover { color: var(--accent); }
             .meta { color: var(--muted-text); font-size: .85rem; }
-            /* - Форма заявки - */
+            {# - Форма заявки - #}
             .lead-form { background: var(--bg-muted); border-radius: var(--radius); padding: 1.6rem; }
             .lead-form .form-sub { margin: -.5rem 0 1rem; color: var(--muted-text); max-width: 720px; }
             .lead-form .lead-msgrs { margin: 1rem 0 0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; color: var(--muted-text); }
@@ -390,14 +390,14 @@
                 line-height: 1.25; margin: 0 0 .8rem; }
             .lead-form input[type=tel], .lead-form input[type=text] { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; background: #fff; }
             .lead-form input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
-            /* - Модалка + плаваюча CTA - */
+            {# - Модалка + плаваюча CTA - #}
             dialog.lead-modal { border: 0; border-radius: var(--radius); padding: 0; max-width: 560px; width: calc(100% - 2rem); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
             dialog.lead-modal::backdrop { background: rgba(8, 49, 58, .55); }
             dialog.lead-modal .lead-form { border-radius: 0; }
             dialog.lead-modal .close { position: absolute; top: .6rem; right: .9rem; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: var(--muted-text); }
             .floating-cta { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 50; transition: opacity .2s, transform .2s; }
             .floating-cta.hidden { opacity: 0; transform: translateY(10px); pointer-events: none; }
-            /* - Футер - */
+            {# - Футер - #}
             body { min-height: 100vh; display: flex; flex-direction: column; }
             main { flex: 1 0 auto; }
             footer.site { flex-shrink: 0; background: var(--footer-bg); color: var(--footer-ink); border-top: 1px solid var(--footer-line); padding: 1.8rem 0; margin-top: 2.5rem; font-size: .9rem; }
@@ -406,11 +406,11 @@
             footer.site .container > p { color: var(--footer-text); }
             footer.site .container > p a { text-decoration: underline; }
             footer.site nav a { font-weight: 600; }
-            /* каталог у футері (app.footer_catalog) */
+            {# каталог у футері (app.footer_catalog) #}
             .footer-catalog { margin: 0 0 1.4rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--footer-line); }
             .footer-catalog-title { margin: 0 0 .8rem; font-weight: 700; font-size: 1rem; color: var(--footer-ink); }
             .footer-catalog-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .8rem 1.6rem; }
-            /* target-size (Lighthouse): summary і посилання ≥24px по висоті з відступом */
+            {# target-size (Lighthouse): summary і посилання ≥24px по висоті з відступом #}
             .footer-cat summary { font-weight: 600; cursor: pointer; list-style: none; padding: .45rem 0; min-height: 24px; }
             .footer-cat summary::-webkit-details-marker { display: none; }
             .footer-cat ul { list-style: none; margin: .2rem 0 .6rem; padding: 0; }
@@ -427,10 +427,10 @@
             @media (max-width: 700px) {
                 h1 { font-size: 1.6rem; }
                 .topbar .hide-m { display: none; }
-                /* у топбарі на мобільному лишається тільки телефон: кнопка дублюється плаваючою */
+                {# у топбарі на мобільному лишається тільки телефон: кнопка дублюється плаваючою #}
                 .topbar .btn { display: none; }
                 .benefits { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; }
-                /* сендвіч-меню: лого, мови і кнопка стоять одним рядком */
+                {# сендвіч-меню: лого, мови і кнопка стоять одним рядком #}
                 .burger { display: flex; margin-left: auto; margin-right: -10px; }
                 .lang-switch--m { display: inline-flex; margin-left: auto; }
                 .navbar .lang-switch { display: none; }
@@ -697,14 +697,14 @@
         </footer>{% endblock %}
 
         <script>
-            /* Джерело заявки. Мітки приходять на першій сторінці візиту, а форму
+            {# Джерело заявки. Мітки приходять на першій сторінці візиту, а форму
                людина часто відправляє вже з іншої - тому кладемо в localStorage
                і підставляємо в приховані поля перед відправкою. Прямий захід
-               збережену рекламну мітку не затирає. */
+               збережену рекламну мітку не затирає. #}
             (function () {
-                /* ключ спільний для всіх сайтів рушія; старі ключі форків (pc_src, el_src)
-                   дочитуються, щоб не втратити мітки відвідувачів за 90 днів після переїзду */
-                var KEY = 'sv_src', TTL = 7776e6; /* 90 днів */
+                {# ключ спільний для всіх сайтів рушія; старі ключі форків (pc_src, el_src)
+                   дочитуються, щоб не втратити мітки відвідувачів за 90 днів після переїзду #}
+                var KEY = 'sv_src', TTL = 7776e6; {# 90 днів #}
                 var LEGACY_KEYS = ['pc_src', 'el_src'];
                 var q = new URLSearchParams(location.search);
                 var UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
@@ -743,13 +743,13 @@
                         form.appendChild(input);
                     });
                 }
-                /* У момент відправки, а не при завантаженні: модалка із формою
+                {# У момент відправки, а не при завантаженні: модалка із формою
                    лежить у розмітці нижче за цей скрипт, тож на старті її ще
                    немає в DOM - і саме звідти йде більшість заявок. Capture,
                    щоб устигнути до самої відправки.
                    Тут же захист від подвійного натискання (перенесено з першого сайту на рушії):
                    друга відправка тієї ж форми глушиться, кнопка гасне до переходу
-                   на подяку (було по дві однакові заявки з інтервалом 1-3 с). */
+                   на подяку (було по дві однакові заявки з інтервалом 1-3 с). #}
                 document.addEventListener('submit', function (e) {
                     var form = e.target;
                     if (!form || !form.matches || !form.matches('form[data-lead-form]')) { return; }
@@ -758,7 +758,7 @@
                     fill(form);
                     var btn = form.querySelector('[type="submit"]');
                     if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
-                    /* якщо мережа впала й сторінка лишилась - дати відправити знову */
+                    {# якщо мережа впала й сторінка лишилась - дати відправити знову #}
                     setTimeout(function () {
                         form.dataset.sent = '';
                         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
@@ -767,8 +767,8 @@
             })();
         </script>
         <script>
-            /* Події для GTM: клік по номеру - єдиний спосіб бачити дзвінки без
-               платного колтрекінгу, тож шлемо з тими самими мітками джерела. */
+            {# Події для GTM: клік по номеру - єдиний спосіб бачити дзвінки без
+               платного колтрекінгу, тож шлемо з тими самими мітками джерела. #}
             (function () {
                 window.dataLayer = window.dataLayer || [];
                 var src = {};
@@ -801,10 +801,10 @@
             })();
         </script>
         <script>
-            /* Стрічка відгуків. Обрізаємо текст лише тим карткам, які реально
+            {# Стрічка відгуків. Обрізаємо текст лише тим карткам, які реально
                довші за вісім рядків - інакше кнопка «читати повністю» висіла б
                і над двома реченнями. Стрілки показуємо, тільки якщо є куди
-               гортати; на телефоні гортають пальцем. */
+               гортати; на телефоні гортають пальцем. #}
             (function () {
                 var MORE = {{ 'reviews.more'|trans({}, 'servicesite')|json_encode|raw }};
                 var LESS = {{ 'reviews.less'|trans({}, 'servicesite')|json_encode|raw }};
@@ -840,8 +840,8 @@
                         var card = row.querySelector('.review-card');
                         return card ? card.getBoundingClientRect().width + 18 : row.clientWidth * 0.8;
                     }
-                    /* обидві стрілки лишаються на місці: кнопка, що зникає,
-                       смикає верстку й читається як збій */
+                    {# обидві стрілки лишаються на місці: кнопка, що зникає,
+                       смикає верстку й читається як збій #}
                     function sync() {
                         var max = row.scrollWidth - row.clientWidth;
                         prev.classList.toggle('is-edge', row.scrollLeft < 8);
@@ -864,7 +864,7 @@
             {% if city.hasMessengers %}<p class="modal-msgrs"><span>{{ 'lead.messengers'|trans({}, 'servicesite') }}</span>{% include 'services/partials/_messengers.html.twig' %}</p>{% endif %}
         </dialog>
         <script>
-            // плаваюча CTA ховається, коли футер у в'юпорті (не налазить на низ сторінки)
+            {# плаваюча CTA ховається, коли футер у в'юпорті (не налазить на низ сторінки) #}
             (function () {
                 var cta = document.querySelector('.floating-cta');
                 var footer = document.querySelector('footer.site');

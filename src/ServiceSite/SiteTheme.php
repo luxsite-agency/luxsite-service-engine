@@ -248,7 +248,36 @@ final class SiteTheme
             $css,
         ) ?? $css;
         // </style> усередині CSS закрив би тег — екрануємо на всяк випадок
-        return str_ireplace('</style', '<\/style', $css);
+        return str_ireplace('</style', '<\/style', self::minifyCss($css));
+    }
+
+    /**
+     * Мінімізація CSS для вбудовування в сторінку (25.10.2026): без коментарів (службові примітки й назви інструментів збірки
+     * відвідувачу не потрібні) і зайвих пробілів. Однаково для всіх сайтів. Пробіл між частинами селектора (`.a :is(b)`) лишається —
+     * прибираються лише пробіли навколо { } ; і послідовності пробілів. Рядки в лапках не змінюються: коментарі й рядки шукаються
+     * одним проходом (апостроф у коментарі — «прев'ю» — не відкриває рядок, а «/*» у рядку не відкриває коментар); `--x: ;`
+     * (порожня кастомна властивість) зберігає пробіл.
+     */
+    public static function minifyCss(string $css): string
+    {
+        $strings = [];
+        $css = preg_replace_callback(
+            '~/\*.*?\*/|"(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\'~s',
+            static function (array $m) use (&$strings): string {
+                if (str_starts_with($m[0], '/*')) {
+                    return '';
+                }
+                $strings[] = $m[0];
+
+                return "\x01" . (\count($strings) - 1) . "\x01";
+            },
+            $css,
+        ) ?? $css;
+        $css = preg_replace('~\s+~', ' ', $css) ?? $css;
+        $css = preg_replace('~(?<!:) (?=[{};])|(?<=[{};]) ~', '', $css) ?? $css;
+        $css = trim(str_replace(';}', '}', $css));
+
+        return preg_replace_callback('~\x01(\d+)\x01~', static fn (array $m): string => $strings[(int) $m[1]], $css) ?? $css;
     }
 
     /** @return array<string, string> */
