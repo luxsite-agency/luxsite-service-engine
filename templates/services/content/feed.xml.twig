@@ -1,14 +1,14 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# RSS 2.0 контентного сайту (FeedController): items — підготовлені масиви (title, link, guid, pubDate, description, category,
-   image, imageType, imageLength); channelLink, selfUrl, lastBuild. Обкладинка — enclosure (з довжиною файлу) і media:content. -#}
+   image, imageType, imageLength); channelTitle, channelDescription, channelLink, selfUrl, lastBuild — рядки, очищені для XML.
+   Обкладинка — enclosure (з довжиною файлу) і media:content. -#}
 <?xml version="1.0" encoding="UTF-8"?>
 {% set locale = sv_locale() %}
-{% set _brand = site.brandName(locale) ?? site.name %}
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
 <channel>
-    <title>{{ category ? _brand ~ ': ' ~ category.loc('title', locale) : _brand }}</title>
+    <title>{{ channelTitle }}</title>
     <link>{{ channelLink }}</link>
-    <description>{{ category ? category.loc('title', locale) ~ ' — ' ~ _brand : _brand }}</description>
+    <description>{{ channelDescription }}</description>
     <language>{{ locale }}</language>
     <lastBuildDate>{{ lastBuild }}</lastBuildDate>
     <atom:link href="{{ selfUrl }}" rel="self" type="application/rss+xml"/>

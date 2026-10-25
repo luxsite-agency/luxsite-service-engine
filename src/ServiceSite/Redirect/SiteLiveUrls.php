@@ -10,6 +10,7 @@ namespace App\ServiceSite\Redirect;
 use App\Entity\ServiceCity;
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\EventSubscriber\SiteModeSubscriber;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
@@ -81,6 +82,8 @@ final class SiteLiveUrls implements LiveUrls
 
         return match (true) {
             $route === '' || $route === 'admin' || str_starts_with($route, 'admin_') || str_starts_with($route, 'api_') || str_starts_with($route, 'app_') => false,
+            // маршрут, вимкнений режимом сайту (SiteModeSubscriber → 404): /feed/, /author/ на сервісному, /services/ на контентному
+            !SiteModeSubscriber::allowed($site, $route) => false,
             $route === 'sv_service' => $this->itemLive($site, $city, (string) $match['slug'], $locale),
             $route === 'sv_category' => $this->categoryLive($site, $city, (string) $match['category'], $locale),
             $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,

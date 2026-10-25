@@ -62,7 +62,9 @@ final class FeedTest extends HttpKernelTestCase
             ->setCategory($eco)->setPublishedAt(new \DateTimeImmutable('-2 hours')));
         $em->persist((new ServicePost())->setSite($root)->setSlugUk('chernetka')->setTitleUk('Чернетка')->setDescUk('<p>Ще не вийшла</p>')
             ->setCategory($pol)->setPublishedAt(new \DateTimeImmutable('+1 day')));
-        $em->persist((new ServicePost())->setSite($plain)->setSlugUk('porada')->setTitleUk('Порада')->setLeadUk('Лід поради')->setDescUk('<p>Текст</p>')
+        // керівний символ із Word у заголовку й злиті блоки в ліді — стрічка лишається валідною, слова не злипаються
+        $em->persist((new ServicePost())->setSite($plain)->setSlugUk('porada')->setTitleUk("Порада\x0B дня")
+            ->setLeadUk('<p>Перше речення.</p><p>Друге <a href="/x/">посилання</a>, кома.</p><script>alert(1)</script>')->setDescUk('<p>Текст</p>')
             ->setCategory($por)->setPublishedAt(new \DateTimeImmutable('-1 day')));
         $em->flush();
         $this->siteIds = [(int) $root->getId(), (int) $plain->getId(), (int) $svc->getId()];
@@ -132,7 +134,10 @@ final class FeedTest extends HttpKernelTestCase
 
         $plain = $this->http('GET', 'https://' . $this->plainHost . '/blog/category/poradi/feed/');
         self::assertSame(200, $plain->getStatusCode(), 'рубрика під розділом статей');
-        self::assertCount(1, $this->xml((string) $plain->getContent())->channel->item);
+        $plainXml = $this->xml((string) $plain->getContent());
+        self::assertCount(1, $plainXml->channel->item);
+        self::assertSame('Порада дня', (string) $plainXml->channel->item[0]->title, 'керівний символ прибрано');
+        self::assertSame('Перше речення. Друге посилання, кома.', (string) $plainXml->channel->item[0]->description, 'без злиплих слів і без script');
 
         $home = (string) $this->http('GET', $base . '/')->getContent();
         self::assertStringContainsString('<link rel="alternate" type="application/rss+xml" title="Новини CI" href="' . $base . '/feed/">', $home);
@@ -140,6 +145,14 @@ final class FeedTest extends HttpKernelTestCase
         self::assertStringContainsString('<link rel="alternate" type="application/rss+xml" title="Новини CI: Політика" href="' . $base . '/polityka/feed/">', $page);
 
         self::assertSame(404, $this->http('GET', 'https://' . $this->svcHost . '/feed/')->getStatusCode(), 'сервісний сайт RSS не має');
+        // менеджер редиректів: /feed/ сервісного сайту — не «жива» адреса (на неї можна завести 301/410), контентного — жива
+        /** @var \App\ServiceSite\Redirect\SiteLiveUrls $live */
+        $live = self::getContainer()->get(\App\ServiceSite\Redirect\SiteLiveUrls::class);
+        [$rootId, , $svcId] = $this->siteIds;
+        $svc = $this->em()->find(ServiceSite::class, $svcId) ?? self::fail('сайт є');
+        $root = $this->em()->find(ServiceSite::class, $rootId) ?? self::fail('бренд є');
+        self::assertFalse($live->isLive($svc, $this->em()->getRepository(ServiceCity::class)->findOneBy(['site' => $svc]), '/feed/'));
+        self::assertTrue($live->isLive($root, $this->em()->getRepository(ServiceCity::class)->findOneBy(['site' => $root]), '/feed/'));
         self::assertStringNotContainsString('application/rss+xml', (string) $this->http('GET', 'https://' . $this->svcHost . '/')->getContent());
     }
 

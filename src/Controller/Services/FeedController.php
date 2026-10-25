@@ -111,9 +111,11 @@ final class FeedController extends AbstractController
         }
 
         $home = $base . $this->generateUrl('sv_home', ['_locale' => $locale]);
+        $brand = self::xmlSafe((string) ($site->brandName($locale) ?? $site->getName()));
+        $catTitle = $category !== null ? self::xmlSafe((string) $category->loc('title', $locale)) : null;
         $response = $this->render('services/content/feed.xml.twig', [
-            'site' => $site,
-            'category' => $category,
+            'channelTitle' => $catTitle !== null ? $brand . ': ' . $catTitle : $brand,
+            'channelDescription' => $catTitle !== null ? $catTitle . ' — ' . $brand : $brand,
             'items' => $items,
             'channelLink' => $category !== null ? $base . $this->generateUrl('sv_blog_category', ['slug' => $category->slug($locale), '_locale' => $locale]) : $home,
             'selfUrl' => $base . $request->getPathInfo(),
@@ -129,9 +131,9 @@ final class FeedController extends AbstractController
     /** @return array<string, string|int|null> */
     private function item(ServicePost $post, string $locale, string $base, string $host): array
     {
-        $lead = trim(html_entity_decode(strip_tags((string) $post->loc('lead', $locale)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'));
+        $lead = self::plain((string) $post->loc('lead', $locale));
         if ($lead === '') {
-            $text = trim((string) preg_replace('~\s+~u', ' ', html_entity_decode(strip_tags((string) $post->loc('desc', $locale)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8')));
+            $text = self::plain((string) $post->loc('desc', $locale));
             $lead = mb_strlen($text) > 300 ? rtrim(mb_substr($text, 0, 300)) . '…' : $text;
         }
         $image = null;
@@ -139,23 +141,45 @@ final class FeedController extends AbstractController
         $imageLength = null;
         if ($post->getImageName() !== null) {
             $image = $base . '/media/service_post/' . rawurlencode($post->getImageName());
-            $imageType = self::IMAGE_TYPES[strtolower(pathinfo($post->getImageName(), \PATHINFO_EXTENSION))] ?? 'image/jpeg';
             $file = $this->projectDir . '/public/media/service_post/' . $post->getImageName();
+            // тип — за вмістом: обкладинки студії завжди .jpg, а всередині бувають PNG/WebP/GIF
+            $info = is_file($file) ? @getimagesize($file) : false;
+            $imageType = \is_array($info) && isset($info['mime']) ? (string) $info['mime']
+                : (self::IMAGE_TYPES[strtolower(pathinfo($post->getImageName(), \PATHINFO_EXTENSION))] ?? 'image/jpeg');
             $imageLength = is_file($file) ? (int) filesize($file) : null;
         }
         $cat = $post->getCategory();
 
         return [
-            'title' => (string) $post->loc('title', $locale),
+            'title' => self::xmlSafe((string) $post->loc('title', $locale)),
             'link' => $base . $this->generateUrl('sv_blog_post', ['slug' => $post->slug($locale), '_locale' => $locale]),
             // guid не залежить від слагу: перейменування статті не дублює її в читалках
             'guid' => $host . '-post-' . $post->getId(),
             'pubDate' => ($post->getPublishedAt() ?? new \DateTimeImmutable())->format(\DATE_RSS),
             'description' => $lead,
-            'category' => $cat !== null && $cat->existsIn($locale) ? (string) $cat->loc('title', $locale) : null,
+            'category' => $cat !== null && $cat->existsIn($locale) ? self::xmlSafe((string) $cat->loc('title', $locale)) : null,
             'image' => $image,
             'imageType' => $imageType,
             'imageLength' => $imageLength,
         ];
+    }
+
+    /**
+     * HTML → звичайний текст: без script/style; межа блоку й <br> → пробіл (слова не злипаються на </p><p>), рядкові теги
+     * (<a>, <b>) прибираються без пробілу (інакше «текст ,»); сутності розкодовано
+     */
+    private static function plain(string $html): string
+    {
+        $html = (string) preg_replace('~<(script|style)\b[^>]*>.*?</\1>~si', ' ', $html);
+        $html = (string) preg_replace('~<(?:br|/?(?:p|div|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|section|article|figure|figcaption|header|footer))\b[^>]*>~i', ' ', $html);
+        $text = html_entity_decode(strip_tags($html), \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+
+        return self::xmlSafe(trim((string) preg_replace('~\s+~u', ' ', $text)));
+    }
+
+    /** Без символів, заборонених у XML 1.0 (керівні з Word/імпорту WP): один такий ламав би всю стрічку */
+    private static function xmlSafe(string $s): string
+    {
+        return (string) preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $s);
     }
 }
