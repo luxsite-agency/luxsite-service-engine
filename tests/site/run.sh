@@ -83,6 +83,15 @@ if command -v docker >/dev/null; then
     rm -rf "$(dirname "$edgeroot")"
 fi
 
+# Лічильник коментарів у HTML (bin/site doctor: «коментарі у HTML: 0») на фікстурі
+t "python: синтаксис лічильника коментарів" 0 python3 -m py_compile bin/site.d/_htmlcomments.py
+printf '<!DOCTYPE html><html><head><!--[if IE]><p>x</p><![endif]--><style>/* a */ b{}</style><script type="application/ld+json">{"a":"/* не рахувати */"}</script><script>\n// c\nvar a=1; /* d */</script></head><body><!-- e --><p>t</p></body></html>' > "$bad/dirty.html"
+printf '<!DOCTYPE html><html><head><style>b{}</style><script type="application/ld+json">{"a":"/* не рахувати */"}</script><script>var a=1;</script></head><body><p>t</p></body></html>' > "$bad/clean.html"
+t "лічильник: брудна сторінка — 4 коментарі" 0 python3 bin/site.d/_htmlcomments.py "$bad/dirty.html"
+has "total=4"; has "html=1"; has "block=2"; has "line=1"
+t "лічильник: чиста сторінка — 0" 0 python3 bin/site.d/_htmlcomments.py "$bad/clean.html"
+has "total=0"
+
 # Диспетчер
 t "help" 0 bin/site help
 has deploy; has doctor; has cutover
@@ -102,7 +111,9 @@ has "[dry-run] ssh edge.example.com backup"
 t "_remote.sh deploy: docker/edge (сухий прогін на сервері)" 0 env SITE_RUNTIME=docker SITE_PROXY=edge SITE_CRON=0 bash bin/site.d/_remote.sh deploy edgedemo /tmp/nonexistent/site-edgedemo t1
 has "рантайм docker/edge"; has "shared/db.env"; has "docker-compose.edge.yml"
 t "_remote.sh deploy: docker/traefik — типовий compose і хости стенда" 0 env SITE_RUNTIME=docker SITE_CRON=0 SITE_HOST=alpha.stand.example.net bash bin/site.d/_remote.sh deploy alpha /tmp/nonexistent/site-alpha t1
-has "docker-compose.traefik.yml"
+has "docker-compose.traefik.yml"; has "app:html:strip-static public/themes"
+t "_remote.sh deploy: fastpanel — статика теми абсолютним шляхом релізу" 0 env SITE_RUNTIME=fastpanel SITE_CRON=0 bash bin/site.d/_remote.sh deploy client /tmp/nonexistent/site-client t1
+has "app:html:strip-static /tmp/nonexistent/site-client/releases/t1/public/themes"
 t "_remote.sh deploy: SITE_COMPOSE_FILE замість типового" 0 env SITE_RUNTIME=docker SITE_CRON=0 SITE_COMPOSE_FILE=/opt/stand/compose/beta.yml bash bin/site.d/_remote.sh deploy beta /tmp/nonexistent/site-beta t1
 has "/opt/stand/compose/beta.yml"
 t "deploy beta (local, docker, server.compose з реєстру)" 0 bin/site deploy beta HEAD --pack "$bad/pack-beta"
