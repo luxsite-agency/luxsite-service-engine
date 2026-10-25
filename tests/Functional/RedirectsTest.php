@@ -67,13 +67,17 @@ final class RedirectsTest extends SeoTestCase
         self::assertSame(404, $this->http('GET', 'https://' . $this->apex . "/known-404-$s/")->getStatusCode());
         self::assertSame(200, $this->http('GET', 'https://' . $this->apex . $item)->getStatusCode(), 'живу послугу не переадресовано');
 
-        // правило без слеша спрацьовує і після гігієни слеша паку
+        // правило без слеша — одним 301 на ціль, раніше за гігієну слеша (25.10.2026; раніше /x → /x/ → ціль)
         $r = $this->http('GET', 'https://' . $this->apex . "/noslash-$s");
         self::assertSame(301, $r->getStatusCode());
-        self::assertSame('https://' . $this->apex . "/noslash-$s/", $r->headers->get('Location'), 'спершу слеш (пак)');
+        self::assertSame('https://' . $this->apex . '/services/', $r->headers->get('Location'), 'один 301 на ціль');
         $r = $this->http('GET', 'https://' . $this->apex . "/noslash-$s/");
         self::assertSame(301, $r->getStatusCode());
-        self::assertSame('https://' . $this->apex . '/services/', $r->headers->get('Location'), 'потім правило з БД за альтернативною формою');
+        self::assertSame('https://' . $this->apex . '/services/', $r->headers->get('Location'), 'зі слешем — те саме правило за альтернативною формою');
+        // застаріле правило з живої адреси не перекриває сторінку й без слеша: слеш, як було
+        $r = $this->http('GET', 'https://' . $this->apex . rtrim($item, '/'));
+        self::assertSame(301, $r->getStatusCode());
+        self::assertSame('https://' . $this->apex . $item, $r->headers->get('Location'), 'жива сторінка — слеш, а не правило');
 
         // правило міста має перевагу над правилом сайту лише на своєму хості
         self::assertSame('https://' . $this->branch . "/b-$s/", $this->http('GET', 'https://' . $this->branch . "/scoped-$s/")->headers->get('Location'));

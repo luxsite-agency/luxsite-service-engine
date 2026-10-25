@@ -11,12 +11,21 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceSite;
 use App\ServiceSite\CrossCityDistricts;
 use App\ServiceSite\LegacyUrls;
+use App\ServiceSite\Redirect\LiveUrls;
+use App\ServiceSite\Redirect\RedirectCode;
+use App\ServiceSite\Redirect\RedirectManager;
+use App\ServiceSite\Redirect\RedirectPath;
+use App\ServiceSite\Redirect\RedirectResponder;
 use App\ServiceSite\ServiceHostResolver;
+use Doctrine\DBAL\Exception as DbalException;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\TerminateEvent;
+use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Гігієна старих адрес на хостах сервісних сайтів — до роутингу (пріоритет 33: після
@@ -25,18 +34,44 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Порядок: 410 для прибраних розділів → /index.php[/шлях] на чистий шлях → 301 з мапи паку → замикаючий слеш і зайвий
  * query одним 301 (/services?task=no → /services/ за один крок; на першому Joomla-сайті таких було 6 074 покази в GSC).
  * Лише GET/HEAD; POST (форми, API) не чіпаємо. Query при 301 зберігається.
+ * Перед замикаючим слешем — правило редиректу бренду з БД для цієї адреси (зі слешем чи без, RedirectManager::find):
+ * один 301 на ціль замість /x → /x/ → ціль, 410 — одразу (25.10.2026; на trysail 57 з 60 зовнішніх беклінків — на старі адреси).
  */
-final class LegacyUrlSubscriber implements EventSubscriberInterface
+final class LegacyUrlSubscriber implements EventSubscriberInterface, ResetInterface
 {
+    private ?int $pendingHit = null;
+
     public function __construct(
         private readonly LegacyUrls $legacy,
         private readonly CrossCityDistricts $crossCity,
+        private readonly RedirectManager $redirects,
+        private readonly RedirectResponder $responder,
+        private readonly LiveUrls $live,
     ) {
     }
 
     public static function getSubscribedEvents(): array
     {
-        return [KernelEvents::REQUEST => ['onKernelRequest', 33]];
+        return [KernelEvents::REQUEST => ['onKernelRequest', 33], KernelEvents::TERMINATE => 'onTerminate'];
+    }
+
+    /** Лічильник спрацювань правила — після відповіді, як у NotFoundRedirectSubscriber */
+    public function onTerminate(TerminateEvent $event): void
+    {
+        if ($this->pendingHit === null) {
+            return;
+        }
+        $id = $this->pendingHit;
+        $this->pendingHit = null;
+        try {
+            $this->redirects->hit($id);
+        } catch (DbalException) {
+        }
+    }
+
+    public function reset(): void
+    {
+        $this->pendingHit = null;
     }
 
     public function onKernelRequest(RequestEvent $event): void
@@ -92,6 +127,10 @@ final class LegacyUrlSubscriber implements EventSubscriberInterface
         }
         $slashed = $this->legacy->trailingSlashTarget($path);
         if ($slashed !== null) {
+            // правило бренду для старої адреси — одним кроком на ціль (без проміжного слеша); правила нема — слеш, як було
+            if ($this->ruleResponse($event, $path, $slashed)) {
+                return;
+            }
             // одразу й чистий query для нового шляху, щоб не було ланцюжка 301 → 301
             $clean = $this->legacy->cleanQueryTarget($request, $slashed);
             // район без слеша, якого нема в цьому місті, але є в іншому → одразу на його хост (десятки адрес на першому Joomla-сайті)
@@ -112,5 +151,37 @@ final class LegacyUrlSubscriber implements EventSubscriberInterface
         if ($clean !== null) {
             $event->setResponse(new RedirectResponse($clean, 301));
         }
+    }
+
+    /**
+     * Правило з БД (місто, далі сайт) для адреси зі слешем чи без: 301/302 — відповідь на ціль, 410 — GoneHttpException
+     * (сторінка «видалено»), 404 — без слеш-редиректу (далі звичайна 404 правила). Правила діють лише на неживі адреси: якщо
+     * адреса зі слешем відкривається (правило застаріло), правило не застосовується — слеш, як було. true — правило спрацювало.
+     */
+    private function ruleResponse(RequestEvent $event, string $path, string $slashed): bool
+    {
+        $request = $event->getRequest();
+        $site = $request->attributes->get(ServiceHostSubscriber::ATTR_SITE);
+        $city = $request->attributes->get(ServiceHostSubscriber::ATTR_CITY);
+        $normalized = RedirectPath::fromRequest($path);
+        if (!$site instanceof ServiceSite || !$city instanceof ServiceCity || $normalized === null) {
+            return false;
+        }
+        try {
+            $rule = $this->redirects->find((int) $site->getId(), (int) $city->getId(), $normalized);
+        } catch (DbalException) {
+            return false;
+        }
+        if ($rule === null || $this->live->isLive($site, $city, $slashed)) {
+            return false;
+        }
+        $this->pendingHit = $rule['id'];
+        if ($rule['code']->isRedirect() && $rule['target'] !== null) {
+            $event->setResponse($this->responder->redirect($request, $rule['target'], $rule['code']));
+        } elseif (RedirectCode::Gone === $rule['code']) {
+            throw new GoneHttpException('Сторінку видалено');
+        }
+
+        return true;
     }
 }
