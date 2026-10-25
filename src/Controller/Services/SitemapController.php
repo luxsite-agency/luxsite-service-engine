@@ -166,7 +166,7 @@ final class SitemapController extends AbstractController
     }
 
     /**
-     * Карта контентного сайту (ServiceSite.mode = content): головна, блог, рубрики й автори зі статтями, теги від 3 статей, статті, «Про нас»,
+     * Карта контентного сайту (ServiceSite.mode = content): головна, блог, рубрики, теги й автори зі статтями, статті, «Про нас»,
      * контакти, юридичні сторінки. Сторінки, що існують не всіма мовами бренду (статті, рубрики), — лише своїми мовами.
      * Блог і статті — лише на апексі (як у сервісного сайту).
      *
@@ -209,7 +209,7 @@ final class SitemapController extends AbstractController
                     $add('sv_blog_category', static fn (string $l): array => ['slug' => $c->slug($l) ?: '-'], null, $c->existsIn(...));
                 }
             }
-            // теги — лише мовами, де сторінка індексується (від ServicePostTag::INDEX_MIN_POSTS статей; менше — noindex)
+            // теги — лише мовами, де сторінка індексується (від ServicePostTag::INDEX_MIN_POSTS статей, тобто з першої)
             $tagCounts = [];
             $indexedIds = [];
             foreach ($locales as $l) {
