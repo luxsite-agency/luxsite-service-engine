@@ -15,6 +15,7 @@ use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\Repository\ServicePostTagRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -26,7 +27,7 @@ use Symfony\Component\Routing\RouterInterface;
 /**
  * Жива адреса сайту = GET на хості міста не дав би 404: маршрут сайту знайдено і, для сторінок сутностей, сутність є й
  * видима в місті (послуга активна й надається в місті чи хоч в одному іншому — тоді контролер дає 301, не 404;
- * категорія активна з послугами в місті; район активний у місті; пост опублікований; тег статей активний). Маршрути адмінки на хості сайту —
+ * категорія активна з послугами в місті; район активний у місті; пост опублікований; рубрика й тег статей активні). Маршрути адмінки на хості сайту —
  * 404 (AdminHostSubscriber), тож не живі. Невідомий /<x>/ (sv_legacy_redirect, категорія root-схеми) не живий, навіть
  * якщо для нього є правило паку (app.legacy_redirects, prefix_redirects): пак спрацьовує до роутингу, тож правило з
  * БД для такої адреси нешкідливе — стоїть у резерві, доки адреса є в паку; інакше «Перенести з паку» і правила на
@@ -38,6 +39,9 @@ use Symfony\Component\Routing\RouterInterface;
  */
 final class SiteLiveUrls implements LiveUrls
 {
+    /** Маршрути рубрики блогу (сторінка, пагінація, RSS; під розділом і від кореня) */
+    private const POST_CATEGORY_ROUTES = ['sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_blog_category_feed', 'sv_blog_category_root_feed'];
+
     public function __construct(
         #[Autowire(service: 'router')] private readonly RouterInterface $router,
         private readonly ServiceCityRepository $cities,
@@ -46,6 +50,7 @@ final class SiteLiveUrls implements LiveUrls
         private readonly ServiceDistrictRepository $districts,
         private readonly ServicePostRepository $posts,
         private readonly ServicePostTagRepository $tags,
+        private readonly ServicePostCategoryRepository $postCategories,
     ) {
     }
 
@@ -79,6 +84,8 @@ final class SiteLiveUrls implements LiveUrls
         }
         $route = (string) ($match['_canonical_route'] ?? $match['_route'] ?? '');
         $locale = ($match['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        // статті, рубрики й теги контентного сайту бувають англійською (каталог і райони — ні): для них — справжня мова адреси
+        $contentLocale = (string) ($match['_locale'] ?? $locale);
 
         return match (true) {
             $route === '' || $route === 'admin' || str_starts_with($route, 'admin_') || str_starts_with($route, 'api_') || str_starts_with($route, 'app_') => false,
@@ -87,9 +94,12 @@ final class SiteLiveUrls implements LiveUrls
             $route === 'sv_service' => $this->itemLive($site, $city, (string) $match['slug'], $locale),
             $route === 'sv_category' => $this->categoryLive($site, $city, (string) $match['category'], $locale),
             $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,
-            $route === 'sv_blog_post' => $this->posts->findOnePublishedBySlug($site, (string) $match['slug'], $locale) !== null,
+            $route === 'sv_blog_post' => $this->posts->findOnePublishedBySlug($site, (string) $match['slug'], $contentLocale) !== null,
+            // рубрика (25.10.2026): /<блог>/category/<slug>/ приймає будь-який slug — жива лише активна рубрика; адреса вимкненої
+            // віддає 404, тож на неї можна завести 301 (рубрики не видаляємо)
+            \in_array($route, self::POST_CATEGORY_ROUTES, true) => $this->postCategories->findOneActiveBySlug($site, (string) $match['slug'], $contentLocale) !== null,
             // тег (24.10.2026): адреса злитого чи перейменованого тегу не жива — на неї можна завести 301
-            $route === 'sv_blog_tag' || $route === 'sv_blog_tag_page' => $this->tags->findOneActiveBySlug($site, (string) $match['slug'], (string) ($match['_locale'] ?? $locale)) !== null,
+            $route === 'sv_blog_tag' || $route === 'sv_blog_tag_page' => $this->tags->findOneActiveBySlug($site, (string) $match['slug'], $contentLocale) !== null,
             $route === 'sv_legacy_redirect' => false,
             default => true,
         };
