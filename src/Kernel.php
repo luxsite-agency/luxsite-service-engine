@@ -5,6 +5,7 @@
 
 namespace App;
 
+use App\ServiceSite\CalculatorRoutes;
 use App\ServiceSite\CatalogUrls;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -44,9 +45,9 @@ class Kernel extends BaseKernel
      * Параметри конкретного сайту (пак: тема, CRM (app.crm, app.pipedrive), редіректи зі старого сайту, схема URL каталогу…) —
      * у config/site/parameters.local.yaml поза git (деплой копіює туди config/parameters.yaml паку).
      * Імпорт після services.yaml, щоб перекрити його дефолти; у тестах не вантажиться.
-     * Дзеркало config/store/parameters.local.yaml у shop-engine.
+     * Дзеркало config/store/parameters.local.yaml у shop-engine. protected — тестове ядро (tests/Support) підставляє параметри паку.
      */
-    private function configureContainer(ContainerConfigurator $container): void
+    protected function configureContainer(ContainerConfigurator $container): void
     {
         $this->configureContainerDefaults($container);
 
@@ -61,7 +62,7 @@ class Kernel extends BaseKernel
      * від кореня (root). Усі схеми в індексі Google,
      * тому вибір — параметр app.catalog.url_scheme, а не константа в атрибутах контролера.
      */
-    private function configureRoutes(RoutingConfigurator $routes): void
+    protected function configureRoutes(RoutingConfigurator $routes): void
     {
         $this->configureRoutesDefaults($routes);
 
@@ -78,5 +79,8 @@ class Kernel extends BaseKernel
             throw new \InvalidArgumentException(sprintf('app.blog_prefix: «%s» — зарезервований сегмент іншого розділу сайту.', $blog));
         }
         $routes->import($this->getConfigDir().'/routes/catalog/'.$scheme.'.yaml');
+        // калькулятор: адреса з паку або типова за режимом (CalculatorRoutes через CalculatorRouteLoader); тут лише валідація параметра
+        CalculatorRoutes::normalizePath($this->container->getParameter('app.calculator.path'));
+        $routes->import('.', 'calculator');
     }
 }

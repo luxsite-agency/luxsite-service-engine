@@ -43,7 +43,7 @@ final class LiveThemePolicy
         'absolute_url', 'asset', 'block', 'constant', 'csrf_token', 'cycle', 'date', 'html_classes', 'include', 'max', 'min', 'parent',
         'path', 'random', 'range', 'relative_path', 'url',
         // рушій сервісних сайтів
-        'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
+        'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
     ];
 

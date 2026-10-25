@@ -18,6 +18,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePriceRepository;
 use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceWorkRepository;
+use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CrossCityDistricts;
 use App\ServiceSite\LegacyUrls;
@@ -46,6 +47,7 @@ final class CatalogController extends AbstractController
         private readonly ServicePriceRepository $prices,
         private readonly ServiceCalcTypeRepository $calcTypes,
         private readonly ServiceCalcFactorRepository $calcFactors,
+        private readonly CalculatorAvailability $calculator,
         private readonly ServiceDistrictRepository $districts,
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly ServiceCategoryCityRepository $categoryTexts,
@@ -158,8 +160,8 @@ final class CatalogController extends AbstractController
         }
 
         // міні-калькулятор показуємо лише там, де послуга рахується за площею
-        // (у неї в адмінці обрано тип прибирання)
-        $calcTypes = $item->getCalcType() !== null ? $this->calcTypes->findActiveForCity($site, $city) : [];
+        // (у неї в адмінці обрано тип прибирання і калькулятор у режимі «за площею»)
+        $calcTypes = $item->getCalcType() !== null && $this->calculator->isArea($site, $city) ? $this->calcTypes->findActiveForCity($site, $city) : [];
 
         return $this->render('services/catalog/item.html.twig', [
             'site' => $site,

@@ -161,10 +161,14 @@
             </table>
         </div>
         {% endfor %}
+        {# примітка «ціни орієнтовні» (prices.note, partial); кнопка повного розрахунку — лише коли калькулятор
+           у місті є (за площею або за прайсом), інакше вона вела б на 404 -#}
+        {{ include('services/partials/_prices_note.html.twig') }}
+        {% if calculator_available() -%}
         <p class="prices-calc-link">
             <a class="btn" href="{{ path('sv_calculator') }}">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>
         </p>
-    </section>
+    {% endif %}</section>
     {% endif %}
 
     {# розгорнутий СЕО-текст під цінами (правиться в адмінці: Міста сервісів → Блок 3) #}
