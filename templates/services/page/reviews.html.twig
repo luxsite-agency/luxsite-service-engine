@@ -1,7 +1,7 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% extends 'services/base.html.twig' %}
 
-{#- Місто в title/H1/og:title — app.reviews.title_city; прийменник узгоджено з кінцем назви бренду («Майстри» в Чернівцях) #}
+{# Місто в title/H1/og:title — app.reviews.title_city; прийменник узгоджено з кінцем назви бренду («Майстри» в Чернівцях) -#}
 {% block title %}{{ (reviews_title_city(site, city) ? 'title.reviews_city' : 'title.reviews')|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale, site_brand(site, locale)), '%cityNom%': city.name(locale), '%site%': site_brand(site, locale)}, 'servicesite') }}{% endblock %}
 
 {% block metaDescription %}{{ 'meta.reviews'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale)}, 'servicesite') }}{% endblock %}
@@ -45,17 +45,17 @@
 
     {% set gbpToken = gbpToken|default(gbp_reviews['token']|default('')) %}
     {% if gbpToken %}
-    {#- Віджет gbp-manager (app.gbp_reviews: token або cities[slug міста]): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
-       власні форма, список і оцінка рушія не показуються, щоб на сторінці була одна оцінка. Мова — мова сторінки. #}
+    {# Віджет gbp-manager (app.gbp_reviews: token або cities[slug міста]): відгуки Google + з сайту, загальна оцінка з мікророзміткою і форма — усе там;
+       власні форма, список і оцінка рушія не показуються, щоб на сторінці була одна оцінка. Мова — мова сторінки. -#}
     <section class="block" id="add-review">
         <div data-gmb-reviews="{{ gbpToken }}" data-layout="grid" data-theme="light" data-lang="{{ locale }}"></div>
         <script src="{{ gbp_reviews.base|default('https://gbp-manager.app')|trim('/', 'right') }}/w/embed/v1" data-token="{{ gbpToken }}" async></script>
     </section>
     {% else %}
-    {#- Без кредів Google OAuth (.env.local) увійти неможливо: блок не показуємо зовсім, попередження — в адмінці #}
+    {# Без кредів Google OAuth (.env.local) увійти неможливо: блок не показуємо зовсім, попередження — в адмінці -#}
     {% if app.user or google_oauth.configured %}
     <section class="block lead-form" id="add-review">
-        {#- не h2: заголовок форми не входить у структуру контенту #}
+        {# не h2: заголовок форми не входить у структуру контенту -#}
         <p class="form-title">{{ 'review.form_title'|trans({}, 'servicesite') }}</p>
         {% for msg in app.flashes('review_success') %}<p style="color:#0a7a2f;font-weight:600">{{ msg }}</p>{% endfor %}
         {% for msg in app.flashes('review_error') %}<p style="color:#b00020;font-weight:600">{{ msg }}</p>{% endfor %}

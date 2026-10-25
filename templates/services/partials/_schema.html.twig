@@ -1,13 +1,13 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{#- Макроси мікророзмітки (JSON-LD). Підключення:
+{# Макроси мікророзмітки (JSON-LD). Підключення:
    {% import 'services/partials/_schema.html.twig' as schema %}
-   {{ schema.ld({...}) }} / {{ schema.crumbs([...]) }} / {{ schema.faqPage(faq) }} #}
+   {{ schema.ld({...}) }} / {{ schema.crumbs([...]) }} / {{ schema.faqPage(faq) }} -#}
 
 {% macro ld(data) %}
 <script type="application/ld+json">{{ data|json_encode(constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES'))|raw }}</script>
 {% endmacro %}
 
-{#- items: [{name, url}] - останній елемент без url (поточна сторінка) #}
+{# items: [{name, url}] - останній елемент без url (поточна сторінка) -#}
 {% macro crumbs(items) %}
     {% import _self as self %}
     {% set list = [] %}
@@ -19,7 +19,7 @@
     {{ self.ld({'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': list}) }}
 {% endmacro %}
 
-{#- faq: [{q, a}] з БД #}
+{# faq: [{q, a}] з БД -#}
 {% macro faqPage(faq) %}
     {% import _self as self %}
     {% if faq is not empty %}
@@ -39,10 +39,10 @@
     {% endif %}
 {% endmacro %}
 
-{#- Бізнес-сутність міста: спільна для головної, контактів, відгуків, районів.
-   host - app.request.schemeAndHttpHost (для абсолютних шляхів зображень) #}
-{#- legalName/founder/openingHours - з паку (app.schema), бо це юридична особа конкретного бренду;
-   те саме, що на «Про нас» (about.legal). Порожнє значення - поля в розмітці нема #}
+{# Бізнес-сутність міста: спільна для головної, контактів, відгуків, районів.
+   host - app.request.schemeAndHttpHost (для абсолютних шляхів зображень) -#}
+{# legalName/founder/openingHours - з паку (app.schema), бо це юридична особа конкретного бренду;
+   те саме, що на «Про нас» (about.legal). Порожнє значення - поля в розмітці нема -#}
 {% macro business(site, city, locale, url, host, extra) %}
     {% import _self as self %}
     {% set data = {
@@ -59,17 +59,17 @@
     {% if schema_business.founder %}{% set data = data|merge({'founder': {'@type': 'Person', 'name': schema_business.founder}}) %}{% endif %}
     {% if city.phone %}{% set data = data|merge({'telephone': city.phone}) %}{% endif %}
     {% if city.email %}{% set data = data|merge({'email': city.email}) %}{% endif %}
-    {#- адрес може бути кілька, по рядку; у розмітку йде лише перший (адреса цього міста).
-       Вулиця - до другої коми: «вулиця Прикладна, 4» #}
+    {# адрес може бути кілька, по рядку; у розмітку йде лише перший (адреса цього міста).
+       Вулиця - до другої коми: «вулиця Прикладна, 4» -#}
     {% if city.address(locale) %}
         {% set parts = (city.address(locale)|split("\n")|first)|split(', ') %}
         {% set data = data|merge({'address': data.address|merge({'streetAddress': parts|slice(0, 2)|join(', ')})}) %}
     {% endif %}
-    {#- зображення - og-картинка теми паку (або хіро бренду), лого - з теми #}
+    {# зображення - og-картинка теми паку (або хіро бренду), лого - з теми -#}
     {% set _img = theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath %}
     {% if _img %}{% set data = data|merge({'image': host ~ _img}) %}{% endif %}
     {% if theme.url('logo') %}{% set data = data|merge({'logo': host ~ theme.url('logo')}) %}{% endif %}
-    {#- графік у машинному форматі (app.schema.opening_hours); людський варіант — у city.hours #}
+    {# графік у машинному форматі (app.schema.opening_hours); людський варіант — у city.hours -#}
     {% if city.hours and schema_business.opening_hours %}{% set data = data|merge({'openingHours': schema_business.opening_hours}) %}{% endif %}
     {{ self.ld(data|merge(extra|default({}))) }}
 {% endmacro %}

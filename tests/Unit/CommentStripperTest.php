@@ -41,6 +41,14 @@ final class CommentStripperTest extends TestCase
         self::assertStringContainsString("<body>\n<p>a</p>", $out);
     }
 
+    public function testEmptyAndBangClosedCommentsDoNotEatContent(): void
+    {
+        self::assertSame('<p>a</p><p>b</p><p>d</p>', $this->s->html('<p>a</p><!--><p>b</p><!-- c --><p>d</p>'));
+        self::assertSame('<p>a</p><p>b</p><p>d</p>', $this->s->html('<p>a</p><!---><p>b</p><!-- c --!><p>d</p>'));
+        self::assertSame('<p>a</p><p>b</p>', $this->s->html('<p>a</p><!----><p>b</p>'));
+        self::assertSame('<b>a</b><b>b</b>', $this->s->html('<b>a</b><!-- c --><b>b</b>'), 'у HTML пробіл між тегами не додається');
+    }
+
     public function testPreTextareaCodeAndAttributesUntouched(): void
     {
         $html = '<pre><!-- лишити --> /* і це */ // і це</pre><textarea><!-- x --></textarea><code>// not a comment</code>'
@@ -82,6 +90,7 @@ final class CommentStripperTest extends TestCase
         $want = ":root { --a: #fff; }\n.a { background: url(data:image/svg+xml;utf8,/*x*/) no-repeat; }\n.b { background: url(\"/img/a.png\") ; }\n.c::before { content: '/* не */'; content: \"a'b /* теж не */\"; }\n/*! ліцензія */\n.d { color: red; }\n";
         self::assertSame($want, $this->s->css($css));
         self::assertSame('.a { color: red; } /* без кінця', $this->s->css('.a { color: red; } /* без кінця'));
+        self::assertSame('.m{margin:0 0;padding:0 auto}', $this->s->css('.m{margin:0/**/0;padding:0/* c */auto}'), 'коментар — роздільник токенів');
     }
 
     // ---------- JS ----------
@@ -105,6 +114,9 @@ final class CommentStripperTest extends TestCase
         yield 'коментар у кінці без переносу' => ['var a = 1; // кінець', 'var a = 1;'];
         yield 'лише коментар' => ["// нічого\n", ''];
         yield 'CRLF' => ["var a = 1; // c\r\n// d\r\nvar b = 2;", "var a = 1;\r\nvar b = 2;"];
+        yield 'блоковий коментар — роздільник токенів (рев\'ю №1)' => ['var a=5; return/**/a; return typeof/**/a; return \'a\'/**/in/**/b; x = y/**/+z;', "var a=5; return a; return typeof a; return 'a' in b; x = y +z;"];
+        yield 'коментар із переносом усередині — LineTerminator (ASI)' => ["return/*\n*/a;", "return\na;"];
+        yield 'роздільник не додається біля пробілів і в кінці рядка' => ["a = 1; /* c */ b = 2; /* d */\nc/* e */ = 3", "a = 1; b = 2;\nc = 3"];
         yield 'GTM-сніпет' => ["(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-X');", "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-X');"];
     }
 
@@ -192,6 +204,25 @@ final class CommentStripperTest extends TestCase
         self::assertDoesNotMatchRegularExpression('~\n[ \t]*\n~', $out, 'порожні рядки схлопнуто');
         self::assertSame(substr_count($src, '{'), substr_count($out, '{'));
         self::assertSame(substr_count($src, '}'), substr_count($out, '}'));
+    }
+
+    public function testPerformanceOnLargeScript(): void
+    {
+        // 300 КБ JS з тисячами «/» (ділення, regex, коментарі): isRegexStart дивиться лише хвіст виводу — лінійно, не квадратично
+        $line = "var a = b / c / d; var r = s.replace(/\\//g, '/'); if (/x/.test(y)) { z = (a + b) / 2; } // c\n";
+        $js = str_repeat($line, (int) ceil(300_000 / \strlen($line)));
+        $t = hrtime(true);
+        $out = $this->s->js($js);
+        $ms = (hrtime(true) - $t) / 1e6;
+        self::assertNotNull($out);
+        self::assertStringNotContainsString('// c', $out);
+        self::assertSame(substr_count($js, "s.replace(/\\//g, '/')"), substr_count($out, "s.replace(/\\//g, '/')"));
+        self::assertLessThan(300, $ms, '300 КБ JS за десятки мс, не секунди (тут ' . round($ms) . ' мс)');
+        // мініфікований: без переносів, 270 КБ, тисячі «/»
+        $min = str_repeat("a=b/c;r=s.replace(/\\//g,'/');if(/x/.test(y)){z=(a+b)/2}", 5000);
+        $t = hrtime(true);
+        self::assertSame($min, $this->s->js($min));
+        self::assertLessThan(300, (hrtime(true) - $t) / 1e6);
     }
 
     public function testPerformanceOnLargePage(): void

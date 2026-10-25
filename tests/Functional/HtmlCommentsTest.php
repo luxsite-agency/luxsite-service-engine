@@ -63,6 +63,8 @@ final class HtmlCommentsTest extends SeoTestCase
                 }
                 self::assertSame(self::tags($dirtyHtml), self::tags($cleanHtml), $path . ': ті самі теги в тому ж порядку');
                 self::assertSame(substr_count($dirtyHtml, '<script'), substr_count($cleanHtml, '<script'), $path . ': скрипти на місці');
+                // Twig-коментарі {# … -#}: сусідні рядки <head> не склеюються в один (рев'ю PR #33 №2)
+                self::assertDoesNotMatchRegularExpression('~<(meta|link)\b[^\n]*<(meta|link)\b~', $cleanHtml, $path . ': по одному <meta>/<link> на рядок');
             }
             self::assertStringContainsString('Тестова, 1', (string) $this->http('GET', 'https://' . $this->apex . '/')->getContent(), 'адреса з city-raw лишилась');
 

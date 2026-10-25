@@ -1,9 +1,9 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
-{#- Калькулятор «за прайсом» (CalculatorAvailability::MODE_PRICELIST; зразок — rabotniki.ua/uk/calculator/create):
+{# Калькулятор «за прайсом» (CalculatorAvailability::MODE_PRICELIST; зразок — rabotniki.ua/uk/calculator/create):
    акордеони категорія → послуга, у послузі нумерований список позицій прайсу міста з in_calculator.
    Рядок: назва | ціна з прайсу (не редагується; без числа — «ціна уточнюється») | обсяг з одиницею (unit або «шт.»,
    межа max_qty) | разом за рядок. Обсяг 0 = не обрано. Під послугою «Сума», під категорією «Всього», загалом — у підсумку.
-   Підрахунок наживо в JS, авторитетна сума — серверна (PricelistCalc у CalculatorController::submit). #}
+   Підрахунок наживо в JS, авторитетна сума — серверна (PricelistCalc у CalculatorController::submit). -#}
 {% extends 'services/base.html.twig' %}
 
 {% block title %}{{ 'calc.title'|trans({}, 'servicesite') }} - {{ site.name }} {{ city.name(locale) }}{% endblock %}

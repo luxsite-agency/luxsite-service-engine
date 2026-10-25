@@ -50,16 +50,21 @@ final class CommentStripper
                     }
                     continue;
                 }
-                $end = strpos($html, '-->', $at + 4);
-                if ($end === false) {
+                // <!--> і <!---> — порожні коментарі (HTML-спека), закриття — «-->» або «--!>»
+                if (substr($html, $at, 5) === '<!-->') {
+                    $end = $at + 5;
+                } elseif (substr($html, $at, 6) === '<!--->') {
+                    $end = $at + 6;
+                } elseif (preg_match('~-->|--!>~', $html, $e, \PREG_OFFSET_CAPTURE, $at + 4)) {
+                    $end = (int) $e[0][1] + \strlen($e[0][0]);
+                } else {
                     return $out . substr($html, $at);
                 }
-                $end += 3;
                 $comment = substr($html, $at, $end - $at);
                 if (preg_match('~^<!--(?:\[if\b|<!\[endif\])~i', $comment)) {
                     $out .= $comment;
                 } else {
-                    $end = $this->dropLineIfEmpty($out, $html, $end);
+                    $end = $this->dropLineIfEmpty($out, $html, $at, $end, false);
                 }
                 $pos = $end;
                 continue;
@@ -111,7 +116,7 @@ final class CommentStripper
                 if (($css[$at + 2] ?? '') === '!') {
                     $out .= substr($css, $at, $end - $at);
                 } else {
-                    $end = $this->dropLineIfEmpty($out, $css, $end);
+                    $end = $this->dropLineIfEmpty($out, $css, $at, $end, true);
                 }
                 $pos = $end;
             } elseif ($tok === '"' || $tok === "'") {
@@ -204,7 +209,7 @@ final class CommentStripper
                 if (($js[$at + 2] ?? '') === '!') {
                     $out .= substr($js, $at, $end - $at);
                 } else {
-                    $end = $this->dropLineIfEmpty($out, $js, $end);
+                    $end = $this->dropLineIfEmpty($out, $js, $at, $end, true);
                 }
                 $pos = $end;
                 continue;
@@ -215,7 +220,7 @@ final class CommentStripper
                 if ($end > $at && $js[$end - 1] === "\r") {
                     --$end;
                 }
-                $pos = $this->dropLineIfEmpty($out, $js, $end);
+                $pos = $this->dropLineIfEmpty($out, $js, $at, $end, true);
                 continue;
             }
             if ($this->isRegexStart($out)) {
@@ -270,9 +275,11 @@ final class CommentStripper
     /** Чи `/` після вже виведеного коду починає регулярний вираз (а не ділення). */
     private function isRegexStart(string $out): bool
     {
-        $before = rtrim($out);
+        // лише хвіст виводу: інакше на великому мініфікованому JS кожен «/» копіює й сканує весь $out (квадратично)
+        $truncated = \strlen($out) > 256;
+        $before = rtrim($truncated ? substr($out, -256) : $out);
         if ($before === '') {
-            return true;
+            return !$truncated;
         }
         $last = $before[\strlen($before) - 1];
         if (str_ends_with($before, '++') || str_ends_with($before, '--')) {
@@ -284,25 +291,32 @@ final class CommentStripper
         if ($last === ')' || $last === ']') {
             return false;
         }
-        if (preg_match('~[A-Za-z_$][A-Za-z0-9_$]*$~', $before, $w)) {
-            return \in_array($w[0], self::REGEX_KEYWORDS, true);
+        if (preg_match('~[A-Za-z_$][A-Za-z0-9_$]*$~', $before, $w, \PREG_OFFSET_CAPTURE)) {
+            // слово починається на межі обрізання — його початку не видно, ключовим не вважаємо
+            return !($truncated && $w[0][1] === 0) && \in_array($w[0][0], self::REGEX_KEYWORDS, true);
         }
 
         return false;
     }
 
     /**
-     * Після вирізання коментаря, що закінчується на $end: якщо він стояв сам на рядку — прибрати й рядок (відступ перед,
-     * перенос після); якщо був у кінці рядка коду — прибрати пробіли перед ним. Повертає нову позицію читання.
+     * Після вирізання коментаря $src[$start..$end): якщо він стояв сам на рядку — прибрати й рядок (відступ перед, перенос
+     * після); у кінці рядка коду — прибрати пробіли перед ним; посередині рядка — не склеювати токени: у CSS і JS коментар
+     * є роздільником ($token), тож між двома непробільними символами стає пробіл, а коментар із переносом усередині — «\n»
+     * (у JS це LineTerminator для ASI). У HTML ($token = false) нічого не додається: пробіл між тегами був би текстовим вузлом.
+     * Повертає нову позицію читання.
      */
-    private function dropLineIfEmpty(string &$out, string $src, int $end): int
+    private function dropLineIfEmpty(string &$out, string $src, int $start, int $end, bool $token): int
     {
         $nl = strrpos($out, "\n");
         $tail = $nl === false ? $out : substr($out, $nl + 1);
         $atLineEnd = ($src[$end] ?? "\n") === "\n" || (($src[$end] ?? '') === "\r" && ($src[$end + 1] ?? '') === "\n");
         if (!$atLineEnd) {
-            if (str_ends_with($out, ' ') && (($src[$end] ?? '') === ' ' || ($src[$end] ?? '') === "\t")) {
+            $next = $src[$end] ?? '';
+            if (str_ends_with($out, ' ') && ($next === ' ' || $next === "\t")) {
                 $out = rtrim($out, " \t");
+            } elseif ($token && $out !== '' && !ctype_space($out[\strlen($out) - 1]) && !ctype_space($next)) {
+                $out .= str_contains(substr($src, $start, $end - $start), "\n") ? "\n" : ' ';
             }
 
             return $end;
