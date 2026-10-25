@@ -6,6 +6,11 @@ framework:
             policy: sliding_window
             limit: '%app.admin_api_auth_rate_limit%'
             interval: '1 minute'
+        # PUT|POST …/image через admin API: завантажень на токен за хвилину (ImageService); ліміт — app.admin_api_image_rate_limit
+        admin_api_image_token:
+            policy: sliding_window
+            limit: '%app.admin_api_image_rate_limit%'
+            interval: '1 minute'
         # POST /lead — заявки сервісних сайтів
         # жорсткий ліміт для всіх; свої адреси - у LEAD_RATE_LIMIT_ALLOWLIST
         service_lead_ip:

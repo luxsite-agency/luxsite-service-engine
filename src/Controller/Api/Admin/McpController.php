@@ -9,6 +9,8 @@ namespace App\Controller\Api\Admin;
 
 use App\AdminApi\ApiProblem;
 use App\AdminApi\ContentService;
+use App\AdminApi\ImageInfo;
+use App\AdminApi\ImageService;
 use App\AdminApi\LiveThemePolicy;
 use App\AdminApi\RedirectService;
 use App\AdminApi\ThemeService;
@@ -29,7 +31,7 @@ final class McpController extends AbstractController
 {
     private const string PROTOCOL = '2025-06-18';
 
-    public function __construct(private readonly ContentService $content, private readonly ThemeService $theme, private readonly RedirectService $redirects)
+    public function __construct(private readonly ContentService $content, private readonly ThemeService $theme, private readonly RedirectService $redirects, private readonly ImageService $images)
     {
     }
 
@@ -51,7 +53,7 @@ final class McpController extends AbstractController
                 'protocolVersion' => \is_string($params['protocolVersion'] ?? null) ? $params['protocolVersion'] : self::PROTOCOL,
                 'capabilities' => ['tools' => ['listChanged' => false]],
                 'serverInfo' => ['name' => 'service-engine', 'version' => '1'],
-                'instructions' => 'Контент і дизайн сервісних сайтів LuxSite: спершу me (сайти, міста, дозволи), далі list/get, зміни — update (лише дозволені поля; відповідь містить перелік). Дизайн: theme_list → theme_get (поточний текст шаблону рушія/паку/живий) → theme_put (перевірка Twig і рендер сторінок; провал = файл повертається) → theme_delete/theme_revert. Шаблони рушія доступні як @engine/… для extends; лого й перемикач мов UA/RU зберігати. Тексти без вигаданих фактів; після правок на проді — перевірити живу сторінку.',
+                'instructions' => 'Контент і дизайн сервісних сайтів LuxSite: спершу me (сайти, міста, дозволи), далі list/get, зміни — update (лише дозволені поля; відповідь містить перелік). Фото послуг, категорій, постів, робіт, команди й відгуків: image_put (url або data base64; відповідь — url, розміри) → image_delete; get показує блок image. Дизайн: theme_list → theme_get (поточний текст шаблону рушія/паку/живий) → theme_put (перевірка Twig і рендер сторінок; провал = файл повертається) → theme_delete/theme_revert. Шаблони рушія доступні як @engine/… для extends; лого й перемикач мов UA/RU зберігати. Тексти без вигаданих фактів; після правок на проді — перевірити живу сторінку.',
             ]),
             'ping' => $this->rpcResult($id, new \stdClass()),
             'tools/list' => $this->rpcResult($id, ['tools' => $this->tools()]),
@@ -70,7 +72,8 @@ final class McpController extends AbstractController
     private function tools(): array
     {
         $kinds = explode('|', ContentService::KINDS);
-        $kindProp = ['type' => 'string', 'enum' => $kinds, 'description' => 'Вид запису: items (послуги), categories, districts (райони міста), posts (блог), prices (прайс по містах), item-texts / category-texts (тексти послуги/категорії під місто)'];
+        $kindProp = ['type' => 'string', 'enum' => $kinds, 'description' => 'Вид запису: items (послуги), categories, districts (райони міста), posts (блог), prices (прайс по містах), item-texts / category-texts (тексти послуги/категорії під місто), works (виконані роботи), team (команда), reviews (відгуки)'];
+        $imageKindProp = ['type' => 'string', 'enum' => explode('|', ImageInfo::KINDS), 'description' => 'Вид запису з фото: items (послуги), categories, posts (блог), works (роботи), team (команда), reviews (відгуки)'];
         $siteProp = ['type' => 'string', 'description' => 'Slug сайту з me (наприклад example)'];
 
         return [
@@ -100,6 +103,10 @@ final class McpController extends AbstractController
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'id'], 'properties' => ['site' => $siteProp, 'id' => ['type' => 'integer']]]],
             ['name' => 'not_found_list', 'description' => 'SEO: журнал 404 сайту — адреси, що віддали 404 на хостах міст і не мають правила (path, city, host, hits, last_hit_at, referer без параметрів), найчастіші першими. Фільтри: city (slug), q (підрядок), limit (до 1000). Для звірки з GSC перед масовим створенням правил. Потрібен content:read.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site'], 'properties' => ['site' => $siteProp, 'city' => ['type' => 'string'], 'q' => ['type' => 'string'], 'limit' => ['type' => 'integer']]]],
+            ['name' => 'image_put', 'description' => 'Фото запису (послуга, категорія, пост, робота, член команди, відгук): завантажити за url (лише публічні http(s)-адреси; приватні й локальні відхиляються) або з data (base64 вмісту файлу, filename для підказки імені). JPEG/PNG/WebP за вмістом, до 10 МБ і 8000 px; SVG/GIF/HEIC — помилка. alt (uk) і alt_ru (лише posts) — підписи для img alt. Старий файл видаляється, кеш розмірів перебудовується сам. Відповідь: image {url, name, alt, alt_ru, width, height, bytes}. Ліміт — 30 завантажень на хвилину на токен. Потрібен дозвіл content:write.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site', 'kind', 'id'], 'properties' => ['site' => $siteProp, 'kind' => $imageKindProp, 'id' => ['type' => 'integer'], 'url' => ['type' => 'string', 'description' => 'https://… публічне зображення'], 'data' => ['type' => 'string', 'description' => 'base64 вмісту файлу (замість url)'], 'filename' => ['type' => 'string', 'description' => 'ім’я файлу для data, напр. kitchen.jpg (у шлях не потрапляє)'], 'alt' => ['type' => 'string'], 'alt_ru' => ['type' => 'string']]]],
+            ['name' => 'image_delete', 'description' => 'Прибрати фото запису: файл видаляється, alt очищається; сторінка показує заглушку/без фото. Потрібен дозвіл content:write.',
+                'inputSchema' => ['type' => 'object', 'required' => ['site', 'kind', 'id'], 'properties' => ['site' => $siteProp, 'kind' => $imageKindProp, 'id' => ['type' => 'integer']]]],
             ['name' => 'upsert_city_texts', 'description' => 'Створити або оновити тексти послуги (kind=item-texts, item_id) або категорії (kind=category-texts, category_id) для міста city_id: порожнє поле падає на базовий текст. Проти дублів між містами.',
                 'inputSchema' => ['type' => 'object', 'required' => ['site', 'kind', 'city_id', 'fields'], 'properties' => ['site' => $siteProp, 'kind' => ['type' => 'string', 'enum' => ['item-texts', 'category-texts']], 'item_id' => ['type' => 'integer'], 'category_id' => ['type' => 'integer'], 'city_id' => ['type' => 'integer'], 'fields' => ['type' => 'object', 'additionalProperties' => true]]]],
         ];
@@ -117,6 +124,8 @@ final class McpController extends AbstractController
                 'get' => $this->content->get((string) ($a['site'] ?? ''), (string) ($a['kind'] ?? ''), (int) ($a['id'] ?? 0)),
                 'update' => $this->content->patch((string) ($a['site'] ?? ''), (string) ($a['kind'] ?? ''), (int) ($a['id'] ?? 0), \is_array($a['fields'] ?? null) ? $a['fields'] : []),
                 'upsert_city_texts' => $this->content->upsertTexts((string) ($a['site'] ?? ''), (string) ($a['kind'] ?? ''), (\is_array($a['fields'] ?? null) ? $a['fields'] : []) + array_intersect_key($a, array_flip(['item_id', 'category_id', 'city_id'])))[0],
+                'image_put' => $this->imagePut($a),
+                'image_delete' => $this->images->delete((string) ($a['site'] ?? ''), (string) ($a['kind'] ?? ''), (int) ($a['id'] ?? 0)),
                 'theme_list' => $this->theme->list((string) ($a['site'] ?? '')),
                 'theme_get' => $this->theme->get((string) ($a['site'] ?? ''), (string) ($a['path'] ?? '')),
                 'theme_put' => $this->theme->put((string) ($a['site'] ?? ''), (string) ($a['path'] ?? ''), (string) ($a['content'] ?? '')),
@@ -138,6 +147,27 @@ final class McpController extends AbstractController
         }
 
         return $this->rpcResult($id, ['content' => [['type' => 'text', 'text' => json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)]], 'structuredContent' => $result]);
+    }
+
+    /**
+     * @param array<string, mixed> $a
+     *
+     * @return array<string, mixed>
+     */
+    private function imagePut(array $a): array
+    {
+        $site = (string) ($a['site'] ?? '');
+        $kind = (string) ($a['kind'] ?? '');
+        $id = (int) ($a['id'] ?? 0);
+        $alt = isset($a['alt']) && \is_scalar($a['alt']) ? (string) $a['alt'] : null;
+        $altRu = isset($a['alt_ru']) && \is_scalar($a['alt_ru']) ? (string) $a['alt_ru'] : null;
+        if (!empty($a['url']) && \is_string($a['url'])) {
+            return $this->images->putUrl($site, $kind, $id, $a['url'], $alt, $altRu);
+        }
+        if (!empty($a['data']) && \is_string($a['data'])) {
+            return $this->images->putBase64($site, $kind, $id, $a['data'], isset($a['filename']) && \is_scalar($a['filename']) ? (string) $a['filename'] : null, $alt, $altRu);
+        }
+        throw new ApiProblem('image_put: потрібне url або data (base64)', 400);
     }
 
     private function rpcResult(mixed $id, mixed $result): JsonResponse

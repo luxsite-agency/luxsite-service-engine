@@ -1,7 +1,7 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Брендована 404 рушія. Рендериться ErrorController-ом поза контекстом тенанта, тому самодостатня: без site/city,
    мову визначаємо з path запиту (sv_path_locale: /<мова>/… або мова розгортання без префікса). Пак перекриває її файлом templates/services/error404.html.twig (→ templates/site/),
-   теж самодостатнім (доступні app.request, theme, path()/asset()). #}
+   теж самодостатнім (доступні app.request, theme, path()/asset()). -#}
 {% set _l = sv_path_locale() %}{% set isRu = _l == 'ru' %}
 <!DOCTYPE html>
 <html lang="{{ _l }}">

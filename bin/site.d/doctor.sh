@@ -6,7 +6,8 @@
 #   Лише читає. Перевіряє: доступ, маркер ARCHIVED проти status, версію рушія (реліз на сервері проти engine у реєстрі),
 #   docroot панелі (fastpanel) / контейнери (docker), міграції (up-to-date), останній звичайний бекап (без pre-*;
 #   старший за 36 год або менший за 50K — WARN), cron, диск, php і date.timezone (fastpanel), збіги слагів у корені
-#   (app:site:slugs), TLS сайту, адмінки й доменів domains.extra.
+#   (app:site:slugs), TLS сайту, адмінки й доменів domains.extra, коментарі розробника у HTML головної й однієї послуги
+#   (0 — OK; SITE_NO_HTTP=1 — пропустити).
 #   Код виходу: 0 — усе OK/WARN, 1 — є FAIL. --all — усі записи реєстру (handed-over і стара схема — пропуск).
 set -euo pipefail
 # shellcheck source=bin/site.d/_lib.sh
@@ -117,7 +118,21 @@ doctor_one() {
         local h
         for h in $S_EXTRA; do cert_check "$h"; done
     fi
+    [ "${SITE_NO_HTTP:-0}" != 1 ] && [ -n "$S_SITE" ] && comments_check "https://$S_SITE/"
     return 0
+}
+
+# Коментарі розробника у HTML (вимога власника 25.10.2026): GET головної й однієї послуги (з sitemap), лічильники `<!--`, `/*`,
+# `^\s*//` поза JSON-LD — bin/site.d/_htmlcomments.py. 0 — OK; більше — WARN (рушій без чистки або app.html.strip_comments: false)
+comments_check() {
+    local site="$1" out total pages
+    if ! out="$("${SITE_PYTHON:-python3}" "$SITE_CMD_DIR/_htmlcomments.py" --site "$site" 2>&1)"; then
+        wrn "коментарі у HTML: не перевірено ($(echo "$out" | sed -n 's/^page=.* error=//p' | head -n1))"; return 0
+    fi
+    total="$(echo "$out" | sed -n 's/^total=//p' | tail -n1)"
+    pages="$(echo "$out" | grep -c '^page=')"
+    if [ "${total:-0}" = 0 ]; then ok "коментарі у HTML: 0 ($pages стор.)"
+    else wrn "коментарі у HTML: $total — $(echo "$out" | sed -n 's/^page=\([^ ]*\) comments=\([0-9]*\).*/\1 (\2)/p' | tr '\n' ' ')— рушій ще без чистки HTML або в паку app.html.strip_comments: false"; fi
 }
 
 notify_flag=0; args=()

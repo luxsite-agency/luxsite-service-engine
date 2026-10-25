@@ -24,7 +24,7 @@ enum ApiScope: string
     {
         return match ($this) {
             self::ContentRead => 'Читання контенту: послуги, категорії, міста, райони, блог, прайс',
-            self::ContentWrite => 'Правка контенту: тексти, SEO, FAQ, активність, тексти по містах',
+            self::ContentWrite => 'Правка контенту: тексти, SEO, FAQ, активність, тексти по містах, фото записів',
             self::PricesWrite => 'Правка прайсу (ціни послуг по містах)',
             self::StudioWrite => 'Приймач content-studio: статті в блог (lingualcloud.com)',
             self::ThemeWrite => 'Правка дизайну: живі шаблони (services/**, partials/**) і theme.css з перевіркою рендера й історією версій',
