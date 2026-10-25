@@ -169,9 +169,6 @@ final class PageController extends AbstractController
     {
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
-        // текст однаковий на всіх хостах: на неапексних містах — noindex, follow (пак: app.legal_noindex_cities). Заголовок
-        // X-Robots-Tag — щоб працювало й з паком/живою темою, що перекриває base.html.twig без pageNoindex.
-        $noindex = $this->legalNoindex($city);
         $text = $site->loc($field, $request->getLocale());
         if ($site->isContent()) {
             // контентний сайт: свій каркас і типовий текст під форму зв'язку (без телефонів, відгуків і заявок)
@@ -184,6 +181,10 @@ final class PageController extends AbstractController
                 'altUrls' => $this->altUrls($route),
             ]);
         }
+        // текст однаковий на всіх хостах: на неапексних містах — noindex, follow (пак: app.legal_noindex_cities). Заголовок
+        // X-Robots-Tag — щоб працювало й з паком/живою темою, що перекриває base.html.twig без pageNoindex.
+        // Лише сервісний сайт: у контентного (один хост на бренд) прапорець не застосовується — без зайвого запиту апексу.
+        $noindex = $this->legalNoindex($city);
         if ($text === null || trim($text) === '') {
             $response = $this->render('services/page/' . $field . '.html.twig', [
                 'site' => $site,
