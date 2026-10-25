@@ -63,7 +63,10 @@ final class PricelistCalc
     /** Обсяг із форми, обрізаний у межі 0..maxQty позиції. */
     public static function clampQty(ServicePrice $price, mixed $raw): int
     {
-        return max(0, min((int) $raw, max(1, $price->getMaxQty())));
+        // масив (qty[<id>][]=3 ручним POST) не має ставати «1»: лише скаляр
+        $qty = \is_scalar($raw) ? (int) $raw : 0;
+
+        return max(0, min($qty, max(1, $price->getMaxQty())));
     }
 
     /**

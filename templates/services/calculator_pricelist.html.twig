@@ -122,7 +122,7 @@
                             {% if price.price is not null %}
                             <span class="pl-price">{% if price.pricePrefix %}{{ 'prices.from'|trans({}, 'servicesite') }} {% endif %}{{ price.price|number_format(0, '.', ' ') }}</span>
                             {% else %}
-                            <span class="pl-price tbd">{{ price.loc('priceText', locale) ?? tbd }}</span>
+                            <span class="pl-price tbd">{{ price.loc('priceText', locale)|default(tbd) }}</span>
                             {% endif %}
                             <span class="pl-qty">
                                 <button type="button" data-step="-1" aria-label="−">−</button>
