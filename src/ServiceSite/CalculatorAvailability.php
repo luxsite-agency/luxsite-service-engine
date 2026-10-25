@@ -18,7 +18,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *  - area — «за площею» (клінінг): у сайту є активні типи прибирання (service_calc_type);
  *  - pricelist — «за прайсом»: типів нема, але в прайсі міста є активні позиції з in_calculator=1
  *    (послуга надається в місті й ціни на неї не приховані);
- *  - null — калькулятора нема: сторінка 404, посилання на неї не рендеряться.
+ *  - null — калькулятора нема: сторінка 404, посилання на неї не рендеряться; контентний сайт — завжди null.
  * app.calculator.mode паку: auto (як вище) | area | pricelist (примусово один режим) | off.
  * Усе, що показує чи ховає калькулятор (кнопки, меню, sitemap, контролер), питає цей сервіс, а не репозиторії напряму.
  */
@@ -65,7 +65,9 @@ final class CalculatorAvailability
 
     private function resolve(ServiceSite $site, ServiceCity $city): ?string
     {
-        if ($this->mode === 'off') {
+        // контентний сайт (ServiceSite.mode content, stage/satellites): каталогу й калькулятора нема за визначенням —
+        // маршрути закриває SiteModeSubscriber, а тут не ходимо в БД на кожен запит 15 брендів
+        if ($this->mode === 'off' || $site->isContent()) {
             return null;
         }
         if ($this->mode !== self::MODE_PRICELIST && $this->calcTypes->findActiveBySite($site) !== []) {
