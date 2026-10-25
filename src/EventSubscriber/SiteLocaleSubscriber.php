@@ -20,7 +20,7 @@ use Symfony\Component\Routing\RequestContext;
 /**
  * Мова на хостах брендів (22.10.2026).
  *
- * 1. До роутера (33: після ServiceHostSubscriber 34, перед RouterListener 32): якщо мова розгортання за
+ * 1. До роутера (34: після ServiceHostSubscriber 35, перед LegacyUrlSubscriber 33 — його 410 рендериться вже мовою бренду — і RouterListener 32): якщо мова розгортання за
  *    замовчуванням (перша з app.locales) не збігається з framework.default_locale (uk — заради адмінки), запит
  *    бренду отримує її як мову. Інакше сторінки без _locale у маршруті (404, /lead, sitemap, robots) і path() без
  *    явної мови пішли б українською — а варіантів маршрутів .uk на такому розгортанні нема. Мова ставиться явно
@@ -45,7 +45,7 @@ final class SiteLocaleSubscriber implements EventSubscriberInterface
 
     public static function getSubscribedEvents(): array
     {
-        return [KernelEvents::REQUEST => [['onBeforeRouting', 33], ['onAfterRouting', 20]]];
+        return [KernelEvents::REQUEST => [['onBeforeRouting', 34], ['onAfterRouting', 20]]];
     }
 
     public function onBeforeRouting(RequestEvent $event): void

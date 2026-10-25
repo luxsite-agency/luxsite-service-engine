@@ -14,7 +14,7 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * До роутингу (пріоритет 34: після AdminHostSubscriber 40, перед RouterListener 32)
+ * До роутингу (пріоритет 35: після AdminHostSubscriber 40, перед SiteLocaleSubscriber 34, LegacyUrlSubscriber 33 і RouterListener 32)
  * резолвить хости сервісних сайтів і кладе тенант у request attributes.
  * Роути сервісного профілю мають `priority: 10` + condition на цей атрибут —
  * на хостах міських сайтів condition хибний і роутинг працює як раніше,
@@ -34,7 +34,7 @@ final class ServiceHostSubscriber implements EventSubscriberInterface
 
     public static function getSubscribedEvents(): array
     {
-        return [KernelEvents::REQUEST => ['onKernelRequest', 34]];
+        return [KernelEvents::REQUEST => ['onKernelRequest', 35]];
     }
 
     public function onKernelRequest(RequestEvent $event): void

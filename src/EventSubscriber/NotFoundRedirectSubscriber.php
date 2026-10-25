@@ -9,17 +9,15 @@ namespace App\EventSubscriber;
 
 use App\Entity\ServiceCity;
 use App\Entity\ServiceSite;
-use App\ServiceSite\LegacyUrls;
 use App\ServiceSite\Redirect\LiveUrls;
 use App\ServiceSite\Redirect\NotFoundLog;
 use App\ServiceSite\Redirect\RedirectCode;
 use App\ServiceSite\Redirect\RedirectManager;
 use App\ServiceSite\Redirect\RedirectPath;
+use App\ServiceSite\Redirect\RedirectResponder;
 use Doctrine\DBAL\Exception as DbalException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Event\TerminateEvent;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
@@ -49,8 +47,8 @@ final class NotFoundRedirectSubscriber implements EventSubscriberInterface, Rese
         private readonly RedirectManager $redirects,
         private readonly NotFoundLog $log,
         private readonly LiveUrls $live,
-        private readonly LegacyUrls $legacy,
         private readonly LoggerInterface $logger,
+        private readonly RedirectResponder $responder,
     ) {
     }
 
@@ -73,7 +71,7 @@ final class NotFoundRedirectSubscriber implements EventSubscriberInterface, Rese
             $rule = $this->redirects->find((int) $site->getId(), (int) $city->getId(), $path);
             if ($rule === null) {
                 if ($path !== rawurldecode($request->getPathInfo()) && $this->live->isLive($site, $city, $path)) {
-                    $event->setResponse($this->redirect($request, $path, RedirectCode::Permanent));
+                    $event->setResponse($this->responder->redirect($request, $path, RedirectCode::Permanent));
                 }
 
                 return;
@@ -85,7 +83,7 @@ final class NotFoundRedirectSubscriber implements EventSubscriberInterface, Rese
         }
         $this->pendingHit = $rule['id'];
         if ($rule['code']->isRedirect() && $rule['target'] !== null) {
-            $event->setResponse($this->redirect($request, $rule['target'], $rule['code']));
+            $event->setResponse($this->responder->redirect($request, $rule['target'], $rule['code']));
         } elseif (RedirectCode::Gone === $rule['code']) {
             $event->setThrowable(new GoneHttpException('Сторінку видалено', $event->getThrowable()));
         }
@@ -137,22 +135,5 @@ final class NotFoundRedirectSubscriber implements EventSubscriberInterface, Rese
         }
 
         return [$site, $city, RedirectPath::fromRequest($request->getPathInfo())];
-    }
-
-    private function redirect(Request $request, string $target, RedirectCode $code): RedirectResponse
-    {
-        if (RedirectPath::isAbsoluteUrl($target)) {
-            $location = $target;
-        } else {
-            $location = $request->getSchemeAndHttpHost() . $request->getBaseUrl() . RedirectPath::encode($target);
-        }
-        if (!str_contains($location, '?')) {
-            $location .= $this->legacy->queryFor($request, (string) parse_url($location, \PHP_URL_PATH));
-        }
-        $response = new RedirectResponse($location, $code->value);
-        // правила змінні (адмінка): 301 без заголовків кешу браузер тримав би назавжди (див. LegacyUrlSubscriber)
-        $response->headers->set('Cache-Control', 'no-store, max-age=0');
-
-        return $response;
     }
 }

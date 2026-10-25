@@ -195,13 +195,17 @@ final class LegacyUrls
      * (keep_query), інакше — як був. Повертає '' або '?…'. Так старий шлях з ?Itemid= і слеш/префікс
      * зводяться в один 301 замість ланцюжка.
      */
-    public function queryFor(Request $request, string $path): string
+    public function queryFor(Request $request, string $path, ?string $sourcePath = null): string
     {
         $all = $request->query->all();
         if ($all === []) {
             return '';
         }
         $kept = $this->keptQuery($request, $path) ?? $all;
+        // $sourcePath — адреса-джерело правила: параметри, зайві для неї, зайві й для цілі
+        if ($sourcePath !== null && ($forSource = $this->keptQuery($request, $sourcePath)) !== null) {
+            $kept = array_intersect_key($kept, $forSource);
+        }
 
         return $kept !== [] ? '?' . http_build_query($kept) : '';
     }
