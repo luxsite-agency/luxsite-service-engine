@@ -16,12 +16,12 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Прев'ю зображень статей у списках (25.10.2026, ServiceSite.listThumbs — адмінка → бренд): off — мініатюр нема (типово);
  * home — лише головна; lists — стрічка, рубрика, тег, автор; all — скрізь. Стаття без обкладинки — без мініатюри.
- * Мініатюра — через Liip (item_hero_sm, webp), перша картка без lazy.
+ * Мініатюра — через Liip (post_card 16:9 + srcset post_card_lg, webp), перша картка без lazy, посилання aria-hidden.
  */
 final class ContentThumbsTest extends HttpKernelTestCase
 {
-    /** Фрагмент адреси мініатюри картки (Liip: /media/cache/resolve/item_hero_sm/… або /media/cache/item_hero_sm/…) */
-    private const THUMB = '/item_hero_sm/media/service_post/';
+    /** Фрагмент адреси мініатюри картки: post_card_lg — лише в srcset, рівно раз на картку (Liip: /media/cache/resolve/<фільтр>/…) */
+    private const THUMB = '/post_card_lg/media/service_post/';
 
     private string $host;
     private int $siteId = 0;
@@ -58,7 +58,9 @@ final class ContentThumbsTest extends HttpKernelTestCase
         // типово вимкнено: мініатюр нема ні на головній, ні в списках
         self::assertSame(ServiceSite::THUMBS_OFF, $this->site()->getListThumbs());
         foreach (['/', '/blog/', '/blog/category/poradi/'] as $path) {
-            self::assertSame(0, $this->thumbs($path), "$path — вимкнено");
+            $html = $this->page($path);
+            self::assertSame(0, substr_count($html, self::THUMB), "$path — вимкнено");
+            self::assertStringNotContainsString('media/service_post/cover-', $html, "$path — вимкнено: ні мініатюри, ні оригіналу");
         }
 
         $this->switchTo(ServiceSite::THUMBS_HOME);
@@ -76,9 +78,21 @@ final class ContentThumbsTest extends HttpKernelTestCase
         self::assertSame(2, substr_count($html, self::THUMB));
         self::assertSame(2, $this->thumbs('/'));
         // перша мініатюра — без lazy (над першим екраном), решта — lazy; alt з обкладинки; розміри проти CLS
-        self::assertMatchesRegularExpression('~<img src="[^"]*' . preg_quote(self::THUMB, '~') . 'cover-1\.jpg" alt="Опис z-foto-1" width="460" height="307">~u', $html);
-        self::assertMatchesRegularExpression('~<img src="[^"]*' . preg_quote(self::THUMB, '~') . 'cover-2\.jpg" alt="Опис z-foto-2" width="460" height="307" loading="lazy">~u', $html);
+        $img = static fn (string $file, string $alt, string $tail): string => '~<a href="/blog/[a-z0-9-]+/" tabindex="-1" aria-hidden="true"><img src="[^"]*/post_card/media/service_post/'
+            . preg_quote($file, '~') . '" srcset="[^"]*/post_card/media/service_post/' . preg_quote($file, '~') . ' 640w, [^"]*/post_card_lg/media/service_post/'
+            . preg_quote($file, '~') . ' 1280w" sizes="[^"]+" alt="' . $alt . '" width="640" height="360"' . $tail . '></a>~u';
+        self::assertMatchesRegularExpression($img('cover-1.jpg', 'Опис z-foto-1', ''), $html);
+        self::assertMatchesRegularExpression($img('cover-2.jpg', 'Опис z-foto-2', ' loading="lazy"'), $html);
         self::assertStringNotContainsString('src="/media/service_post/cover-1.jpg"', $html, 'оригінал у списку не віддаємо');
+    }
+
+    public function testUnknownScopeIsFalse(): void
+    {
+        $site = $this->site()->setListThumbs(ServiceSite::THUMBS_ALL);
+        self::assertTrue($site->showsThumbs('home'));
+        self::assertTrue($site->showsThumbs('lists'));
+        self::assertFalse($site->showsThumbs('off'), 'опечатка в шаблоні — без мініатюр, а не навпаки');
+        self::assertFalse($site->showsThumbs('all'));
     }
 
     public function testInvalidValueRejected(): void

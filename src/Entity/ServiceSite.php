@@ -320,9 +320,13 @@ class ServiceSite implements TimestampableInterface
         return $this;
     }
 
-    /** Чи показувати мініатюри статей на сторінці: home — головна, lists — стрічка, рубрика, тег, автор */
+    /** Чи показувати мініатюри статей на сторінці: home — головна, lists — стрічка, рубрика, тег, автор; інше — false */
     public function showsThumbs(string $where): bool
     {
+        if (!\in_array($where, [self::THUMBS_HOME, self::THUMBS_LISTS], true)) {
+            return false;
+        }
+
         return $this->listThumbs === self::THUMBS_ALL || $this->listThumbs === $where;
     }
 

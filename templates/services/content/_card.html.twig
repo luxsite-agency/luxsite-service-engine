@@ -2,7 +2,8 @@
 {# Картка статті в списках контентного сайту: post, locale; heading — h2|h3; thumb — мініатюра обкладинки (прев'ю зображень
    бренду, sv_thumbs у шаблоні сторінки; без обкладинки — без мініатюри); eager — без lazy (перша картка над першим екраном) #}
 <article class="c-post">
-    {% if thumb|default(false) and post.imageName %}<a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}" tabindex="-1"><img src="{{ asset('media/service_post/' ~ post.imageName)|imagine_filter('item_hero_sm') }}" alt="{{ post.imageAlt(locale) ?? post.loc('title', locale) }}" width="460" height="307"{% if not eager|default(false) %} loading="lazy"{% endif %}></a>{% endif %}
+    {#- посилання-дубль заголовка: поза Tab і деревом доступності (aria-hidden); 16:9 — post_card, як кадр .c-post img #}
+    {% if thumb|default(false) and post.imageName %}{% set _src = asset('media/service_post/' ~ post.imageName) %}<a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}" tabindex="-1" aria-hidden="true"><img src="{{ _src|imagine_filter('post_card') }}" srcset="{{ _src|imagine_filter('post_card') }} 640w, {{ _src|imagine_filter('post_card_lg') }} 1280w" sizes="(max-width: 600px) 100vw, 360px" alt="{{ post.imageAlt(locale) ?: post.loc('title', locale) }}" width="640" height="360"{% if not eager|default(false) %} loading="lazy"{% endif %}></a>{% endif %}
     <div class="in">
         <{{ heading|default('h2') }}><a href="{{ path('sv_blog_post', {slug: post.slug(locale)}) }}">{{ post.loc('title', locale) }}</a></{{ heading|default('h2') }}>
         <p class="c-meta">
