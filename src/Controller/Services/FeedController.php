@@ -104,7 +104,8 @@ final class FeedController extends AbstractController
         $updated = null;
         foreach ($this->posts->findPublishedFiltered($site, $locale, $category, null, 1, self::LIMIT) as $post) {
             $items[] = $this->item($post, $locale, $base, $host);
-            $at = $post->getUpdatedAt() ?? $post->getPublishedAt();
+            // змістовне оновлення, а не технічна мітка (імпорт зсунув би lastBuildDate на дату імпорту)
+            $at = $post->modifiedAt();
             if ($at !== null && ($updated === null || $at > $updated)) {
                 $updated = $at;
             }

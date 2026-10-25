@@ -29,7 +29,7 @@
         },
     } %}
     {% if post.loc('lead', locale) %}{% set art = art|merge({'description': post.loc('lead', locale)|striptags}) %}{% endif %}
-    {% if post.publishedAt %}{% set art = art|merge({'datePublished': post.publishedAt|date('c'), 'dateModified': (post.updatedAt ?? post.publishedAt)|date('c')}) %}{% endif %}
+    {% if post.publishedAt %}{% set art = art|merge({'datePublished': post.publishedAt|date('c'), 'dateModified': post.modifiedAt|date('c')}) %}{% endif %}
     {% if post.imageName %}{% set art = art|merge({'image': app.request.schemeAndHttpHost ~ '/media/service_post/' ~ post.imageName}) %}{% endif %}
     {{ schema.ld(art) }}
 {% endblock %}

@@ -39,7 +39,7 @@
         'publisher': _publisher,
     } %}
     {% if post.loc('lead', locale) %}{% set art = art|merge({'description': post.loc('lead', locale)|striptags}) %}{% endif %}
-    {% if post.publishedAt %}{% set art = art|merge({'datePublished': post.publishedAt|date('c'), 'dateModified': (post.updatedAt ?? post.publishedAt)|date('c')}) %}{% endif %}
+    {% if post.publishedAt %}{% set art = art|merge({'datePublished': post.publishedAt|date('c'), 'dateModified': post.modifiedAt|date('c')}) %}{% endif %}
     {% if post.imageName %}{% set art = art|merge({'image': app.request.schemeAndHttpHost ~ '/media/service_post/' ~ post.imageName}) %}{% endif %}
     {% if _cat %}{% set art = art|merge({'articleSection': _cat.loc('title', locale)}) %}{% endif %}
     {% if _tags is not empty %}{% set art = art|merge({'keywords': _tags|map(t => t.loc('title', locale))}) %}{% endif %}

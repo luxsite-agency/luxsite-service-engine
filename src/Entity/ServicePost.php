@@ -169,6 +169,14 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $imageAltEn = null;
 
+    /**
+     * Дата змістовного оновлення (25.10.2026): ставить PostContentDateListener, коли по суті змінився заголовок, лід чи текст
+     * будь-якою мовою (типографіка, теги, обкладинка, повторна публікація без змін — ні). NULL — не оновлювалась. updatedAt —
+     * технічна мітка (будь-який запис, імпорт), для dateModified і «Updated» не годиться.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $contentUpdatedAt = null;
+
     public function __construct()
     {
         $this->tags = new ArrayCollection();
@@ -427,6 +435,38 @@ class ServicePost implements TimestampableInterface
     public function getStudioSyncedAt(): ?\DateTimeImmutable
     {
         return $this->studioSyncedAt;
+    }
+
+    public function getContentUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->contentUpdatedAt;
+    }
+
+    public function setContentUpdatedAt(?\DateTimeImmutable $contentUpdatedAt): self
+    {
+        $this->contentUpdatedAt = $contentUpdatedAt;
+
+        return $this;
+    }
+
+    /**
+     * Дата для dateModified і article:modified_time: змістовне оновлення, якщо воно пізніше за публікацію, інакше дата
+     * публікації (імпорт і технічні записи її не зсувають).
+     */
+    public function modifiedAt(): ?\DateTimeInterface
+    {
+        if ($this->contentUpdatedAt !== null && ($this->publishedAt === null || $this->contentUpdatedAt > $this->publishedAt)) {
+            return $this->contentUpdatedAt;
+        }
+
+        return $this->publishedAt;
+    }
+
+    /** Показувати «Updated …»: змістовне оновлення пізніше за публікацію більш ніж на добу */
+    public function isUpdated(): bool
+    {
+        return $this->publishedAt !== null && $this->contentUpdatedAt !== null
+            && $this->contentUpdatedAt->getTimestamp() - $this->publishedAt->getTimestamp() > 86400;
     }
 
     public function getStudioTagsLang(): ?string

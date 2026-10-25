@@ -100,6 +100,8 @@ final class LiveThemePolicy
         'tagsIn',
         // RSS контентного сайту в <head> (25.10.2026)
         'isContent',
+        // дата змістовного оновлення статті (25.10.2026): dateModified і «Updated» замість технічного updatedAt
+        'modifiedAt', 'isUpdated',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
