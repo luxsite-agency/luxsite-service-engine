@@ -248,7 +248,21 @@ final class SiteTheme
             $css,
         ) ?? $css;
         // </style> усередині CSS закрив би тег — екрануємо на всяк випадок
-        return str_ireplace('</style', '<\/style', $css);
+        return str_ireplace('</style', '<\/style', self::minifyCss($css));
+    }
+
+    /**
+     * Мінімізація CSS для вбудовування в сторінку (25.10.2026): без коментарів (службові примітки й назви інструментів збірки
+     * відвідувачу не потрібні) і зайвих пробілів. Однаково для всіх сайтів. Пробіл між частинами селектора (`.a :is(b)`) лишається —
+     * прибираються лише пробіли навколо { } ; і послідовності пробілів.
+     */
+    public static function minifyCss(string $css): string
+    {
+        $css = preg_replace('~/\*.*?\*/~s', '', $css) ?? $css;
+        $css = preg_replace('~\s+~', ' ', $css) ?? $css;
+        $css = preg_replace('~\s*([{};])\s*~', '$1', $css) ?? $css;
+
+        return trim(str_replace(';}', '}', $css));
     }
 
     /** @return array<string, string> */

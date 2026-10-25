@@ -68,6 +68,29 @@ final class ContentSiteTest extends HttpKernelTestCase
         parent::tearDown();
     }
 
+    /**
+     * Службові коментарі не потрапляють у HTML (25.10.2026): у вбудованих <style> і <script> контентного й сервісного сайту —
+     * жодного CSS/JS-коментаря (коментарі шаблонів — Twig {# #}, CSS теми мінімізується в SiteTheme::inlineCss).
+     */
+    public function testNoInlineComments(): void
+    {
+        foreach (['https://' . $this->host . '/', 'https://' . $this->host . '/blog/persha/', 'https://' . $this->servicesHost . '/'] as $url) {
+            $response = $this->http('GET', $url);
+            self::assertSame(200, $response->getStatusCode(), $url);
+            $html = (string) $response->getContent();
+            preg_match_all('~<style[^>]*>(.*?)</style>~si', $html, $styles);
+            preg_match_all('~<script(?![^>]*(?:application/ld\+json|src=))[^>]*>(.*?)</script>~si', $html, $scripts);
+            self::assertNotEmpty($styles[1], $url);
+            foreach ($styles[1] as $css) {
+                self::assertStringNotContainsString('/*', $css, $url . ' — коментар у <style>');
+            }
+            foreach ($scripts[1] as $js) {
+                self::assertStringNotContainsString('/*', $js, $url . ' — коментар у <script>');
+                self::assertDoesNotMatchRegularExpression('~(^|[\s;{}])//\s~m', $js, $url . ' — //-коментар у <script>');
+            }
+        }
+    }
+
     public function testContentPagesAndGuards(): void
     {
         $base = 'https://' . $this->host;

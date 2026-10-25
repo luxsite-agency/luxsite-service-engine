@@ -56,7 +56,7 @@
             .calc-layout { grid-template-columns: 1fr; }
             .calc-summary { position: static; }
         }
-        /* плаваюча CTA не потрібна: форма заявки вже в підсумку і перекривалась би нею */
+        {# плаваюча CTA не потрібна: форма заявки вже в підсумку і перекривалась би нею #}
         .floating-cta { display: none; }
     </style>
 {% endblock %}
@@ -170,8 +170,8 @@
     </div>
 
     <script>
-        // Підрахунок наживо. Формула дублює App\ServiceSite\CalcPricer -
-        // авторитетним є сервер, він перераховує суму при відправці заявки.
+        {# Підрахунок наживо. Формула дублює App\ServiceSite\CalcPricer - #}
+        {# авторитетним є сервер, він перераховує суму при відправці заявки. #}
         (function () {
             var form = document.getElementById('calc-form');
             var areaInput = document.getElementById('calc-area');
@@ -203,7 +203,7 @@
                 document.getElementById('calc-min-note').hidden = !minApplied;
             };
 
-            // слайдер і число площі синхронізовані в обидва боки
+            {# слайдер і число площі синхронізовані в обидва боки #}
             areaRange.addEventListener('input', function () { areaInput.value = areaRange.value; recompute(); });
             areaInput.addEventListener('input', function () { areaRange.value = areaInput.value; recompute(); });
 

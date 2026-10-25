@@ -52,6 +52,10 @@ site-<key>/
    Частково: `{% extends '@engine/services/home.html.twig' %}` і свої блоки; повністю: свій файл без `extends`
    (змінні контролера ті самі — список у шаблоні рушія). Власні partial-и паку — у `partials/`.
 
+Коментарі у вбудованих `<style>` і `<script>` шаблонів — лише Twig `{# … #}`: CSS/JS-коментарі (`/* … */`, `// …`) потрапляють у
+HTML і видні відвідувачам (25.10.2026, `ContentSiteTest::testNoInlineComments`). Вбудований CSS теми (`stylesheet_inline`)
+рушій мінімізує сам.
+
 **Команда:** `bin/site theme new <key>` створює тему в паку — `themes/<key>/theme.css` (якщо нема) і заготовки
 `templates/services/base.html.twig`, `templates/services/home.html.twig` як `{% extends '@engine/…' %}` з усіма блоками
 = `parent()` (інші шаблони — аргументами, перелік і блоки — `bin/site theme list`); `--copy <шаблон>` — повна копія для
@@ -153,7 +157,7 @@ live (токен) > пак > рушій.
 | `app.analytics_defer` | `false` | `true` = GTM/gtag і Clarity стартують після `window.load` + 800 мс або на першу взаємодію (прапорець проти подвійного старту; пасивні візити рахуються таймером). Знімає ~310 КБ з ланцюжка LCP (PSI mobile 69–75 → 89–94). Для нових паків `site-template` ставить `true`. Після вмикання на проді — `/analytics-healthcheck` (page_view без взаємодії через 10 с). |
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
 | `app.clarity_id` | `''` | id проєкту Microsoft Clarity — тег у `<head>` поруч із GTM на всіх хостах сайту (коли Clarity не в GTM). |
-| `app.theme` | `{}` | ключі `SiteTheme::DEFAULTS`: `key`, `colors{accent, accent2, accent_ink, dark, navy, footer_bg, footer_line, footer_text, footer_ink}`, `logo`, `favicon_ico`, `favicon_png`, `apple_touch_icon`, `og_image`, `hero_image`, `hero_srcset`, `hero_width`, `hero_height`, `stylesheet`, `stylesheet_inline` (true = CSS у `<style>` замість `<link>`, відносні `url(…)` переписуються від теки файлу), `options` (довільна мапа для шаблонів паку, `theme.option('ключ')`). Шляхи — від `public/`. `theme.url()` додає `?v=<хеш файлу>` (кеш статики на місяці). |
+| `app.theme` | `{}` | ключі `SiteTheme::DEFAULTS`: `key`, `colors{accent, accent2, accent_ink, dark, navy, footer_bg, footer_line, footer_text, footer_ink}`, `logo`, `favicon_ico`, `favicon_png`, `apple_touch_icon`, `og_image`, `hero_image`, `hero_srcset`, `hero_width`, `hero_height`, `stylesheet`, `stylesheet_inline` (true = CSS у `<style>` замість `<link>`, відносні `url(…)` переписуються від теки файлу; вбудований CSS мінімізується — без коментарів і зайвих пробілів, `SiteTheme::minifyCss`), `options` (довільна мапа для шаблонів паку, `theme.option('ключ')`). Шляхи — від `public/`. `theme.url()` додає `?v=<хеш файлу>` (кеш статики на місяці). |
 | `app.schema` | порожні | `legal_name`, `founder`, `opening_hours` для JSON-LD бізнесу (LocalBusiness). |
 | `app.legacy_redirects` | `{}` | 301 зі старого сайту (`App\ServiceSite\LegacyUrls`, спрацьовує до роутингу). Ключ = старий шлях без слешів по краях (`старий-слаг`, `services/heating/old-slug`, `ru/services/x`), exact-match зі слешем і без. Значення: цільовий шлях рядком (`/services/heating/new-slug/`), `{ path: … }` або старий формат `{city, item, route, locale}`. Збирається з `seo/legacy-redirects.yaml` паку командою `app:site:redirects` (нижче). |
 | `app.gone_prefixes` | `[]` | Прибрані розділи старого сайту → 410 Gone (`['/n/']` — дорвеї зламу). |
