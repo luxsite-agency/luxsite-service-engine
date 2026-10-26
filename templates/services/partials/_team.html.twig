@@ -7,7 +7,7 @@
     <h2>{{ team_title|default('home.team_title'|trans({}, 'servicesite')) }}</h2>
     <div class="grid">
         {% for member in team %}
-        {% include 'services/team/_card.html.twig' %}
+        {% include 'services/team/_card.html.twig' with {card_index: loop.index} %}
         {% endfor %}
     </div>
 </section>

@@ -5,7 +5,7 @@
    і practicesAt = філії (branches), @id яких збігається з розміткою бізнесу на хостах міст (/#business). #}
 {% extends 'services/base.html.twig' %}
 
-{# locale задає base.html.twig, але set поза блоками виконується раніше за нього; імена _tm* — щоб base (_desc, _canon…) їх не перезаписав #}
+{#- locale задає base.html.twig, але set поза блоками виконується раніше за нього; імена _tm* — щоб base (_desc, _canon…) їх не перезаписав #}
 {% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
 {% set _tmName = member.loc('name', locale) %}
 {% set _tmRole = member.loc('role', locale) %}
@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    {# додаткові поля з паку (app.custom_fields.team: стаж, освіта, спеціалізація, графік…); нема = блоку нема #}
+    {#- додаткові поля з паку (app.custom_fields.team: стаж, освіта, спеціалізація, графік…); нема = блоку нема #}
     {% set _specs = custom_fields(member, locale) %}
     {% if _specs is not empty %}
     <section class="block">
@@ -90,7 +90,7 @@
     </section>
     {% endif %}
 
-    {# філії (міста сайту), де людина працює: основне першим; посилання — на головну міста #}
+    {#- філії (міста сайту), де людина працює: основне першим; посилання — на головну міста #}
     {% if branches|length > 1 or (branches|length == 1 and (branches|first).city.id != city.id) %}
     <section class="block">
         <p class="block-title">{{ 'team.branches_title'|trans({}, 'servicesite') }}</p>
@@ -113,6 +113,6 @@
     </section>
     {% endif %}
 
-    {# lead_preset: поле форми з джерелом team (app.lead_fields) одразу з цією людиною; без такого поля — ігнорується #}
+    {#- lead_preset: поле форми з джерелом team (app.lead_fields) одразу з цією людиною; без такого поля — ігнорується #}
     {% include 'services/partials/_lead_form.html.twig' with {lead_preset: {team: member.id}} %}
 {% endblock %}

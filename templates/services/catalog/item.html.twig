@@ -207,7 +207,7 @@
         title: _wTitle != _wKey ? _wTitle : 'works.title'|trans({}, 'servicesite'),
     } %}
 
-    {# хто робить послугу в цьому місті (ServiceTeamMember.items): лікарі, майстри; нема зв'язків — блоку нема #}
+    {#- хто робить послугу в цьому місті (ServiceTeamMember.items): лікарі, майстри; нема зв'язків — блоку нема #}
     {% include 'services/partials/_team.html.twig' with {team: itemTeam|default([]), team_title: 'team.item_title'|trans({}, 'servicesite')} %}
 
     {% if calcTypes|default([]) %}

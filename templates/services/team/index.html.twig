@@ -3,7 +3,7 @@
    «Лікарі», «Майстри»); SEO 1:1 зі старого сайту — app.page_meta.sv_team. #}
 {% extends 'services/base.html.twig' %}
 
-{# locale задає base.html.twig, але set поза блоками виконується раніше за нього #}
+{#- locale задає base.html.twig, але set поза блоками виконується раніше за нього #}
 {% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
 {% set _tp = {'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale), '%site%': site.name} %}
 {% block title %}{{ 'title.team'|trans(_tp, 'servicesite') }}{% endblock %}
@@ -27,7 +27,7 @@
     <section class="block">
         <div class="grid">
             {% for member in team %}
-            {% include 'services/team/_card.html.twig' %}
+            {% include 'services/team/_card.html.twig' with {card_index: loop.index} %}
             {% endfor %}
         </div>
     </section>

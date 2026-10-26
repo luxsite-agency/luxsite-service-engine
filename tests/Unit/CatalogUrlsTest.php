@@ -33,9 +33,13 @@ final class CatalogUrlsTest extends TestCase
     /** Префікс сторінок команди (app.team_prefix) у схемі root забороняє такий самий slug категорії; порожній — нічого. */
     public function testTeamPrefixReservedInRootScheme(): void
     {
-        $root = new CatalogUrls('root', 'news', 'vrachi');
+        $root = new CatalogUrls('root', 'news', teamPrefix: 'vrachi');
         self::assertTrue($root->isReservedCategorySlug('vrachi'));
         self::assertFalse($root->isReservedCategorySlug('likari'));
+        // разом із першим сегментом адреси калькулятора з паку (app.calculator.path, v0.9.38)
+        $withCalc = new CatalogUrls('root', 'news', ['uk' => '/kalkuliator/', 'ru' => '/ru/kalkuliator/'], 'vrachi');
+        self::assertTrue($withCalc->isReservedCategorySlug('vrachi'));
+        self::assertTrue($withCalc->isReservedCategorySlug('kalkuliator'));
 
         $off = new CatalogUrls('root', 'news');
         self::assertNotContains('', $off->reservedCategorySlugs());

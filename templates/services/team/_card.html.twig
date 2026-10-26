@@ -6,8 +6,9 @@
 <div class="card team-card">
     {% if member.imageName %}
     {% if _href %}<a href="{{ _href }}" tabindex="-1" aria-hidden="true">{% endif %}
-    {# lazy — лише в довгих списках зі сторінками команди і не в першому ряду (перші фото — кандидати в LCP) #}
-    <img src="/media/service_team/{{ member.imageName }}" alt="{{ member.imageAlt ?? member.loc('name', locale) }}"{% if _href and loop is defined and loop.index > 4 %} loading="lazy"{% endif %}
+    {# lazy — лише в довгих списках зі сторінками команди і не в першому ряду (перші фото — кандидати в LCP). Номер картки
+       передає цикл того, хто включає (card_index: loop.index): саму змінну loop шаблонам заборонено (ThemeTemplateGuard) -#}
+    <img src="/media/service_team/{{ member.imageName }}" alt="{{ member.imageAlt ?? member.loc('name', locale) }}"{% if _href and card_index|default(0) > 4 %} loading="lazy"{% endif %}
          style="width:100%;max-width:260px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;display:block;margin-bottom:.6rem">
     {% if _href %}</a>{% endif %}
     {% endif %}
