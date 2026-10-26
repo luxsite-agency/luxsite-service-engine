@@ -71,7 +71,8 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
-        if ($this->serviceSite($request)->isContent()) {
+        $mode = (string) $this->getParameter('app.lead_mode');
+        if ($mode === 'email' || ($mode !== 'phone' && $this->serviceSite($request)->isContent())) {
             return $this->contact($request, $back, $locale);
         }
 
