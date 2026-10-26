@@ -135,7 +135,11 @@ final class LeadController extends AbstractController
         $email = trim((string) $request->request->get('email', ''));
         $name = trim((string) $request->request->get('name', ''));
         $message = trim((string) $request->request->get('message', ''));
+        // необов'язкові поля B2B-форми: компанія йде першим рядком повідомлення, телефон - у своє поле
+        $company = trim((string) $request->request->get('company', ''));
+        $phone = trim((string) $request->request->get('phone', ''));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190 || mb_strlen($name) > 128
+            || mb_strlen($company) > 128 || mb_strlen($phone) > 32
             || $message === '' || mb_strlen($message) > 3000) {
             $this->addFlash('lead_error', $this->translator->trans('contact.invalid', [], 'servicesite'));
 
@@ -154,7 +158,9 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setEmail($email)
             ->setName($name !== '' ? $name : null)
-            ->setMessage($message)
+            ->setPhone($phone !== '' ? mb_substr($phone, 0, 32) : '')
+            ->setMessage($company !== '' ? $company . "
+" . $message : $message)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);
