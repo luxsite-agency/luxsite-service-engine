@@ -96,6 +96,8 @@ final class HomeController extends AbstractController
             'faqTotal' => \count($city->loc('faq', $request->getLocale()) ?? []),
             // наскрізна галерея: власні кадри з усіх зйомок, по два ряди
             'works' => $this->works->findForCity($city, 8),
+            // останні статті блогу: пак може показати їх на головній (шаблон рушія не показує)
+            'posts' => $this->posts->findPublishedBySite($site, 3, $request->getLocale()),
             'altUrls' => $this->altUrls('sv_home'),
         ]);
     }

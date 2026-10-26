@@ -86,6 +86,7 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('item_text', $this->itemText(...)),
             new TwigFunction('footer_catalog', $this->footerCatalog(...)),
             new TwigFunction('footer_pages', $this->footerPages(...)),
+            new TwigFunction('sv_pages', $this->sitePages(...)),
             new TwigFunction('site_brand', $this->siteBrand(...)),
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
@@ -178,6 +179,33 @@ final class ServiceSiteExtension extends AbstractExtension
             static fn (\App\Entity\ServicePage $p): bool => $p->isInFooter(),
         ));
     }
+
+    /**
+     * Сторінки app.pages для шаблонів паку: діти сторінки <parent> (за слагом будь-якої мови) або, без
+     * параметра, сторінки верхнього рівня. Видимі в поточному місті, у порядку position. app.pages: false — [].
+     *
+     * @return list<\App\Entity\ServicePage>
+     */
+    public function sitePages(ServiceSite $site, ?string $parent = null): array
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if (!$this->pagesEnabled || $this->pages === null || !$city instanceof ServiceCity) {
+            return [];
+        }
+        $all = $this->sitePages[(int) $city->getId()] ??= $this->pages->findLiveBySite($site, $city);
+
+        return array_values(array_filter($all, static function (\App\Entity\ServicePage $p) use ($parent): bool {
+            $own = $p->getParent();
+            if ($parent === null) {
+                return $own === null;
+            }
+
+            return $own !== null && ($own->getSlugUk() === $parent || $own->getSlugRu() === $parent);
+        }));
+    }
+
+    /** @var array<int, list<\App\Entity\ServicePage>> memo: id міста → усі живі сторінки */
+    private array $sitePages = [];
 
     /** @var array<int, array<int, \App\Entity\ServiceItemCity>> кеш перевизначень на запит: id міста → (id послуги → тексти) */
     private array $cityItemTexts = [];
