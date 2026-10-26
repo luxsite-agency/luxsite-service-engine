@@ -3,7 +3,8 @@
    Honeypot-поле website приховане; CSRF-токен sv_lead.
    Параметри include: magnet (bool, головна — лід-магніт: абзац lead.subtitle під заголовком і месенджери міста з підписом
    lead.messengers_hint під формою; порожні ключі = елементів нема), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
-   у dataLayer, щоб у GA4 було видно, звідки заявка). -#}
+   у dataLayer, щоб у GA4 було видно, звідки заявка).
+   Перед кнопкою — додаткові поля паку (app.lead_fields) і згода на обробку ПД (app.lead_consent); без них розмітка як була. -#}
 {% set magnet = magnet|default(false) %}
 {% set lead_type = lead_type|default('form') %}
 <section class="block lead-form{% if magnet %} lead-magnet{% endif %}" id="lead">
@@ -23,6 +24,7 @@
         <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;min-width:200px" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
         <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;min-width:180px" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
         <input type="text" name="message" placeholder="{{ 'lead.message'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;flex:1;min-width:220px" aria-label="{{ 'lead.message'|trans({}, 'servicesite') }}">
+        {{- include('services/partials/_lead_fields.html.twig') }}
         <button class="btn" type="submit">{{ 'lead.submit'|trans({}, 'servicesite') }}</button>
     </form>
     {% if magnet and city.hasMessengers %}{% set _hint = 'lead.messengers_hint'|trans({}, 'servicesite') %}

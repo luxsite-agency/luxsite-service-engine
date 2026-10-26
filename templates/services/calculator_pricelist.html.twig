@@ -161,6 +161,7 @@
                 <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
                 <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
                 <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+                {{- include('services/partials/_lead_consent.html.twig') }}
                 <button class="btn" type="submit">{{ 'calc.pricelist.submit'|trans({}, 'servicesite') }}</button>
             </form>
             {%- set _disclaimer = 'calc.disclaimer'|trans({}, 'servicesite') %}

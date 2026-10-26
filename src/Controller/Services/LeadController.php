@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace App\Controller\Services;
 
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
@@ -40,6 +42,8 @@ final class LeadController extends AbstractController
         private readonly LeadAttribution $attribution,
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadFields $fields,
+        private readonly LeadConsent $consent,
     ) {
     }
 
@@ -80,6 +84,30 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
+        // згода на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не змінюється
+        if (!$this->consent->accepted($request->request->get('consent'))) {
+            $this->addFlash('lead_error', $locale === 'ru'
+                ? 'Подтвердите согласие на обработку персональных данных.'
+                : 'Підтвердьте згоду на обробку персональних даних.');
+
+            return $this->redirect($back);
+        }
+
+        // додаткові поля форми (app.lead_fields паку: запис на прийом, запит на розрахунок); без них — нічого не змінюється
+        $details = [];
+        if ($this->fields->enabled()) {
+            [$details, $bad] = $this->fields->validate($request->request->all()['details'] ?? [], $city);
+            if ($bad !== []) {
+                $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
+
+                return $this->redirect($back);
+            }
+            $summary = $this->fields->summary($details);
+            if ($summary !== '') {
+                $message = trim($message . "\n\n" . $summary);
+            }
+        }
+
         // Подвійне натискання / повторна відправка: та сама людина вже лишила заявку
         // в цьому місті щойно. Другу не створюємо, лист і CRM не дублюємо, людину ведемо
         // на подяку (src=dup - без повторної конверсії в GA4). Перевірка ДО rate limit,
@@ -98,7 +126,9 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
-            ->setMessage($message !== '' ? $message : null)
+            ->setMessage($message !== '' ? mb_substr($message, 0, 4000) : null)
+            ->setDetails($details)
+            ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);
