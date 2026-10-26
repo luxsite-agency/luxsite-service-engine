@@ -41,7 +41,9 @@ use Symfony\Component\Yaml\Yaml;
  *            prices?: [{city, name_uk, name_ru?, price?, prefix?, text_uk?, unit_uk?, per_unit?, calculator?}]}]
  *   districts: [{city, slug, name_uk, name_ru?, title_uk?, lead_uk?, desc_uk?, group_uk?, sub_areas_uk?, primary?, min_price?, faq_uk?}]
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
- *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
+ *   team: [{city, name_uk, name_ru?, role_uk?, desc_uk?, position?, slug?, slug_ru?, meta_title_uk?, meta_desc_uk?,
+ *           cities?: [slug] (інші міста, де людина теж працює; city — основне), items?: [slug послуги],
+ *           extra?: {ключ: значення | {uk, ru}} (app.custom_fields.team)}]
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
  *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
  *            footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
@@ -89,10 +91,11 @@ final class SiteSeedCommand
         foreach ($data['categories'] ?? [] as $i => $c) {
             $categories[$c['slug']] = $this->category($site, $c, $i);
         }
+        $items = [];
         foreach ($data['items'] ?? [] as $i => $it) {
             $cat = $categories[$it['category']] ?? $this->em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => $it['category']])
                 ?? throw new \RuntimeException('items: нема категорії ' . $it['category']);
-            $item = $this->item($site, $cat, $it, $i, $cities);
+            $item = $items[$it['slug']] = $this->item($site, $cat, $it, $i, $cities);
             foreach ($it['prices'] ?? [] as $j => $p) {
                 $this->price($item, $this->cityOf($cities, $p['city']), $p, $j);
             }
@@ -104,7 +107,7 @@ final class SiteSeedCommand
             $this->review($this->cityOf($cities, $r['city']), $r);
         }
         foreach ($data['team'] ?? [] as $i => $t) {
-            $this->team($this->cityOf($cities, $t['city']), $t, $i);
+            $this->team($site, $this->cityOf($cities, $t['city']), $t, $i, $cities, $items);
         }
         foreach ($data['posts'] ?? [] as $p) {
             $this->post($site, $p);
@@ -304,13 +307,45 @@ final class SiteSeedCommand
         $this->count('review', $new);
     }
 
-    /** @param array<string, mixed> $d */
-    private function team(ServiceCity $city, array $d, int $i): void
+    /**
+     * Людина команди: збіг за slug (якщо заданий) у межах сайту, інакше за ім'ям у місті. city — основне місто,
+     * cities — інші міста, де людина теж працює; items — slug-и послуг; extra — додаткові поля (app.custom_fields.team):
+     * {ключ: 'значення'} або {ключ: {uk, ru}}.
+     *
+     * @param array<string, mixed>       $d
+     * @param array<string, ServiceCity> $cities
+     * @param array<string, ServiceItem> $items  послуги з цього ж файлу (ще не записані в БД)
+     */
+    private function team(ServiceSite $site, ServiceCity $city, array $d, int $i, array $cities, array $items): void
     {
-        $m = $this->em->getRepository(ServiceTeamMember::class)->findOneBy(['city' => $city, 'nameUk' => $d['name_uk']]);
+        $repo = $this->em->getRepository(ServiceTeamMember::class);
+        $slug = isset($d['slug']) ? (string) $d['slug'] : null;
+        // новий сайт (ще без id) у БД людей не має — DQL з неперсистованою сутністю впав би
+        $m = ($slug !== null && $site->getId() !== null ? $repo->findOneBySiteAndAnySlug($site, $slug) : null)
+            ?? $repo->findOneBy(['city' => $city, 'nameUk' => $d['name_uk']]);
         $new = $m === null;
-        $m ??= (new ServiceTeamMember())->setCity($city)->setNameUk((string) $d['name_uk']);
-        $this->loc($m, $d, ['name' => 'name', 'role' => 'role', 'desc' => 'desc']);
+        $m ??= new ServiceTeamMember();
+        $m->setCity($city)->setNameUk((string) $d['name_uk']);
+        if ($slug !== null) {
+            $m->setSlugUk($slug);
+        }
+        $this->loc($m, $d, ['name' => 'name', 'role' => 'role', 'desc' => 'desc', 'slug' => 'slug', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        foreach ($d['cities'] ?? [] as $c) {
+            if ($c !== $city->getSlug()) {
+                $m->addCity($this->cityOf($cities, (string) $c));
+            }
+        }
+        foreach ($d['items'] ?? [] as $s) {
+            $m->addItem($items[$s] ?? $this->em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => $s])
+                ?? throw new \RuntimeException('team: нема послуги ' . $s));
+        }
+        if (isset($d['extra']) && \is_array($d['extra'])) {
+            $extra = $m->getExtra() ?? [];
+            foreach ($d['extra'] as $key => $v) {
+                $extra[(string) $key] = \is_array($v) ? array_map('strval', $v) : ['uk' => (string) $v];
+            }
+            $m->setExtra($extra);
+        }
         $m->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         $m->setActive(true);
         $this->em->persist($m);

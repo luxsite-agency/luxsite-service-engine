@@ -22,6 +22,9 @@ twig:
         home_lead_position: '%app.home_lead_position%'
         footer_catalog: '%app.footer_catalog%'
         schema_business: '%app.schema%'
+        # сторінки команди: префікс розділу ('' = вимкнено) і тип JSON-LD людини
+        team_prefix: '%app.team_prefix%'
+        team_schema_type: '%app.team_schema_type%'
         # вхід через Google для відгуків: {% if google_oauth.configured %} — без кредів кнопку й форму не показуємо
         google_oauth: '@App\Security\GoogleOAuthConfig'
         # віджет відгуків gbp-manager: {token, base}; token порожній — віджета нема

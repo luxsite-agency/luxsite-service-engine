@@ -86,6 +86,28 @@ final class CatalogUrlsTest extends TestCase
         self::assertSame(1, preg_match("~sv_service:.*?sv_category:~s", $yaml), 'послуга перевіряється раніше за категорію');
     }
 
+    /** Префікс сторінок команди (app.team_prefix) зарезервований у корені (root, slug, сторінки app.pages); порожній — нічого. */
+    public function testTeamPrefixReservedInRootScheme(): void
+    {
+        $root = new CatalogUrls('root', 'news', teamPrefix: 'vrachi');
+        self::assertTrue($root->isReservedCategorySlug('vrachi'));
+        self::assertFalse($root->isReservedCategorySlug('likari'));
+        // разом із першим сегментом адреси калькулятора з паку (app.calculator.path, v0.9.38)
+        $withCalc = new CatalogUrls('root', 'news', ['uk' => '/kalkuliator/', 'ru' => '/ru/kalkuliator/'], 'vrachi');
+        self::assertTrue($withCalc->isReservedCategorySlug('vrachi'));
+        self::assertTrue($withCalc->isReservedCategorySlug('kalkuliator'));
+
+        // у схемі slug (послуги й категорії від кореня) і для сторінок app.pages будь-якої схеми — теж
+        self::assertContains('vrachi', (new CatalogUrls('slug', 'news', teamPrefix: 'vrachi'))->reservedSegments());
+        self::assertTrue((new CatalogUrls('slug', 'news', teamPrefix: 'vrachi'))->isReservedCategorySlug('vrachi'));
+        self::assertContains('vrachi', (new CatalogUrls('flat', 'news', teamPrefix: 'vrachi'))->reservedSegments());
+        self::assertNotContains('', (new CatalogUrls('slug', 'news'))->reservedSegments(), 'порожній префікс не дає порожнього сегмента');
+
+        $off = new CatalogUrls('root', 'news');
+        self::assertNotContains('', $off->reservedCategorySlugs());
+        self::assertFalse($off->isReservedCategorySlug('vrachi'));
+    }
+
     /**
      * Список RESERVED_SEGMENTS має покривати перші сегменти всіх фіксованих uk-маршрутів сайту
      * (src/Controller/Services): новий фіксований розділ без запису тут у схемі root перекриє категорію.

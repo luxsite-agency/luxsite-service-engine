@@ -20,6 +20,7 @@ use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePriceRepository;
 use App\Repository\ServiceReviewRepository;
+use App\Repository\ServiceTeamMemberRepository;
 use App\Repository\ServiceWorkRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
@@ -61,6 +62,7 @@ final class CatalogController extends AbstractController
         private readonly ServiceCityRepository $cityRepo,
         private readonly CrossCityDistricts $crossCity,
         private readonly LegacyUrls $legacy,
+        private readonly ServiceTeamMemberRepository $team,
     ) {
     }
 
@@ -186,6 +188,8 @@ final class CatalogController extends AbstractController
             ),
             // власні фото: спершу прив'язані до цієї послуги, далі загальні
             'works' => $this->works->findForItem($item, $city),
+            // блок «Фахівці»: люди цього міста, прив'язані до послуги (ServiceTeamMember.items)
+            'itemTeam' => $this->team->findActiveByItemAndCity($item, $city),
             // рейтинг для Product у розмітці: рахується з наших же
             // відгуків, тому число має збігатися з тим, що на /reviews/
             // загальна оцінка (рядок + aggregateRating): з віджета gbp-manager, якщо підключений, інакше власна (ReviewsRating)

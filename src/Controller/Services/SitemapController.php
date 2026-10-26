@@ -14,10 +14,12 @@ use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServiceTeamMemberRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -43,6 +45,9 @@ final class SitemapController extends AbstractController
         private readonly CatalogUrls $catalogUrls,
         private readonly CalculatorAvailability $calculator,
         private readonly ServicePageRepository $pages,
+        private readonly ServiceTeamMemberRepository $team,
+        #[Autowire('%app.team_prefix%')]
+        private readonly string $teamPrefix = '',
     ) {
     }
 
@@ -121,6 +126,16 @@ final class SitemapController extends AbstractController
             $add('sv_blog');
             foreach ($posts as $post) {
                 $add('sv_blog_post', ['slug' => $post->slug('uk')], ['slug' => $post->slug('ru')], $post->getPublishedAt());
+            }
+        }
+        // сторінки команди (app.team_prefix): список міста, якщо в ньому хтось є, і люди, для яких це місто основне —
+        // з інших міст їхні сторінки канонічні на хості основного й у цю карту не йдуть
+        if ($this->teamPrefix !== '') {
+            if ($this->team->findActiveByCity($city) !== []) {
+                $add('sv_team');
+            }
+            foreach ($this->team->findActivePagesByPrimaryCity($city) as $member) {
+                $add('sv_team_member', ['slug' => (string) $member->slug('uk')], ['slug' => (string) $member->slug('ru')], $member->getUpdatedAt());
             }
         }
         if ($site->getAboutUk() !== null) {

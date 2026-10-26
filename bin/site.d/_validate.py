@@ -228,6 +228,22 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
                 err(f"{where}: app.calculator.path.uk — шлях із сегментів [a-z0-9-] зі слешем на кінці, отримано {cpath['uk']!r}")
             if not re.fullmatch(r"/ru(/[a-z0-9-]+)+/", cpath["ru"]):
                 err(f"{where}: app.calculator.path.ru — шлях /ru/…/ із сегментів [a-z0-9-], отримано {cpath['ru']!r}")
+    team = pp.get("app.team_prefix")
+    if team not in (None, ""):
+        # дзеркало перевірки в src/Kernel.php::configureRoutes: сегмент сторінок команди, не чужий розділ і не блог
+        if not isinstance(team, str) or not re.fullmatch(r"[a-z0-9-]+", team):
+            err(f"{where}: app.team_prefix — сегмент [a-z0-9-] (team, vrachi…) або порожньо, отримано {team!r}")
+        elif team in RESERVED_SEGMENTS or team == (blog or "blog"):
+            err(f"{where}: app.team_prefix '{team}' — зарезервований сегмент іншого розділу сайту")
+    team_schema = pp.get("app.team_schema_type")
+    if team_schema is not None and team_schema not in ("Person", "Physician", "IndividualPhysician"):
+        err(f"{where}: app.team_schema_type має бути Person|Physician|IndividualPhysician")
+    schema = pp.get("app.schema")
+    if isinstance(schema, dict):
+        if str(schema.get("item_type", "auto")) not in ("auto", "Service", "MedicalProcedure"):
+            err(f"{where}: app.schema.item_type має бути auto|Service|MedicalProcedure")
+        if str(schema.get("addresses", "first")) not in ("first", "all"):
+            err(f"{where}: app.schema.addresses має бути first|all")
     crm = pp.get("app.crm")
     if crm is not None:
         if not isinstance(crm, dict):

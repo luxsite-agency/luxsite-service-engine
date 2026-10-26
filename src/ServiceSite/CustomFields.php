@@ -11,13 +11,14 @@ use App\Entity\ServiceCategory;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePage;
 use App\Entity\ServicePost;
+use App\Entity\ServiceTeamMember;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Додаткові поля записів, які описує пак (app.custom_fields), без нових колонок і коду:
  *
  *   app.custom_fields:
- *       item:                                   # тип запису: item (послуга), post (стаття), category (розділ), page (сторінка)
+ *       item:                                   # тип запису: item (послуга), post (стаття), category (розділ), page (сторінка), team (людина команди)
  *           - key: tonnage                      # [a-z0-9_]; значення — ExtraFieldsTrait::$extra[key][uk|ru]
  *             label: { uk: Вантажопідйомність, ru: Грузоподъёмность }
  *             suffix: { uk: ' т', ru: ' т' }    # дописується при показі
@@ -60,7 +61,7 @@ final class CustomFields
         $this->defs = $defs;
     }
 
-    /** Тип запису для сутності: item | post | category | page; null — сутність додаткових полів не має. */
+    /** Тип запису для сутності: item | post | category | page | team; null — сутність додаткових полів не має. */
     public static function typeOf(object $entity): ?string
     {
         return match (true) {
@@ -68,6 +69,7 @@ final class CustomFields
             $entity instanceof ServicePost => 'post',
             $entity instanceof ServiceCategory => 'category',
             $entity instanceof ServicePage => 'page',
+            $entity instanceof ServiceTeamMember => 'team',
             default => null,
         };
     }

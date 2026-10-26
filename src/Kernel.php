@@ -78,6 +78,18 @@ class Kernel extends BaseKernel
         if (\in_array($blog, array_diff(CatalogUrls::RESERVED_SEGMENTS, ['blog', 'news']), true)) {
             throw new \InvalidArgumentException(sprintf('app.blog_prefix: «%s» — зарезервований сегмент іншого розділу сайту.', $blog));
         }
+        // сторінки команди (/<app.team_prefix>/…) — лише коли пак задав префікс; порожньо = маршрутів нема зовсім.
+        // Імпорт до каталогу: у схемі root /<категорія>/ інакше перехопив би /<префікс>/
+        $team = (string) $this->container->getParameter('app.team_prefix');
+        if ($team !== '') {
+            if (!preg_match('/^[a-z0-9-]+$/', $team)) {
+                throw new \InvalidArgumentException(sprintf('app.team_prefix: очікується сегмент [a-z0-9-] (team, vrachi…) або порожньо, отримано «%s».', $team));
+            }
+            if ($team === $blog || \in_array($team, CatalogUrls::RESERVED_SEGMENTS, true)) {
+                throw new \InvalidArgumentException(sprintf('app.team_prefix: «%s» — зарезервований сегмент іншого розділу сайту.', $team));
+            }
+            $routes->import($this->getConfigDir().'/routes/team/team.yaml');
+        }
         $routes->import($this->getConfigDir().'/routes/catalog/'.$scheme.'.yaml');
         // калькулятор: адреса з паку або типова за режимом (CalculatorRoutes через CalculatorRouteLoader); тут лише валідація параметра
         CalculatorRoutes::normalizePath($this->container->getParameter('app.calculator.path'));

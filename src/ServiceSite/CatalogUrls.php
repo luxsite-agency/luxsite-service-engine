@@ -42,6 +42,8 @@ final class CatalogUrls
         private readonly string $blogPrefix = 'blog',
         #[Autowire('%app.calculator.path%')]
         private readonly mixed $calculatorPath = [],
+        #[Autowire('%app.team_prefix%')]
+        private readonly string $teamPrefix = '',
     ) {
     }
 
@@ -51,19 +53,19 @@ final class CatalogUrls
     }
 
     /**
-     * Перші сегменти, зайняті фіксованими розділами сайту: RESERVED_SEGMENTS разом із префіксом блогу паку і першим
-     * сегментом адреси калькулятора з паку (app.calculator.path). Їх не може мати ніщо, що живе в корені: категорія
+     * Перші сегменти, зайняті фіксованими розділами сайту: RESERVED_SEGMENTS разом із префіксами блогу й команди паку
+     * (app.blog_prefix, app.team_prefix) і першим сегментом адреси калькулятора (app.calculator.path). Їх не може мати ніщо, що живе в корені: категорія
      * (root, slug), послуга (slug), сторінка (app.pages).
      *
      * @return list<string>
      */
     public function reservedSegments(): array
     {
-        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, $this->teamPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
     }
 
     /**
-     * Слаги, заборонені для категорії в цій схемі: у root і slug — зарезервовані сегменти (разом із префіксом блогу);
+     * Слаги, заборонені для категорії в цій схемі: у root і slug — зарезервовані сегменти (разом із префіксами блогу й команди);
      * у flat/nested категорії живуть під /services/ і ні з чим не стикаються.
      *
      * @return list<string>

@@ -46,6 +46,7 @@ final class LiveThemePolicy
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',
+        'city_has_team',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -94,6 +95,8 @@ final class LiveThemePolicy
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
         // сторінки app.pages (schema slug / app.pages): шлях, галерея; батько — лише як parentPage (parent заборонено: loop.parent)
         'images', 'parentPage', 'path',
+        // розмітка бізнесу й послуг (app.schema.item_type, addresses) — сторінки команди й медична розмітка (#4)
+        'addresses', 'item_type',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
