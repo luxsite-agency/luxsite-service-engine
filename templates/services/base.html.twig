@@ -10,7 +10,7 @@
    адмінка > пак). Без налаштувань значення ті самі, що давали city.gtmId, app.clarity_id і app.site_verification. #}
 {%~ set _svTags = site_tags(city) %}
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ sv_locale_code(locale, 'hreflang') }}">
     <head>
         <meta charset="UTF-8">
         {% block meta_generator %}<meta name="generator" content="LuxSite Service Engine">{% endblock ~%}
