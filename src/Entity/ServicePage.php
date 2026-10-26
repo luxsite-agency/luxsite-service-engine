@@ -196,6 +196,12 @@ class ServicePage implements TimestampableInterface
         return $this->parent;
     }
 
+    /** Те саме, що getParent(), для шаблонів: ім'я parent у живій темі заборонене (loop.parent — увесь контекст), LiveThemePolicy. */
+    public function getParentPage(): ?ServicePage
+    {
+        return $this->parent;
+    }
+
     public function setParent(?ServicePage $parent): self
     {
         $this->parent = $parent;

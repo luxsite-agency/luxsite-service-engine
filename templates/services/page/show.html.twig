@@ -12,8 +12,8 @@
 {% block schema %}
     {% import 'services/partials/_schema.html.twig' as schema %}
     {% set _crumbs = [{'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})}] %}
-    {% if page.parent %}
-        {% set _crumbs = _crumbs|merge([{'name': page.parent.loc('title', locale), 'url': url('sv_page', {path: page.parent.path(locale), _locale: locale})}]) %}
+    {% if page.parentPage %}
+        {% set _crumbs = _crumbs|merge([{'name': page.parentPage.loc('title', locale), 'url': url('sv_page', {path: page.parentPage.path(locale), _locale: locale})}]) %}
     {% endif %}
     {{ schema.crumbs(_crumbs|merge([{'name': page.loc('title', locale)}])) }}
     {% set _ld = {
@@ -32,7 +32,7 @@
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {% if page.parent %}<a href="{{ path('sv_page', {path: page.parent.path(locale)}) }}">{{ page.parent.loc('title', locale) }}</a> →{% endif %}
+        {% if page.parentPage %}<a href="{{ path('sv_page', {path: page.parentPage.path(locale)}) }}">{{ page.parentPage.loc('title', locale) }}</a> →{% endif %}
         {{ page.loc('title', locale) }}
     </nav>
     <h1>{{ page.loc('title', locale) }}</h1>
@@ -49,7 +49,7 @@
     </dl>
     {% endif %}
 
-    {# дочірні сторінки (вакансії під /vakansii/): список посилань із вступом #}
+    {#- дочірні сторінки (вакансії під /vakansii/): список посилань із вступом #}
     {% if children is not empty %}
     <section class="block page-children">
         <div class="grid">
@@ -63,7 +63,7 @@
     </section>
     {% endif %}
 
-    {# галерея: скани ліцензій і сертифікатів — без обрізання, клік відкриває оригінал #}
+    {#- галерея: скани ліцензій і сертифікатів — без обрізання, клік відкриває оригінал #}
     {% if page.images is not empty %}
     <section class="block page-gallery">
         <div class="works-grid">

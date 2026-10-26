@@ -23,6 +23,7 @@ use App\Entity\ServicePage;
 use App\Entity\ServiceSite;
 use App\Entity\User;
 use App\Kernel;
+use App\ServiceSite\Redirect\LiveUrls;
 use App\ServiceSite\RootSlugs;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -220,6 +221,18 @@ $em = $slugKernel->getContainer()->get('doctrine')->getManager();
 $site = $em->getRepository(ServiceSite::class)->findOneBy(['slug' => 'ci-rsp']);
 $badSite = $em->getRepository(ServiceSite::class)->findOneBy(['slug' => 'ci-rsp-bad']);
 $assert($rootSlugs->conflicts($site) === [], 'conflicts(ci-rsp): збігів нема — '.implode(' | ', $rootSlugs->conflicts($site)));
+// жива адреса (SiteLiveUrls, #18): 404-підписник і менеджер редиректів матчать маршрути в окремому RequestContext — умова
+// маршрутів схеми slug (service('root_slugs')) має бачити параметр _functions, інакше «get() on null» = 500 на 404 і в адмінці SEO
+$live = $slugKernel->getContainer()->get('test.service_container')->get(LiveUrls::class);
+$kyivCity = $em->getRepository(ServiceCity::class)->findOneBy(['site' => $site, 'slug' => 'kyiv']);
+foreach ([['/autizm-kiev/', true], ['/nevrologiya/', true], ['/vakansii/likar-nevrolog/', true], ['/ru/autizm-kiev/', true], ['/nevidomyi-slug/', false], ['/arhiv/', false]] as [$path, $want]) {
+    try {
+        $got = $live->isLive($site, $kyivCity, $path);
+        $assert($got === $want, sprintf('SiteLiveUrls(slug): isLive(%s) = %s', $path, $want ? 'true' : 'false'));
+    } catch (\Throwable $e) {
+        $assert(false, sprintf('SiteLiveUrls(slug): isLive(%s) кинув %s: %s', $path, $e::class, $e->getMessage()));
+    }
+}
 $badLines = $rootSlugs->conflicts($badSite);
 $assert((bool) array_filter($badLines, static fn ($l) => str_starts_with($l, 'uk /konflikt/:') && str_contains($l, 'категорія') && str_contains($l, 'послуга')), 'conflicts(ci-rsp-bad): /konflikt/ — послуга й категорія');
 $assert((bool) array_filter($badLines, static fn ($l) => str_starts_with($l, 'uk /about/:') && str_contains($l, 'фіксованого розділу')), 'conflicts(ci-rsp-bad): сторінка на /about/');

@@ -64,7 +64,10 @@ final class SiteLiveUrls implements LiveUrls
         $request->attributes->set(ServiceHostSubscriber::ATTR_SITE, $site);
         $request->attributes->set(ServiceHostSubscriber::ATTR_CITY, $city);
         $previous = $this->router->getContext();
-        $this->router->setContext((new RequestContext())->fromRequest($request));
+        // параметри контексту (зокрема _functions — service() в умовах маршрутів, як root_slugs схеми slug) лишаємо
+        $context = (new RequestContext())->fromRequest($request);
+        $context->setParameters($previous->getParameters());
+        $this->router->setContext($context);
         try {
             $match = $this->router->matchRequest($request);
         } catch (RoutingException) {
