@@ -19,7 +19,7 @@
             {% set _group = f.group %}
         {% endif %}
         <label class="{{ _cls }} lead-field--{{ f.type }}">
-            {# одиниця — у підписі через кому («Вага, кг»), окремого суфікса під полем нема #}
+            {#- одиниця — у підписі через кому («Вага, кг»), окремого суфікса під полем нема #}
             <span>{{ f.label_full }}{% if f.required %} <sup>*</sup>{% endif %}</span>
             {% if f.type == 'select' %}
             <select name="{{ f.name }}"{% if f.required %} required{% endif %}>

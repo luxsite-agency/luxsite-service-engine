@@ -45,7 +45,7 @@ final class Bitrix24LeadFieldsTest extends TestCase
             new NullLogger(),
             'https://portal.example/rest/1/testtok/',
             ['bitrix24' => $bitrix],
-            $fields,
+            leadFields: $fields,
         );
     }
 
