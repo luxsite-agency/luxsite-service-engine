@@ -138,6 +138,16 @@ final class LeadController extends AbstractController
         // необов'язкові поля B2B-форми: компанія йде першим рядком повідомлення, телефон - у своє поле
         $company = trim((string) $request->request->get('company', ''));
         $phone = trim((string) $request->request->get('phone', ''));
+        // форма з роздільними «ім'я / прізвище» і темою листа (як у CF7 на сайтах клієнтів)
+        $last = trim((string) $request->request->get('name_last', ''));
+        $subject = trim((string) $request->request->get('subject', ''));
+        if ($last !== '' && mb_strlen($last) <= 128) {
+            $name = trim($name . ' ' . $last);
+        }
+        if ($subject !== '' && mb_strlen($subject) <= 190) {
+            $message = $subject . "
+" . $message;
+        }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190 || mb_strlen($name) > 128
             || mb_strlen($company) > 128 || mb_strlen($phone) > 32
             || $message === '' || mb_strlen($message) > 3000) {
