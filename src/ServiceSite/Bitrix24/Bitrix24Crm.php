@@ -14,6 +14,7 @@ use App\ServiceSite\Crm\AbstractLeadCrm;
 use App\ServiceSite\Crm\CrmException;
 use App\ServiceSite\Crm\LeadCrmCapabilities;
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadFields;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -42,17 +43,22 @@ final class Bitrix24Crm extends AbstractLeadCrm
         'site_url' => 'https://хост/ (зі слешем)',
         'host' => 'хост міста, з якого заявка',
         'city' => 'назва міста (називний, uk)',
-        'service' => 'назва послуги, зі сторінки якої заявка (порожньо поза сторінкою послуги)',
+        'service' => 'послуга, обрана в полі форми select із source: services (app.lead_fields), інакше - послуга сторінки форми (порожньо поза сторінкою послуги)',
         'name' => "ім'я з форми",
         'phone' => 'телефон з форми',
-        'email' => 'email (у формі рушія поля нема - порожньо)',
+        'email' => 'email: поле форми type: email з app.lead_fields (без нього - порожньо)',
+        'details' => 'додаткові поля форми одним блоком «Поле: значення» (app.lead_fields)',
         'message' => 'текст заявки / розрахунок калькулятора',
         'comments' => 'зведення для менеджера: сайт, послуга, сторінка, джерело, текст',
         'utm_source' => 'utm_source', 'utm_medium' => 'utm_medium', 'utm_campaign' => 'utm_campaign',
         'utm_content' => 'utm_content', 'utm_term' => 'utm_term',
         'click_id' => 'gclid/fbclid', 'referrer' => 'звідки перейшли', 'landing_url' => 'сторінка входу',
         'locale' => 'мова сторінки (uk|ru)', 'lead_id' => 'номер заявки в адмінці',
+        // + detail.<ключ> - значення додаткового поля форми (app.lead_fields): detail.doctor, detail.date, detail.weight…
     ];
+
+    /** Префікс джерела «значення додаткового поля форми». */
+    private const DETAIL = 'detail.';
 
     /** Дефолти app.crm.bitrix24 (пак задає лише відмінні ключі). */
     private const DEFAULTS = [
@@ -83,6 +89,7 @@ final class Bitrix24Crm extends AbstractLeadCrm
         array $crm = [],
         /** схема URL каталогу: де в шляху сторінки слаг послуги; null = flat/nested (/services/…) */
         private readonly ?CatalogUrls $catalogUrls = null,
+        private readonly ?LeadFields $leadFields = null,
     ) {
         parent::__construct($em, $logger);
         $this->base = self::normalizeBase($webhookUrl);
@@ -207,7 +214,7 @@ final class Bitrix24Crm extends AbstractLeadCrm
         if (str_starts_with($spec, '=')) {
             return substr($spec, 1);
         }
-        if (\array_key_exists($spec, self::SOURCES)) {
+        if (self::isSource($spec)) {
             return $src[$spec] ?? null;
         }
         if (!str_contains($spec, '{')) {
@@ -215,8 +222,8 @@ final class Bitrix24Crm extends AbstractLeadCrm
         }
 
         $filled = false;
-        $out = preg_replace_callback('/\{([a-z_]+)\}/', static function (array $m) use ($src, &$filled): string {
-            if (!\array_key_exists($m[1], self::SOURCES)) {
+        $out = preg_replace_callback('/\{([a-z_]+(?:\.[a-z0-9_]+)?)\}/', static function (array $m) use ($src, &$filled): string {
+            if (!self::isSource($m[1])) {
                 return $m[0];
             }
             $v = (string) ($src[$m[1]] ?? '');
@@ -246,7 +253,11 @@ final class Bitrix24Crm extends AbstractLeadCrm
             str_starts_with($page, 'http://'), str_starts_with($page, 'https://') => $page,
             default => 'https://' . $host . '/' . ltrim($page, '/'),
         };
-        $service = $this->serviceTitle($lead);
+        $details = array_map(static fn (mixed $v): string => \is_scalar($v) ? (string) $v : '', $lead->getDetails() ?? []);
+        $emailKey = $this->leadFields?->emailKey();
+        $serviceKey = $this->leadFields?->serviceKey();
+        // послуга, яку людина обрала у формі, важливіша за сторінку, з якої її відправлено
+        $service = $serviceKey !== null && ($details[$serviceKey] ?? '') !== '' ? $details[$serviceKey] : $this->serviceTitle($lead);
         $message = trim((string) $lead->getMessage());
 
         $comments = array_filter([
@@ -269,7 +280,8 @@ final class Bitrix24Crm extends AbstractLeadCrm
             'service' => $service,
             'name' => $lead->getName(),
             'phone' => $lead->getPhone(),
-            'email' => null,
+            'email' => $emailKey !== null && ($details[$emailKey] ?? '') !== '' ? $details[$emailKey] : null,
+            'details' => $details !== [] && $this->leadFields !== null ? ($this->leadFields->summary($details) ?: null) : null,
             'message' => $message !== '' ? $message : null,
             'comments' => implode("\n", $comments),
             'utm_source' => $lead->getUtmSource(),
@@ -282,7 +294,16 @@ final class Bitrix24Crm extends AbstractLeadCrm
             'landing_url' => $lead->getLandingUrl(),
             'locale' => $lead->getLocale(),
             'lead_id' => $lead->getId() !== null ? (string) $lead->getId() : null,
-        ];
+        ] + array_combine(
+            array_map(static fn (string|int $k): string => self::DETAIL . $k, array_keys($details)),
+            array_map(static fn (string $v): ?string => $v !== '' ? $v : null, array_values($details)),
+        );
+    }
+
+    /** Відоме джерело значення: ключ SOURCES або detail.<ключ поля форми>. */
+    private static function isSource(string $name): bool
+    {
+        return \array_key_exists($name, self::SOURCES) || (str_starts_with($name, self::DETAIL) && \strlen($name) > \strlen(self::DETAIL));
     }
 
     /**

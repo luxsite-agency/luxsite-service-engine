@@ -87,6 +87,17 @@ parameters:
     # strip_comments: false — лишити як є (пак, якому коментарі потрібні, напр. для чужого інструменту)
     app.html:
         strip_comments: true
+    # Додаткові поля форми заявки (запис на прийом, запит на розрахунок). Порожньо = форма як була (телефон, ім'я, повідомлення).
+    #   - { key: service, label: { uk: …, ru: … }, type: text|number|email|tel|select|date, required: true, group: { uk: … },
+    #       unit: { uk: кг }, placeholder: { uk: … }, source: services|team|list (select), options: [...] (list),
+    #       min_days: 0, max_days: 366 (date) }
+    # У формі — name="details[<key>]" (Twig: lead_fields(locale), partial services/partials/_lead_fields.html.twig);
+    # значення — ServiceLead.details + читабельним блоком у message; у CRM — джерело detail.<key> (App\ServiceSite\LeadFields).
+    app.lead_fields: []
+    # Обов'язковий чекбокс згоди на обробку персональних даних у формах заявки й калькулятора (App\ServiceSite\LeadConsent):
+    #   { enabled: true, text: { uk: '… {policy}', ru: … }, policy_text: { uk: …, ru: … }, policy_url: { uk: /privacy-policy/, ru: … } }
+    # Порожні тексти — переклади lead.consent / lead.consent_policy, порожній policy_url — сторінка sv_privacy.
+    app.lead_consent: { enabled: false, text: {}, policy_text: {}, policy_url: {} }
     # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}

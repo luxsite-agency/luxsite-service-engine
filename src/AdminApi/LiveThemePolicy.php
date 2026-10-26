@@ -47,6 +47,7 @@ final class LiveThemePolicy
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',
         'city_has_team',
+        'lead_consent', 'lead_fields',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -97,6 +98,8 @@ final class LiveThemePolicy
         'images', 'parentPage', 'path',
         // розмітка бізнесу й послуг (app.schema.item_type, addresses) — сторінки команди й медична розмітка (#4)
         'addresses', 'item_type',
+        // поля форми заявки й згода (app.lead_fields, app.lead_consent; partials _lead_fields, _lead_consent)
+        'group', 'label_full', 'max', 'min', 'options', 'placeholder', 'policy_text', 'policy_url', 'required', 'selected', 'text', 'type',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
