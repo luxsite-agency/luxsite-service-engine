@@ -42,6 +42,12 @@ parameters:
     # Адреса калькулятора {uk: '/…/', ru: '/ru/…/'}; порожньо = дефолт за режимом: площа — /calculator-cleaning/, прайс — /calculator/.
     # Задана паком — обидві типові адреси відповідають 301 на неї (з переносом query).
     app.calculator.path: {}
+    # Режим «за площею» (типи, коефіцієнти, опції):
+    #   quote: true — сума наживо (тип × площа × коефіцієнти + опції); false — без ціни, заявка на розрахунок: вибір типу
+    #     й коефіцієнтів без сум і без платних опцій, у заявці — перелік вибраного (сайт, у якого ще нема тарифів);
+    #   quantity: true — крок «площа» (м², межі min/max); false — без кроку, кількість 1;
+    #   lead_fields: true — у формі калькулятора ще й додаткові поля заявки (app.lead_fields), значення — у ServiceLead.details.
+    app.calculator.area: { quote: true, quantity: true, min: 10, max: 5000, lead_fields: false }
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
     #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);

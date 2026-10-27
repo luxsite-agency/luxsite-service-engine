@@ -61,6 +61,10 @@
     </style>
 {% endblock %}
 
+{# calc — app.calculator.area (CalculatorController::areaSettings): quote — сума наживо, false — без ціни, заявка на
+   розрахунок; quantity — крок площі; lead_fields — додаткові поля заявки у формі (app.lead_fields) -#}
+{% set _quote = calc.quote ?? true %}
+{% set _qty = calc.quantity ?? true %}
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
@@ -69,7 +73,7 @@
     {# місто в H1 і рядок, що ціни — цього міста: у кожного міста свій прайс, а сторінка однакова на всіх хостах -#}
     {% set _calcTitle = 'calc.title'|trans({}, 'servicesite') %}
     <h1>{{ 'calc.h1'|trans({'%title%': _calcTitle, '%in%': city_in(city, locale, _calcTitle), '%city%': city.loc('nameLoc', locale) ?? city.name(locale)}, 'servicesite') }}</h1>
-    <p class="hero-sub">{{ 'calc.intro'|trans({}, 'servicesite') }}</p>
+    <p class="hero-sub">{{ (_quote ? 'calc.intro' : 'calc.no_quote_intro')|trans({}, 'servicesite') }}</p>
     {# рядок «ціни — цього міста» — коли в сайту більше одного живого міста (місто в розробці не рахується); порожній ключ = нема -#}
     {% set _cityNote = city_switcher(site, city)|filter(c => not c.noindex)|length > 1 ? 'calc.city_note'|trans({'%cityGen%': city.loc('nameGen', locale) ?? city.name(locale)}, 'servicesite') : '' %}
     {% if _cityNote %}
@@ -95,13 +99,16 @@
                                data-pps="{{ type.pricePerSqm }}" data-min="{{ type.minPrice }}"
                                {{ type.id == checkedTypeId ? 'checked' }}>
                         <span>{{ type.loc('name', locale) }}
+                            {% if _quote %}
                             <small>{{ 'prices.from'|trans({}, 'servicesite') }} {{ type.pricePerSqm|number_format(0, '.', ' ') }} {{ 'calc.per_m2'|trans({}, 'servicesite') }}{% if type.loc('desc', locale) %} · {{ type.loc('desc', locale) }}{% endif %}</small>
+                            {% elseif type.loc('desc', locale) %}<small>{{ type.loc('desc', locale) }}</small>{% endif %}
                         </span>
                     </label>
                     {% endfor %}
                 </div>
             </div>
 
+            {% if _qty %}
             <div class="calc-step">
                 <p class="calc-step-title">{{ 'calc.area_label'|trans({}, 'servicesite') }}, {{ 'calc.m2'|trans({}, 'servicesite') }}</p>
                 <div class="calc-area">
@@ -110,6 +117,7 @@
                            aria-label="{{ 'calc.area_label'|trans({}, 'servicesite') }}">
                 </div>
             </div>
+            {% endif %}
 
             {% for group, rows in factorGroups %}
             <div class="calc-step">
@@ -127,7 +135,8 @@
             </div>
             {% endfor %}
 
-            {% if options is not empty %}
+            {# платні опції — лише в режимі з ціною -#}
+            {% if options is not empty and _quote %}
             <div class="calc-step">
                 <p class="calc-step-title">{{ 'calc.options_title'|trans({}, 'servicesite') }}</p>
                 <div class="calc-options">
@@ -158,11 +167,15 @@
 
         <aside class="calc-summary">
             <p class="calc-step-title calc-summary-title">{{ 'calc.summary_title'|trans({}, 'servicesite') }}</p>
+            {% if _quote %}
             <div class="row"><span>{{ 'calc.base_label'|trans({}, 'servicesite') }}</span><span id="calc-base">0</span></div>
             <div class="row"><span>{{ 'calc.options_label'|trans({}, 'servicesite') }}</span><span id="calc-opts">0</span></div>
             <div class="row total"><span>{{ 'calc.total_label'|trans({}, 'servicesite') }}</span>
                 <b>{{ 'prices.from'|trans({}, 'servicesite') }} <span id="calc-total">0</span> {{ 'catalog.uah'|trans({}, 'servicesite') }}</b></div>
             <p class="min-note" id="calc-min-note" hidden>{{ 'calc.min_note'|trans({}, 'servicesite') }}</p>
+            {% else %}
+            <p class="hero-sub">{{ 'calc.no_quote_note'|trans({}, 'servicesite') }}</p>
+            {% endif %}
 
             <form id="calc-form" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form>
                 <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
@@ -170,6 +183,8 @@
                 <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
                 <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
                 <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+                {# додаткові поля заявки (app.lead_fields), якщо пак увімкнув їх і для калькулятора -#}
+                {% if calc.lead_fields ?? false %}{% include 'services/partials/_lead_fields.html.twig' %}{% endif %}
                 {{- include('services/partials/_lead_consent.html.twig') }}
                 <button class="btn" type="submit">{{ 'calc.submit'|trans({}, 'servicesite') }}</button>
             </form>
@@ -177,6 +192,7 @@
         </aside>
     </div>
 
+    {% if _quote %}
     <script>
         // Підрахунок наживо. Формула дублює App\ServiceSite\CalcPricer -
         // авторитетним є сервер, він перераховує суму при відправці заявки.
@@ -189,7 +205,8 @@
             var recompute = function () {
                 var type = document.querySelector('input[name=type]:checked');
                 if (!type) { return; }
-                var area = Math.min(Math.max(parseInt(areaInput.value, 10) || 0, {{ areaMin }}), {{ areaMax }});
+                // без кроку площі (quantity: false) кількість = 1
+                var area = areaInput ? Math.min(Math.max(parseInt(areaInput.value, 10) || 0, {{ areaMin }}), {{ areaMax }}) : 1;
 
                 var base = area * parseFloat(type.dataset.pps);
                 document.querySelectorAll('input[name^="factors["]:checked').forEach(function (f) {
@@ -212,8 +229,10 @@
             };
 
             // слайдер і число площі синхронізовані в обидва боки
-            areaRange.addEventListener('input', function () { areaInput.value = areaRange.value; recompute(); });
-            areaInput.addEventListener('input', function () { areaRange.value = areaInput.value; recompute(); });
+            if (areaInput && areaRange) {
+                areaRange.addEventListener('input', function () { areaInput.value = areaRange.value; recompute(); });
+                areaInput.addEventListener('input', function () { areaRange.value = areaInput.value; recompute(); });
+            }
 
             document.querySelectorAll('.calc-qty button').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -231,4 +250,5 @@
             recompute();
         })();
     </script>
+    {% endif %}
 {% endblock %}

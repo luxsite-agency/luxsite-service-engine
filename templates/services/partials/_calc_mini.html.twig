@@ -6,6 +6,16 @@
 {# Параметри: calcActive - id передвибраного типу, calcSlug - слаг послуги,
    calcDistrict - слаг району (те саме призначення: повернути людину туди,
    звідки вона надіслала форму), calcTitle - заголовок. -#}
+{% if not (calc_area.quote ?? true) %}
+{# app.calculator.area.quote: false — суми нема: типи як посилання на сторінку калькулятора з передвибором -#}
+<section class="block calc-mini" id="calc-mini">
+    <p class="form-title">{{ (calcTitle|default('calc.mini_title'))|trans({}, 'servicesite') }}</p>
+    <p>{{ 'calc.no_quote_intro'|trans({}, 'servicesite') }}</p>
+    <div class="calc-chips calc-chips-wide">
+        {% for type in calcTypes %}<a class="btn btn-ghost" href="{{ path('sv_calculator', {type: type.id}) }}">{{ type.loc('name', locale) }}</a>{% endfor %}
+    </div>
+</section>
+{% else %}
 {% set calcActiveId = calcActive|default(null) %}
 {% set objectTypes = calcFactors.object_type|default([]) %}
 {% set dirtLevels = calcFactors.dirt_level|default([]) %}
@@ -155,3 +165,4 @@
         })();
     </script>
 </section>
+{% endif %}

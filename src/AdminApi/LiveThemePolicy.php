@@ -94,6 +94,8 @@ final class LiveThemePolicy
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
         // поля форми заявки й згода (app.lead_fields, app.lead_consent; partials _lead_fields, _lead_consent)
         'group', 'label_full', 'max', 'min', 'options', 'placeholder', 'policy_text', 'policy_url', 'required', 'selected', 'text', 'type',
+        // калькулятор «за площею» (app.calculator.area: calc у calculator.html.twig, calc_area у _calc_mini)
+        'lead_fields', 'quantity', 'quote',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
