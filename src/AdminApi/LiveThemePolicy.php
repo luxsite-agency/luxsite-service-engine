@@ -45,6 +45,9 @@ final class LiveThemePolicy
         // рушій сервісних сайтів
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
+        'lead_consent', 'lead_fields',
+        // мітка часу форм заявки (LeadSpamGuard, приховане поле _ft)
+        'lead_form_ts',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -91,6 +94,10 @@ final class LiveThemePolicy
         'position', 'price', 'pricePerSqm', 'pricePrefix', 'primary', 'publishedAt', 'q', 'reviewedAt', 'revindex', 'revindex0',
         'rows', 'ru', 'runtime', 'runtimeJs', 'schemaType', 'shortName', 'skip', 'slug', 'slugUk', 'source', 'stars', 'tagKind',
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
+        // поля форми заявки й згода (app.lead_fields, app.lead_consent; partials _lead_fields, _lead_consent)
+        'group', 'label_full', 'max', 'min', 'options', 'placeholder', 'policy_text', 'policy_url', 'required', 'selected', 'text', 'type',
+        // калькулятор «за площею» (app.calculator.area: calc у calculator.html.twig, calc_area у _calc_mini)
+        'lead_fields', 'quantity', 'quote',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */

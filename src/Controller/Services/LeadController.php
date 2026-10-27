@@ -8,11 +8,14 @@ declare(strict_types=1);
 namespace App\Controller\Services;
 
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,7 +26,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Заявка з форми (телефон + ім'я + повідомлення). Виправляє типовий борг
  * Joomla-сайтів: персистенція в БД, маршрутизація на email МІСТА (не хардкод),
- * rate limit + honeypot + CSRF. Мейл шле LeadNotifier (best effort: заявка
+ * rate limit + CSRF + LeadSpamGuard (honeypot, мітка часу, сміття в полях). Мейл шле LeadNotifier (best effort: заявка
  * вже в БД, падіння SMTP її не втрачає).
  */
 final class LeadController extends AbstractController
@@ -40,6 +43,9 @@ final class LeadController extends AbstractController
         private readonly LeadAttribution $attribution,
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadFields $fields,
+        private readonly LeadConsent $consent,
+        private readonly LeadSpamGuard $spamGuard,
     ) {
     }
 
@@ -63,8 +69,14 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
+        // honeypot, мітка часу показу форми, сміття в полях (SQL-проби сканерів) - див. LeadSpamGuard
+        if (null !== $reason = $this->spamGuard->blockReason($request)) {
+            $this->spamGuard->logBlocked($request, $reason, 'lead');
+            if (str_starts_with($reason, 'too-fast')) {
+                // людина з автозаповненням теж може встигнути - повтор пройде
+                $this->addFlash('lead_error', 'Не вдалося надіслати, спробуйте ще раз.');
+            }
+
             return $this->redirect($back);
         }
 
@@ -78,6 +90,32 @@ final class LeadController extends AbstractController
             $this->addFlash('lead_error', 'Перевірте номер телефону.');
 
             return $this->redirect($back);
+        }
+
+        // згода на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не змінюється
+        if (!$this->consent->accepted($request->request->get('consent'))) {
+            $this->addFlash('lead_error', $locale === 'ru'
+                ? 'Подтвердите согласие на обработку персональных данных.'
+                : 'Підтвердьте згоду на обробку персональних даних.');
+
+            return $this->redirect($back);
+        }
+
+        // додаткові поля форми (app.lead_fields паку: запис на прийом, запит на розрахунок); без них — нічого не змінюється.
+        // Коротка форма без полів (лише телефон — «передзвоніть мені») details[…] не шле: поля паку їй не потрібні, інакше
+        // обов'язкові поля відхиляли б кожну таку заявку. Форма з полями шле details і перевіряється повністю.
+        $details = [];
+        if ($this->fields->enabled() && $request->request->has('details')) {
+            [$details, $bad] = $this->fields->validate($request->request->all()['details'] ?? [], $city);
+            if ($bad !== []) {
+                $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
+
+                return $this->redirect($back);
+            }
+            $summary = $this->fields->summary($details);
+            if ($summary !== '') {
+                $message = trim($message . "\n\n" . $summary);
+            }
         }
 
         // Подвійне натискання / повторна відправка: та сама людина вже лишила заявку
@@ -98,7 +136,9 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
-            ->setMessage($message !== '' ? $message : null)
+            ->setMessage($message !== '' ? mb_substr($message, 0, 4000) : null)
+            ->setDetails($details)
+            ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);

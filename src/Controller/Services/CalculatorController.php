@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace App\Controller\Services;
 
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use App\Entity\ServiceCalcFactor;
 use App\Entity\ServiceCalcOption;
 use App\Entity\ServiceCity;
@@ -29,9 +31,11 @@ use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -65,11 +69,35 @@ final class CalculatorController extends AbstractController
         private readonly LeadCrmConnector $crm,
         private readonly TranslatorInterface $translator,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadSpamGuard $spamGuard,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceLeadRepository $leads,
         private readonly CalculatorAvailability $availability,
         private readonly PricelistCalc $pricelist,
+        private readonly LeadConsent $consent,
+        private readonly LeadFields $leadFields,
+        /** @var array<string, mixed> app.calculator.area: quote, quantity, min, max, lead_fields */
+        #[Autowire('%app.calculator.area%')]
+        private readonly array $areaConfig = [],
     ) {
+    }
+
+    /**
+     * Налаштування режиму «за площею» з паку (app.calculator.area), дефолти — як було до параметра.
+     *
+     * @return array{quote: bool, quantity: bool, min: int, max: int, lead_fields: bool}
+     */
+    private function areaSettings(): array
+    {
+        $c = $this->areaConfig;
+
+        return [
+            'quote' => (bool) ($c['quote'] ?? true),
+            'quantity' => (bool) ($c['quantity'] ?? true),
+            'min' => (int) ($c['min'] ?? self::AREA_MIN),
+            'max' => (int) ($c['max'] ?? self::AREA_MAX),
+            'lead_fields' => (bool) ($c['lead_fields'] ?? false) && $this->leadFields->enabled(),
+        ];
     }
 
     /**
@@ -111,6 +139,7 @@ final class CalculatorController extends AbstractController
         }
 
         $types = $this->types->findActiveForCity($site, $city);
+        $calc = $this->areaSettings();
 
         return $this->render('services/calculator.html.twig', [
             'site' => $site,
@@ -121,8 +150,9 @@ final class CalculatorController extends AbstractController
             // передвибір із міні-калькулятора головної (?type=ID&area=N)
             'presetType' => $request->query->getInt('type'),
             'presetArea' => $request->query->getInt('area'),
-            'areaMin' => self::AREA_MIN,
-            'areaMax' => self::AREA_MAX,
+            'areaMin' => $calc['min'],
+            'areaMax' => $calc['max'],
+            'calc' => $calc,
             'altUrls' => $this->altUrls('sv_calculator'),
         ]);
     }
@@ -179,8 +209,14 @@ final class CalculatorController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
+        // honeypot, мітка часу показу форми, сміття в полях (SQL-проби сканерів) - див. LeadSpamGuard
+        if (null !== $reason = $this->spamGuard->blockReason($request)) {
+            $this->spamGuard->logBlocked($request, $reason, 'calculator');
+            if (str_starts_with($reason, 'too-fast')) {
+                // людина з автозаповненням теж може встигнути - повтор пройде
+                $this->addFlash('lead_error', 'Не вдалося надіслати, спробуйте ще раз.');
+            }
+
             return $this->redirect($back);
         }
 
@@ -195,6 +231,15 @@ final class CalculatorController extends AbstractController
         $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15 || mb_strlen($name) > 128) {
             $this->addFlash('lead_error', 'Перевірте номер телефону.');
+
+            return $this->redirect($back);
+        }
+
+        // згода на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не змінюється
+        if (!$this->consent->accepted($request->request->get('consent'))) {
+            $this->addFlash('lead_error', $locale === 'ru'
+                ? 'Подтвердите согласие на обработку персональных данных.'
+                : 'Підтвердьте згоду на обробку персональних даних.');
 
             return $this->redirect($back);
         }
@@ -220,12 +265,25 @@ final class CalculatorController extends AbstractController
 
         // Валідація розрахунку: всі позиції звіряються з БД по сайту, а ціна
         // типу береться саме міська - інакше заявка порахується за чужим прайсом
+        $calc = $this->areaSettings();
         $type = $this->types->findOneActiveForCity($site, $city, $request->request->getInt('type'));
-        $area = $request->request->getInt('area');
-        if ($type === null || $area < self::AREA_MIN || $area > self::AREA_MAX) {
-            $this->addFlash('lead_error', 'Перевірте тип прибирання і площу.');
+        // без кроку «площа» (quantity: false) площа не потрібна: рахуємо як 1 (або не рахуємо зовсім — quote: false)
+        $area = $calc['quantity'] ? $request->request->getInt('area') : 1;
+        if ($type === null || ($calc['quantity'] && ($area < $calc['min'] || $area > $calc['max']))) {
+            $this->addFlash('lead_error', $calc['quantity'] ? 'Перевірте тип прибирання і площу.' : ($locale === 'ru' ? 'Выберите тип.' : 'Оберіть тип.'));
 
             return $this->redirect($back);
+        }
+
+        // додаткові поля заявки у формі калькулятора (app.calculator.area.lead_fields + app.lead_fields паку)
+        $details = [];
+        if ($calc['lead_fields']) {
+            [$details, $bad] = $this->leadFields->validate($request->request->all()['details'] ?? [], $city);
+            if ($bad !== []) {
+                $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
+
+                return $this->redirect($back);
+            }
         }
 
         // коефіцієнти: беруться лише активні цього сайту, максимум один на групу
@@ -251,25 +309,38 @@ final class CalculatorController extends AbstractController
             }
         }
 
-        $quote = $this->pricer->quote($type, $area, array_values($chosenFactors), $chosenOptions);
-        $message = $this->buildMessage($locale, $type->loc('name', $locale), $area, $chosenFactors, $chosenOptions, $quote);
+        // quote: false — суми нема (і платних опцій у формі теж), розрахунок робить менеджер
+        if (!$calc['quote']) {
+            $chosenOptions = [];
+        }
+        $quote = $calc['quote'] ? $this->pricer->quote($type, $area, array_values($chosenFactors), $chosenOptions) : null;
+        $message = $this->buildMessage($locale, $type->loc('name', $locale), $calc['quantity'] ? $area : null, $chosenFactors, $chosenOptions, $quote);
+        if ($details !== []) {
+            $message .= "\n\n" . $this->leadFields->summary($details);
+        }
         if ($item !== null) {
             // менеджеру важливо бачити, з якої саме послуги прийшов розрахунок
             $message = $this->translator->trans('calc.service_label', [], 'servicesite', $locale)
                 . ': ' . $item->loc('title', $locale) . "\n" . $message;
         }
 
-        return $this->storeLead($request, $city, $phone, $name, $message, $sourceUrl, $locale);
+        return $this->storeLead($request, $city, $phone, $name, $message, $sourceUrl, $locale, $details);
     }
 
-    /** Запис заявки, сповіщення, CRM і редирект на «дякуємо» — спільне для обох режимів. */
-    private function storeLead(Request $request, ServiceCity $city, string $phone, string $name, string $message, string $sourceUrl, string $locale): Response
+    /**
+     * Запис заявки, сповіщення, CRM і редирект на «дякуємо» — спільне для обох режимів.
+     *
+     * @param array<string, string> $details додаткові поля заявки (LeadFields::validate)
+     */
+    private function storeLead(Request $request, ServiceCity $city, string $phone, string $name, string $message, string $sourceUrl, string $locale, array $details = []): Response
     {
         $lead = (new ServiceLead())
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
             ->setMessage($message)
+            ->setDetails($details)
+            ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setPageUrl(mb_substr($sourceUrl, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);
@@ -288,7 +359,7 @@ final class CalculatorController extends AbstractController
      *
      * @param array<string, ServiceCalcFactor> $factors обрані коефіцієнти по групах
      * @param array<array{option: CalcOption, qty: int}> $options
-     * @param array{base: int, optionsSum: int, total: int, minApplied: bool} $quote
+     * @param array{base: int, optionsSum: int, total: int, minApplied: bool}|null $quote null — режим без ціни (quote: false)
      */
     /** «1.50» -> «1.5», «1.00» -> «1», але «10» лишається «10». */
     private static function trimMultiplier(string $multiplier): string
@@ -298,14 +369,14 @@ final class CalculatorController extends AbstractController
             : $multiplier;
     }
 
-    private function buildMessage(string $locale, string $typeName, int $area, array $factors, array $options, array $quote): string
+    private function buildMessage(string $locale, string $typeName, ?int $area, array $factors, array $options, ?array $quote): string
     {
         $t = fn (string $key): string => $this->translator->trans($key, [], 'servicesite', $locale);
 
-        $lines = [
-            sprintf('%s: %s', $t('calc.type_label'), $typeName),
-            sprintf('%s: %d %s', $t('calc.area_label'), $area, $t('calc.m2')),
-        ];
+        $lines = [sprintf('%s: %s', $t('calc.type_label'), $typeName)];
+        if ($area !== null) {
+            $lines[] = sprintf('%s: %d %s', $t('calc.area_label'), $area, $t('calc.m2'));
+        }
         foreach ($factors as $group => $factor) {
             $lines[] = sprintf('%s: %s (x%s)', $t('calc.group.' . $group), $factor->loc('name', $locale), self::trimMultiplier($factor->getMultiplier()));
         }
@@ -320,7 +391,9 @@ final class CalculatorController extends AbstractController
                 $lines[] = sprintf('- %s%s: %d %s', $option->loc('name', $locale), rtrim($qtyText), $price, $t('catalog.uah'));
             }
         }
-        $lines[] = sprintf('%s: %s %d %s', $t('calc.total_label'), $t('prices.from'), $quote['total'], $t('catalog.uah'));
+        $lines[] = $quote !== null
+            ? sprintf('%s: %s %d %s', $t('calc.total_label'), $t('prices.from'), $quote['total'], $t('catalog.uah'))
+            : $t('calc.no_quote_note');
 
         return implode("\n", $lines);
     }

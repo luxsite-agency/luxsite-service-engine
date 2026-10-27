@@ -6,6 +6,16 @@
 {# Параметри: calcActive - id передвибраного типу, calcSlug - слаг послуги,
    calcDistrict - слаг району (те саме призначення: повернути людину туди,
    звідки вона надіслала форму), calcTitle - заголовок. -#}
+{% if not (calc_area.quote ?? true) %}
+{# app.calculator.area.quote: false — суми нема: типи як посилання на сторінку калькулятора з передвибором -#}
+<section class="block calc-mini" id="calc-mini">
+    <p class="form-title">{{ (calcTitle|default('calc.mini_title'))|trans({}, 'servicesite') }}</p>
+    <p>{{ 'calc.no_quote_intro'|trans({}, 'servicesite') }}</p>
+    <div class="calc-chips calc-chips-wide">
+        {% for type in calcTypes %}<a class="btn btn-ghost" href="{{ path('sv_calculator', {type: type.id}) }}">{{ type.loc('name', locale) }}</a>{% endfor %}
+    </div>
+</section>
+{% else %}
 {% set calcActiveId = calcActive|default(null) %}
 {% set objectTypes = calcFactors.object_type|default([]) %}
 {% set dirtLevels = calcFactors.dirt_level|default([]) %}
@@ -66,6 +76,7 @@
 
         <form class="calc-mini-result" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form aria-live="polite">
             <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+            <input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
             <input type="hidden" name="loc" value="{{ locale }}">
             <input type="hidden" name="from" value="{{ calcSlug is defined ? 'service' : (calcDistrict is defined ? 'district' : 'home') }}">
             {% if calcSlug is defined %}<input type="hidden" name="svc" value="{{ calcSlug }}">{% endif %}
@@ -87,6 +98,7 @@
 
             <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
             <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+            {{- include('services/partials/_lead_consent.html.twig') }}
             <button type="submit" class="btn">{{ 'calc.mini_order'|trans({}, 'servicesite') }}</button>
 
             <a class="calc-mini-full" href="{{ path('sv_calculator') }}" id="calc-mini-order">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>
@@ -154,3 +166,4 @@
         })();
     </script>
 </section>
+{% endif %}

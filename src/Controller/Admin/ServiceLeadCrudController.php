@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServiceLead;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -32,6 +34,12 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: телефон - головне в заявці */
     private const INDEX_PRIMARY = 'phone';
+
+    public function __construct(
+        private readonly LeadFields $leadFields,
+        private readonly LeadConsent $leadConsent,
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -68,13 +76,22 @@ class ServiceLeadCrudController extends AbstractCrudController
             ->setHelp('Як його ввела людина. Саме за цим номером CRM (Pipedrive) шукає дублі контактів.');
         yield TextField::new('name', 'Ім\'я')
             ->setHelp('Необовʼязкове поле у формі, тому часто порожнє.');
+        if ($this->leadFields->enabled()) {
+            yield TextField::new('detailsShort', 'Поля форми')->onlyOnIndex()
+                ->setHelp('Додаткові поля форми (послуга, лікар, дата тощо). Повністю, з підписами, - у «Повідомленні».');
+        }
         yield TextareaField::new('message', 'Повідомлення')->hideOnIndex()
             ->setHelp(
                 'Текст із форми або розрахунок калькулятора: тип, площа, коефіцієнти, опції, сума. Суму '
-                . 'рахує сервер, з форми вона не приймається.'
+                . 'рахує сервер, з форми вона не приймається. Додаткові поля форми (якщо пак їх задає) - '
+                . 'окремими рядками «Поле: значення» в кінці.'
             );
         yield TextField::new('pageUrl', 'Сторінка')->hideOnIndex()
             ->setHelp('Сторінка, з якої надіслали заявку. Показує, що саме людина читала перед зверненням.');
+        if ($this->leadConsent->enabled()) {
+            yield DateTimeField::new('consentAt', 'Згода на обробку ПД')->hideOnIndex()->setFormTypeOption('disabled', true)
+                ->setHelp('Коли людина поставила галочку згоди на обробку персональних даних у формі.');
+        }
         yield TextField::new('locale', 'Мова')->hideOnIndex()
             ->setHelp('Мова сторінки: uk або ru.');
         yield TextField::new('utmSource', 'Джерело')->hideOnIndex()

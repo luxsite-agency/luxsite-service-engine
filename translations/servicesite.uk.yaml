@@ -100,6 +100,10 @@ lead.phone: Телефон
 lead.name: "Ім'я"
 lead.message: Що потрібно зробити?
 lead.submit: Надіслати
+# поля запису (app.lead_fields) і згода на обробку ПД (app.lead_consent; {policy} — посилання на політику)
+lead.select_placeholder: '- оберіть -'
+lead.consent: 'Погоджуюсь на обробку персональних даних відповідно до {policy}'
+lead.consent_policy: політики конфіденційності
 
 brand.tagline: ''
 brand.in: у
@@ -154,6 +158,8 @@ calc.total_label: Разом
 calc.min_note: застосовано мінімальний чек
 calc.disclaimer: Ціни на сайті орієнтовні. Остаточну вартість називає майстер після уточнення деталей.
 calc.submit: Надіслати заявку
+calc.no_quote_intro: Оберіть параметри й залиште контакти - менеджер розрахує вартість і зателефонує.
+calc.no_quote_note: Вартість розрахує менеджер і зателефонує.
 calc.mini_title: Порахуйте вартість
 calc.mini_title_service: Порахуйте вартість цієї послуги
 calc.mini_title_district: Порахуйте вартість у вашому районі
