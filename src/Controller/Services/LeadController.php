@@ -93,9 +93,11 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
-        // додаткові поля форми (app.lead_fields паку: запис на прийом, запит на розрахунок); без них — нічого не змінюється
+        // додаткові поля форми (app.lead_fields паку: запис на прийом, запит на розрахунок); без них — нічого не змінюється.
+        // Коротка форма без полів (лише телефон — «передзвоніть мені») details[…] не шле: поля паку їй не потрібні, інакше
+        // обов'язкові поля відхиляли б кожну таку заявку. Форма з полями шле details і перевіряється повністю.
         $details = [];
-        if ($this->fields->enabled()) {
+        if ($this->fields->enabled() && $request->request->has('details')) {
             [$details, $bad] = $this->fields->validate($request->request->all()['details'] ?? [], $city);
             if ($bad !== []) {
                 $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
