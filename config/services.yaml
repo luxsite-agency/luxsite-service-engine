@@ -42,6 +42,12 @@ parameters:
     # Адреса калькулятора {uk: '/…/', ru: '/ru/…/'}; порожньо = дефолт за режимом: площа — /calculator-cleaning/, прайс — /calculator/.
     # Задана паком — обидві типові адреси відповідають 301 на неї (з переносом query).
     app.calculator.path: {}
+    # Режим «за площею» (типи, коефіцієнти, опції):
+    #   quote: true — сума наживо (тип × площа × коефіцієнти + опції); false — без ціни, заявка на розрахунок: вибір типу
+    #     й коефіцієнтів без сум і без платних опцій, у заявці — перелік вибраного (сайт, у якого ще нема тарифів);
+    #   quantity: true — крок «площа» (м², межі min/max); false — без кроку, кількість 1;
+    #   lead_fields: true — у формі калькулятора ще й додаткові поля заявки (app.lead_fields), значення — у ServiceLead.details.
+    app.calculator.area: { quote: true, quantity: true, min: 10, max: 5000, lead_fields: false }
     # SEO-перевизначення фіксованих сторінок (коли після міграції треба зберегти старий <title>/description 1:1):
     #   { sv_blog: { title_uk: 'Новини - Бренд', title_ru: '…', desc_uk: '…', desc_ru: '…' }, sv_privacy: {…} }
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
@@ -82,6 +88,17 @@ parameters:
     # strip_comments: false — лишити як є (пак, якому коментарі потрібні, напр. для чужого інструменту)
     app.html:
         strip_comments: true
+    # Додаткові поля форми заявки (запис на прийом, запит на розрахунок). Порожньо = форма як була (телефон, ім'я, повідомлення).
+    #   - { key: service, label: { uk: …, ru: … }, type: text|number|email|tel|select|date, required: true, group: { uk: … },
+    #       unit: { uk: кг }, placeholder: { uk: … }, source: services|team|list (select), options: [...] (list),
+    #       min_days: 0, max_days: 366 (date) }
+    # У формі — name="details[<key>]" (Twig: lead_fields(locale), partial services/partials/_lead_fields.html.twig);
+    # значення — ServiceLead.details + читабельним блоком у message; у CRM — джерело detail.<key> (App\ServiceSite\LeadFields).
+    app.lead_fields: []
+    # Обов'язковий чекбокс згоди на обробку персональних даних у формах заявки й калькулятора (App\ServiceSite\LeadConsent):
+    #   { enabled: true, text: { uk: '… {policy}', ru: … }, policy_text: { uk: …, ru: … }, policy_url: { uk: /privacy-policy/, ru: … } }
+    # Порожні тексти — переклади lead.consent / lead.consent_policy, порожній policy_url — сторінка sv_privacy.
+    app.lead_consent: { enabled: false, text: {}, policy_text: {}, policy_url: {} }
     # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}
