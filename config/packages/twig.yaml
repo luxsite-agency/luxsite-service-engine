@@ -26,6 +26,8 @@ twig:
         google_oauth: '@App\Security\GoogleOAuthConfig'
         # віджет відгуків gbp-manager: {token, base}; token порожній — віджета нема
         gbp_reviews: '%app.gbp_reviews%'
+        # калькулятор «за площею» (app.calculator.area): _calc_mini без ціни — типи посиланнями на сторінку калькулятора
+        calc_area: '%app.calculator.area%'
 
 when@test:
     twig:
