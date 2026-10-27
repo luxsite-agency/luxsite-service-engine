@@ -240,6 +240,8 @@ parameters:
 `action="{{ path('sv_lead') }}"`, де вставлено `{% include 'services/partials/_lead_fields.html.twig' %}` (поля + згода),
 або цикл по `lead_fields(locale)` зі своєю розміткою (ім'я поля — `details[<key>]`, елемент: `name`, `label`,
 `label_full`, `type`, `required`, `group`, `placeholder`, `options[{value, label, selected}]`, `min`/`max` для дати).
+Коротка форма паку без полів (лише телефон та ім'я — «передзвоніть мені») `details[…]` не шле, і обов'язкові поля їй не
+вимагаються; форма з полями шле `details` і перевіряється повністю.
 
 | Ключ поля | Що це |
 |---|---|
