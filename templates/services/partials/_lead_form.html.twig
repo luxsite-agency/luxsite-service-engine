@@ -1,6 +1,6 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Інлайн-форма заявки: телефон обов'язковий, ім'я/повідомлення опційні.
-   Honeypot-поле website приховане; CSRF-токен sv_lead.
+   Honeypot-поле website приховане; CSRF-токен sv_lead; _ft - мітка часу показу (LeadSpamGuard).
    Параметри include: magnet (bool, головна — лід-магніт: абзац lead.subtitle під заголовком і месенджери міста з підписом
    lead.messengers_hint під формою; порожні ключі = елементів нема), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
    у dataLayer, щоб у GA4 було видно, звідки заявка).
@@ -19,6 +19,7 @@
     {% endfor %}
     <form method="post" action="{{ path('sv_lead') }}" data-lead-form data-lead-type="{{ lead_type }}" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-start">
         <input type="hidden" name="_token" value="{{ csrf_token('sv_lead') }}">
+        <input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
         <input type="hidden" name="lead_type" value="{{ lead_type }}">
         <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
         <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;min-width:200px" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">

@@ -333,6 +333,23 @@ parameters:
 Dev-хости: `<slug>.localhost:8113` (апекс-місто сайту), `<city>.<slug>.localhost:8113`, адмінка `service-sites.localhost:8113`.
 Пак підключається тими самими трьома копіюваннями, що й на проді.
 
+## Форми заявок: захист від ботів
+
+`/lead` і `/calculator/lead` перевіряють CSRF, ліміт з IP (`LeadRateLimit`) і `LeadSpamGuard`:
+honeypot `website`, підписану мітку часу показу форми `_ft` (швидше за 3 с - бот; людина бачить «спробуйте ще раз»),
+сміття в полях (SQL-проби, теги, посилання й 8+ цифр поспіль в імені, символи поза цифрами/`+()-. ` у телефоні,
+SQL/посилання-теги/3+ URL у повідомленні). Бот отримує звичайний редирект без помилки, у БД/пошту/CRM нічого не йде,
+причина - у лог: `lead.blocked` (reason, form, ip, ua).
+
+Пак, що перекриває шаблон форми, додає поруч із `_token` два поля:
+
+```twig
+<input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
+```
+
+Без `_ft` форма працює, але без перевірки часу.
+
 ## Редиректи зі старого сайту
 
 Пак тримає правила у зручному для зняття з `.htaccess` вигляді — `seo/legacy-redirects.yaml`:

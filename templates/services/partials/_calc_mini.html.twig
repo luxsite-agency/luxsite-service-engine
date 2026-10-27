@@ -76,6 +76,7 @@
 
         <form class="calc-mini-result" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form aria-live="polite">
             <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+            <input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
             <input type="hidden" name="loc" value="{{ locale }}">
             <input type="hidden" name="from" value="{{ calcSlug is defined ? 'service' : (calcDistrict is defined ? 'district' : 'home') }}">
             {% if calcSlug is defined %}<input type="hidden" name="svc" value="{{ calcSlug }}">{% endif %}
