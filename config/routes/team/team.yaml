@@ -1,0 +1,15 @@
+# Сторінки команди (майстри, лікарі): /<app.team_prefix>/ — команда міста, /<app.team_prefix>/<слаг>/ — людина.
+# Імпортується лише коли пак задав app.team_prefix (src/Kernel.php::configureRoutes), до маршрутів каталогу.
+# Лежить у підтеці: config/routes/*.yaml MicroKernelTrait вантажить завжди, а ці маршрути потрібні лише з префіксом.
+sv_team:
+    path: { uk: '/%app.team_prefix%/', ru: '/ru/%app.team_prefix%/' }
+    controller: App\Controller\Services\TeamController::index
+    methods: [GET, HEAD]
+    condition: "request.attributes.has('service_city')"
+
+sv_team_member:
+    path: { uk: '/%app.team_prefix%/{slug}/', ru: '/ru/%app.team_prefix%/{slug}/' }
+    controller: App\Controller\Services\TeamController::show
+    requirements: { slug: '[a-z0-9-]+' }
+    methods: [GET, HEAD]
+    condition: "request.attributes.has('service_city')"

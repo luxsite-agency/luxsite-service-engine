@@ -47,7 +47,7 @@ parameters:
     # Ключ — назва маршруту без локалі (sv_about, sv_blog, sv_privacy, sv_reviews, sv_contacts, sv_faq, sv_services…);
     # порожньо = як будує шаблон рушія. Сторінки з даними в БД (головна, послуги, категорії, пости) — через адмінку.
     app.page_meta: {}
-    # Додаткові поля записів (без міграцій): { item|post|category: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized,
+    # Додаткові поля записів (без міграцій): { item|post|category|team: [ { key, label: {uk, ru}, suffix: {uk, ru}, localized,
     # filter, categories: [slug_uk розділу…] } ] }. Значення — колонка extra запису, адмінка показує поля сама, шаблони —
     # custom_fields(entity, locale). Деталі — App\ServiceSite\CustomFields, docs/site-pack.md.
     app.custom_fields: {}
@@ -86,8 +86,13 @@ parameters:
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}
     # Юридична особа для JSON-LD бізнесу (LocalBusiness): legalName, founder, openingHours (машинний формат schema.org);
-    # порожньо = поле в розмітку не йде
-    app.schema: { legal_name: '', founder: '', opening_hours: '' }
+    # порожньо = поле в розмітку не йде.
+    # item_type — тип розмітки сторінки послуги: auto (як було: є ціни — Product з aggregateRating, нема — Service) |
+    #   Service (завжди Service з цінами в offers, без зірок) | MedicalProcedure (медичний сайт: [MedicalProcedure, Service]
+    #   з постачальником-клінікою й цінами, без Product і зірок).
+    # addresses — адреси бізнесу в розмітці: first (як було: перший рядок адреси міста) | all (кожен рядок — PostalAddress:
+    #   кілька філій в одному місті). Ключі, яких пак не задав, беруть ці дефолти.
+    app.schema: { legal_name: '', founder: '', opening_hours: '', item_type: auto, addresses: first }
     # 301-редіректи зі старого сайту (ключ = старий слаг першого рівня без слешів):
     #   { city: slug|null, item: slug-послуги|null, route: назва-маршруту|null, locale: uk|ru }
     # city/item — на сторінку послуги (null = головна) з урахуванням міста; route — на фіксований маршрут (sv_contacts).
@@ -155,6 +160,13 @@ parameters:
     app.brand_name: {}
     # Де показувати блок «Наша команда» (ServiceTeamMember міста): about | contacts | home (правило власника 11.10.2026 — «Про нас»)
     app.team_pages: [about]
+    # Сторінки команди (10.2026): сегмент адреси розділу — /<префікс>/ (список міста) і /<префікс>/<слаг>/ (людина зі слагом),
+    # напр. vrachi, masters, team. Порожньо (типово) = сторінок нема, команда лише блоком (app.team_pages). Лише [a-z0-9-],
+    # не зарезервований сегмент. Увімкнено — ще й блок «Фахівці» на сторінці послуги, «Команда» в меню й sitemap.
+    app.team_prefix: ''
+    # Тип JSON-LD сторінки людини: Person (типово; майстри) або підтип лікаря — IndividualPhysician / Physician (медичний
+    # сайт): тоді @type [Person, <тип>] з worksFor і practicesAt — філії (міста), де людина приймає.
+    app.team_schema_type: Person
     # Чипи районів на головній: { slug-міста: [slug_uk район…] (порядок = порядок показу) | '*' (усі активні) };
     # нема ключа міста = лише primary-райони (як було). Невідомі/неактивні slug мовчки пропускаються.
     app.home_districts: {}

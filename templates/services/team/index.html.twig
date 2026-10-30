@@ -1,0 +1,34 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Команда міста: /<app.team_prefix>/ (TeamController::index). Тексти — title.team, meta.team, team.h1 (пак перекриває:
+   «Лікарі», «Майстри»); SEO 1:1 зі старого сайту — app.page_meta.sv_team. #}
+{% extends 'services/base.html.twig' %}
+
+{#- locale задає base.html.twig, але set поза блоками виконується раніше за нього #}
+{% set locale = app.request.locale == 'ru' ? 'ru' : 'uk' %}
+{% set _tp = {'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale), '%cityNom%': city.name(locale), '%site%': site.name} %}
+{% block title %}{{ 'title.team'|trans(_tp, 'servicesite') }}{% endblock %}
+
+{% block metaDescription %}{{ 'meta.team'|trans(_tp, 'servicesite') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {{ schema.crumbs([
+        {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
+        {'name': 'nav.team'|trans({}, 'servicesite')},
+    ]) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {{ 'nav.team'|trans({}, 'servicesite') }}
+    </nav>
+    <h1>{{ 'team.h1'|trans(_tp, 'servicesite') }}</h1>
+    <section class="block">
+        <div class="grid">
+            {% for member in team %}
+            {% include 'services/team/_card.html.twig' with {card_index: loop.index} %}
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}

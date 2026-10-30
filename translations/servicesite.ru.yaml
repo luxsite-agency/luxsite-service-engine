@@ -230,3 +230,12 @@ footer.copyright: 'Все материалы сайта защищены зак�
 works.title: 'Наши работы'
 works.before: 'До'
 works.after: 'После'
+# Сторінки команди (app.team_prefix)
+nav.team: Команда
+title.team: 'Наша команда - %cityNom%'
+meta.team: 'Наша команда %in% %city%: кто выполняет работы, опыт и специализация.'
+team.h1: Наша команда
+team.more: Подробнее
+team.services_title: Услуги
+team.branches_title: Где работает
+team.item_title: Специалисты

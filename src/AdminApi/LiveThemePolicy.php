@@ -45,6 +45,7 @@ final class LiveThemePolicy
         // рушій сервісних сайтів
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
+        'city_has_team',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -91,6 +92,8 @@ final class LiveThemePolicy
         'position', 'price', 'pricePerSqm', 'pricePrefix', 'primary', 'publishedAt', 'q', 'reviewedAt', 'revindex', 'revindex0',
         'rows', 'ru', 'runtime', 'runtimeJs', 'schemaType', 'shortName', 'skip', 'slug', 'slugUk', 'source', 'stars', 'tagKind',
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
+        // розмітка бізнесу й послуг (app.schema.item_type, addresses) — сторінки команди й медична розмітка (#4)
+        'addresses', 'item_type',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */
