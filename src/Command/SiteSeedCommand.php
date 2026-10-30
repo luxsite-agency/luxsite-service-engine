@@ -11,6 +11,7 @@ use App\Entity\ServiceCategory;
 use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
+use App\Entity\ServicePage;
 use App\Entity\ServicePost;
 use App\Entity\ServicePrice;
 use App\Entity\ServiceReview;
@@ -26,7 +27,7 @@ use Symfony\Component\Yaml\Yaml;
 
 /**
  * Наповнення сайту з YAML (пак: content/seed.yaml) — новий сайт, демо, стенд. Ідемпотентно:
- * збіг за slug (сайт, місто, категорія, послуга, район, пост) чи за парою назва+місто (прайс, відгук, команда) —
+ * збіг за slug (сайт, місто, категорія, послуга, район, пост, сторінка) чи за парою назва+місто (прайс, відгук, команда) —
  * оновлює поля з файлу, нічого не дублює; --purge-missing не робимо (видаляти — в адмінці).
  *
  * Схема файлу (усі тексти — uk, ru необов'язково; порожнє = не чіпати):
@@ -42,8 +43,10 @@ use Symfony\Component\Yaml\Yaml;
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
  *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
+ *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
+ *            footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
  */
-#[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог; ідемпотентно за slug')]
+#[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
 {
     private const array LOC = ['Uk', 'Ru'];
@@ -105,6 +108,19 @@ final class SiteSeedCommand
         }
         foreach ($data['posts'] ?? [] as $p) {
             $this->post($site, $p);
+        }
+        // сторінки: спершу всі (батько може йти в файлі після дочірньої), потім зв'язки з батьками
+        $pages = [];
+        foreach ($data['pages'] ?? [] as $i => $p) {
+            $pages[$p['slug']] = $this->page($site, $p, $i, $cities);
+        }
+        foreach ($data['pages'] ?? [] as $p) {
+            $parent = null;
+            if (!empty($p['parent'])) {
+                $parent = $pages[$p['parent']] ?? $this->em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => $p['parent']])
+                    ?? throw new \RuntimeException('pages: нема батьківської сторінки ' . $p['parent']);
+            }
+            $pages[$p['slug']]->setParent($parent);
         }
 
         if ($dryRun) {
@@ -312,6 +328,31 @@ final class SiteSeedCommand
         $post->setActive(true);
         $this->em->persist($post);
         $this->count('post', $new);
+    }
+
+    /**
+     * @param array<string, mixed>       $d
+     * @param array<string, ServiceCity> $cities
+     */
+    private function page(ServiceSite $site, array $d, int $i, array $cities): ServicePage
+    {
+        $page = $this->em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
+        $new = $page === null;
+        $page ??= (new ServicePage())->setSite($site)->setSlugUk($d['slug']);
+        if (\array_key_exists('slug_ru', $d)) {
+            $page->setSlugRu($d['slug_ru'] !== null ? (string) $d['slug_ru'] : null);
+        }
+        $this->loc($page, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        $page->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
+        $page->setInFooter((bool) ($d['footer'] ?? $page->isInFooter()));
+        $page->setActive((bool) ($d['active'] ?? true));
+        foreach ($d['hidden_cities'] ?? [] as $slug) {
+            $page->addHiddenCity($this->cityOf($cities, $slug));
+        }
+        $this->em->persist($page);
+        $this->count('page', $new);
+
+        return $page;
     }
 
     /**

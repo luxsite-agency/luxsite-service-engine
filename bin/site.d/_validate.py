@@ -93,6 +93,13 @@ def check_registry(path):
                 err(f"{where}: domains.{f} — ім'я хоста малими літерами")
         if dom.get("site") and dom.get("site") == dom.get("admin"):
             err(f"{where}: сайт і адмінка мають бути різними хостами")
+        # інші домени міст (місто на окремому домені, ServiceCity.host): smoke, http-перевірка і TLS у doctor
+        extra = dom.get("extra")
+        if extra is not None:
+            if not isinstance(extra, list) or not all(isinstance(x, str) and HOST_RE.match(x) for x in extra):
+                err(f"{where}: domains.extra — список імен хостів малими літерами")
+            elif len(set(extra)) != len(extra) or set(extra) & {dom.get("site"), dom.get("admin")}:
+                err(f"{where}: domains.extra — без повторів і без domains.site/domains.admin")
         locs = s.get("locales")
         if not isinstance(locs, list) or not locs or not all(re.match(r"^[a-z]{2}$", str(x)) for x in locs):
             err(f"{where}: locales — список кодів мов (uk, ru)")
@@ -197,8 +204,10 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
         if k.startswith("env(") and re.search(r"TOKEN|SECRET|PASSWORD|DSN|DATABASE|WEBHOOK", k):
             err(f"{where}: '{k}' — секрет у паку заборонено")
     scheme = pp.get("app.catalog.url_scheme")
-    if scheme is not None and scheme not in ("flat", "nested", "root"):
-        err(f"{where}: app.catalog.url_scheme має бути flat|nested|root")
+    if scheme is not None and scheme not in ("flat", "nested", "root", "slug"):
+        err(f"{where}: app.catalog.url_scheme має бути flat|nested|root|slug")
+    if "app.pages" in pp and not isinstance(pp.get("app.pages"), bool):
+        err(f"{where}: app.pages — true|false")
     blog = pp.get("app.blog_prefix")
     if blog is not None:
         # дзеркало перевірки в src/Kernel.php::configureRoutes і CatalogUrls::RESERVED_SEGMENTS

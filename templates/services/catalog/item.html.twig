@@ -13,7 +13,7 @@
     {% import 'services/partials/_schema.html.twig' as schema %}
     {{ schema.crumbs([
         {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
-    ]|merge(catalog_url_scheme != 'root' ? [{'name': 'catalog.title'|trans({}, 'servicesite'), 'url': url('sv_services', {_locale: locale})}] : [])|merge(catalog_url_scheme in ['nested', 'root'] and category.landing
+    ]|merge(catalog_url_scheme not in ['root', 'slug'] ? [{'name': 'catalog.title'|trans({}, 'servicesite'), 'url': url('sv_services', {_locale: locale})}] : [])|merge(catalog_url_scheme in ['nested', 'root', 'slug'] and category.landing
         ? [{'name': category.loc('title', locale), 'url': url('sv_category', {category: category.slug(locale), _locale: locale})}]
         : [])|merge([
         {'name': ov(override|default(null), item, 'title', locale)},
@@ -109,10 +109,10 @@
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {# root (категорії від кореня): загального каталогу в крихтах нема — одразу категорія -#}
-        {% if catalog_url_scheme != 'root' %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
-        {# у nested/root у категорії є сторінка — крихта активна; у flat сторінки нема -#}
-        {% if catalog_url_scheme in ['nested', 'root'] and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{{ category.loc('title', locale) }}</a>{% else %}<span>{{ category.loc('title', locale) }}</span>{% endif %} →
+        {# root/slug (категорії від кореня): загального каталогу в крихтах нема — одразу категорія -#}
+        {% if catalog_url_scheme not in ['root', 'slug'] %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
+        {# у nested/root/slug у категорії є сторінка — крихта активна; у flat сторінки нема -#}
+        {% if catalog_url_scheme in ['nested', 'root', 'slug'] and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{{ category.loc('title', locale) }}</a>{% else %}<span>{{ category.loc('title', locale) }}</span>{% endif %} →
         {{ ov(txt, item, 'title', locale) }}
     </nav>
     <div class="hero">

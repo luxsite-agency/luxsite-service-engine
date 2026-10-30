@@ -79,13 +79,14 @@ final class LegacyUrls
 
     /**
      * Типовий регекс сторінок, де зайвий query зрізається: flat/nested — /services/, /districts/, блог;
-     * root — також будь-який /<категорія>/[<послуга>/], крім фіксованих сторінок (CatalogUrls::RESERVED_SEGMENTS),
-     * бо каталог там живе від кореня, а ?Itemid= Joomla стоїть саме на цих адресах. Пак може задати свій.
+     * root і slug — також будь-який /<категорія>/[<послуга>/] чи /<послуга>/, крім фіксованих сторінок
+     * (CatalogUrls::RESERVED_SEGMENTS), бо каталог там живе від кореня, а ?Itemid= Joomla стоїть саме на цих адресах.
+     * Пак може задати свій.
      */
     public function defaultStripQueryPaths(): string
     {
         $blog = preg_quote($this->catalogUrls->blogPrefix(), '#');
-        if (!$this->catalogUrls->isRoot()) {
+        if (!$this->catalogUrls->categoriesAtRoot()) {
             return '#^/(ru/)?(services|districts|' . $blog . ')(/|$)#';
         }
         $reserved = implode('|', array_map(static fn (string $s) => preg_quote($s, '#'), array_diff(CatalogUrls::RESERVED_SEGMENTS, ['services', 'districts', 'blog', 'news'])));

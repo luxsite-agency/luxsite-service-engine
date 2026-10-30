@@ -24,12 +24,12 @@
         <div class="card">
             {# сторінка категорії є лише в схемі nested; у flat картинка без посилання -#}
             {% if category.imageName %}
-            {% if catalog_url_scheme == 'nested' and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{% endif %}
+            {% if catalog_url_scheme in ['nested', 'slug'] and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{% endif %}
                 <img src="/media/service_category/{{ category.imageName }}" alt="{{ category.imageAlt ?? category.loc('title', locale) }}"
                      style="width:100%;aspect-ratio:1536/1024;object-fit:cover;border-radius:8px;margin-bottom:.7rem;display:block">
-            {% if catalog_url_scheme == 'nested' and category.landing %}</a>{% endif %}
+            {% if catalog_url_scheme in ['nested', 'slug'] and category.landing %}</a>{% endif %}
             {% endif %}
-            <h2>{% if catalog_url_scheme == 'nested' and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{{ category.loc('title', locale) }}</a>{% else %}{{ category.loc('title', locale) }}{% endif %}</h2>
+            <h2>{% if catalog_url_scheme in ['nested', 'slug'] and category.landing %}<a href="{{ path('sv_category', {category: category.slug(locale)}) }}">{{ category.loc('title', locale) }}</a>{% else %}{{ category.loc('title', locale) }}{% endif %}</h2>
             <ul>
                 {% for item in itemsByCategory[category.id]|default([]) %}
                 <li><a href="{{ service_path(item, locale) }}">{{ item.loc('title', locale) }}</a></li>
