@@ -22,8 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * MCP-сервер для Claude Code (Streamable HTTP, JSON-RPC 2.0, без сесій і SSE — кожен запит самодостатній):
- *   claude mcp add --transport http <назва> https://<ADMIN_HOST>/mcp --header "Authorization: Bearer ${SVC_TOKEN}"
+ * MCP-сервер для AI-агентів (Streamable HTTP, JSON-RPC 2.0, без сесій і SSE — кожен запит самодостатній):
+ *   у MCP-клієнті: сервер Streamable HTTP https://<ADMIN_HOST>/mcp, заголовок Authorization: Bearer <svc_…>
  * Той самий firewall admin_api і ті самі дозволи, що в REST; інструменти — тонка обгортка ContentService.
  * Методи: initialize, notifications/initialized, ping, tools/list, tools/call. GET — 405 (потоку подій нема).
  */

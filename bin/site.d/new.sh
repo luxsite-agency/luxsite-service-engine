@@ -166,7 +166,7 @@ cat <<EOF
       support: true
       backup_target: <host:/шлях сховища бекапів>
 
-Далі: docs/CLAUDE.md у паку → заповнити; сайт/міста/контакти — в адмінці (ServiceSite, ServiceCity) після першого деплою.
+Далі: docs/HANDOVER.md у паку → заповнити; сайт/міста/контакти — в адмінці (ServiceSite, ServiceCity) після першого деплою.
 Свій дизайн (не типовий): кольори/лого — config/parameters.yaml (app.theme) і themes/$key/; своя верстка — templates/ у паку
 (перекриває однойменні шаблони рушія, як — templates/README.md).
 EOF

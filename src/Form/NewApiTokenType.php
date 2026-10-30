@@ -36,7 +36,7 @@ final class NewApiTokenType extends AbstractType
         $builder
             ->add('name', TextType::class, [
                 'label' => 'Назва',
-                'help' => 'Для чого токен: «Claude Code на ноутбуці», «content-studio». Видно лише вам і адміністратору.',
+                'help' => 'Для чого токен: «AI-агент на ноутбуці», «content-studio». Видно лише вам і адміністратору.',
                 'constraints' => [new NotBlank(message: 'Вкажіть назву'), new Length(max: 100, maxMessage: 'Не довше за 100 символів')],
             ])
             ->add('scopes', ChoiceType::class, [
