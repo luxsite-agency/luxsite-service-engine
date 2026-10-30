@@ -23,7 +23,7 @@ site-<key>/
 ├── content/                        # початкові тексти (для нового сайту; на проді живуть у БД)
 ├── seo/                            # семантика, meta, технічні зауваження
 ├── studio/                         # промпти content-studio (без токенів)
-└── docs/brief.md, docs/CLAUDE.md
+└── docs/brief.md, docs/HANDOVER.md
 ```
 
 Клієнтського PHP у паку нема: потрібна функція — PR у рушій (як у shop-engine, п. 8 консиліуму 06.10). Свій дизайн —

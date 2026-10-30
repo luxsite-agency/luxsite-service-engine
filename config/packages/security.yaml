@@ -17,7 +17,7 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
-        # REST для менеджерів і Claude Code — персональні токени Bearer svc_… (App\AdminApi), без сесії; лише на хості
+        # REST для менеджерів і AI-агентів (MCP) — персональні токени Bearer svc_… (App\AdminApi), без сесії; лише на хості
         # адмінки (AdminHostSubscriber ріже /api/admin на хостах сайтів). Стоїть ПЕРЕД main. Вимкнений користувач → 401,
         # без дозволу → 403 JSON (ApiAccessDeniedHandler). Приймач студії /api/studio лишається на хостах сайтів.
         admin_api:

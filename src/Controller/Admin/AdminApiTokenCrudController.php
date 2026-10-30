@@ -62,7 +62,7 @@ final class AdminApiTokenCrudController extends AbstractCrudController
             ->setSearchFields(['name', 'prefix'])
             ->setDefaultSort(['createdAt' => 'DESC'])
             ->overrideTemplate('crud/index', 'admin/api_token/index.html.twig')
-            ->setHelp(Crud::PAGE_INDEX, sprintf('Персональні токени для content-studio, Claude Code і скриптів (docs/admin-api.md): кожен створює собі, строк до %d днів, значення показується один раз. Адміністратор бачить усі токени й може відкликати будь-який.', $this->tokens->maxDays()));
+            ->setHelp(Crud::PAGE_INDEX, sprintf('Персональні токени для content-studio, AI-агентів (MCP) і скриптів (docs/admin-api.md): кожен створює собі, строк до %d днів, значення показується один раз. Адміністратор бачить усі токени й може відкликати будь-який.', $this->tokens->maxDays()));
     }
 
     public function configureActions(Actions $actions): Actions
