@@ -158,6 +158,7 @@
 
             <form id="calc-form" method="post" action="{{ path('sv_calc_lead') }}" data-lead-form>
                 <input type="hidden" name="_token" value="{{ csrf_token('sv_calc_lead') }}">
+                <input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
                 <input type="hidden" name="loc" value="{{ locale }}">
                 <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
                 <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
