@@ -52,7 +52,9 @@ final class CityPriceNoteTest extends SeoTestCase
         foreach (['/services/item-' . $this->s . '/', '/', '/calculator/'] as $path) {
             $r = $this->http('GET', 'https://' . $this->apex . $path);
             self::assertSame(200, $r->getStatusCode(), $path);
-            self::assertStringNotContainsString('city-note', (string) $r->getContent(), 'місто без поля: ' . $path);
+            // не просто «city-note»: калькулятор мультиміського сайту має свій рядок calc-city-note (calc.city_note)
+            self::assertStringNotContainsString(self::NOTE, (string) $r->getContent(), 'місто без поля: ' . $path);
+            self::assertStringNotContainsString(' city-note">', (string) $r->getContent(), 'місто без поля: ' . $path);
         }
     }
 }
