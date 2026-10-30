@@ -113,6 +113,10 @@ class ServiceCityCrudController extends AbstractCrudController
         yield TextEditorField::new('aboutUk', '«Про нас» для міста (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Повний текст сторінки «Про нас» лише для цього міста (можна з маркером <!--city-where-->). Порожньо = спільний текст бренду.');
         yield TextEditorField::new('aboutRu', '«Про нас» для міста (ru)')->hideOnIndex()->setColumns(6);
+        yield TextField::new('priceNoteUk', 'Умова про ціни для міста (uk)')->hideOnIndex()->setColumns(6)
+            ->setHelp('Один рядок лише для цього міста, напр. «Мінімальний виклик — від 1500 грн»: під таблицями цін на головній і сторінці послуги, біля підсумку калькулятора й під заголовком форми заявки. Порожньо - рядка нема.');
+        yield TextField::new('priceNoteRu', 'Умова про ціни для міста (ru)')->hideOnIndex()->setColumns(6)
+            ->setHelp('Порожньо - на ru-сторінках буде українська.');
         yield TextField::new('mapEmbedUrl', 'Карта: посилання для вставки')->hideOnIndex()->setColumns(12)
             ->setHelp('Google Maps: «Поділитися → Вставити карту», скопіювати адресу з src="…". Порожньо - блок карти на контактах не показуємо');
         yield TextField::new('mapLinkUrl', 'Карта: посилання на листинг')->hideOnIndex()->setColumns(12)

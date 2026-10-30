@@ -168,7 +168,7 @@ final class SiteSeedCommand
         }
         $this->loc($city, $d, ['name_nom' => 'nameNom', 'name_gen' => 'nameGen', 'name_dat' => 'nameDat', 'name_loc' => 'nameLoc', 'address' => 'address',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'intro_title' => 'introTitle', 'intro_text' => 'introText', 'text2' => 'text2', 'text3' => 'text3',
-            'districts_intro' => 'districtsIntro', 'about' => 'about', 'about_where' => 'aboutWhere', 'faq' => 'faq']);
+            'districts_intro' => 'districtsIntro', 'about' => 'about', 'about_where' => 'aboutWhere', 'price_note' => 'priceNote', 'faq' => 'faq']);
         $city->setActive(true);
         $this->em->persist($city);
         $this->count('city', $new);

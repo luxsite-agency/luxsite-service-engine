@@ -1,5 +1,6 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Примітка під таблицею цін («Ціни на сайті орієнтовні…»): ключ prices.note, пак перекриває в translations/, порожній = нема.
-   Головна й сторінка послуги; у калькуляторі — calc.disclaimer. -#}
+   Головна й сторінка послуги; у калькуляторі — calc.disclaimer. Над нею — умова лише для цього міста (_city_note). -#}
+{{ include('services/partials/_city_note.html.twig', {cls: 'meta prices-note'}) }}
 {% set _pricesNote = 'prices.note'|trans({}, 'servicesite') -%}
 {% if _pricesNote %}<p class="meta prices-note">{{ _pricesNote }}</p>{% endif %}
