@@ -15,15 +15,17 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 /**
- * Email-сповіщення про нову заявку на адреси міста. Best effort: заявка
- * вже в БД (черга в адмінці), падіння SMTP її не втрачає. Спільний для
- * LeadController (проста форма) і CalculatorController (заявка з розрахунком).
+ * Email-сповіщення про нову заявку на адреси міста (+ Telegram-група, якщо
+ * задано бота). Best effort: заявка вже в БД (черга в адмінці), падіння SMTP
+ * її не втрачає. Спільний для LeadController (проста форма) і
+ * CalculatorController (заявка з розрахунком).
  */
 final class LeadNotifier
 {
     public function __construct(
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
+        private readonly TelegramLeadNotifier $telegram,
         // Gmail SMTP вимагає from = автентифікований акаунт; порожньо = noreply@апекс бренду
         #[Autowire(env: 'MAIL_FROM')]
         private readonly string $mailFrom = '',
@@ -37,6 +39,10 @@ final class LeadNotifier
     public function notify(ServiceLead $lead, string $subjectPrefix, string $fallbackHost): void
     {
         $city = $lead->getCity();
+        if ($city !== null) {
+            // окремо від мейлу: група отримує заявку і тоді, коли адресатів пошти нема
+            $this->telegram->notify($lead, $subjectPrefix, self::pageLink($lead, $city->getHost()));
+        }
         $leadTo = $city?->getLeadEmails() ?? $city?->getEmail();
         if ($city === null || $leadTo === null) {
             return;
