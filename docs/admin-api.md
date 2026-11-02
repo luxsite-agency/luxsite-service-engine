@@ -1,24 +1,21 @@
 # Персональні API-токени менеджерів і REST адмінки (15.10.2026)
 
 Рішення власника 15.10.2026: менеджери проєктів отримують персональний токен, як у shop-engine (`docs/admin-api.md` там), і
-самі підключають сайт до content-studio, правлять контент через Claude Code чи скрипт. Токен дає рівно те, що може сам
+самі підключають сайт до content-studio, правлять контент через AI-агента (MCP) чи скрипт. Токен дає рівно те, що може сам
 менеджер в адмінці, і не більше: дозволи токена ∩ роль власника (`ScopeVoter`). Заявки, користувачі, сайти/міста,
 медіа, налаштування (адмінка → «Налаштування сайту», лише `ROLE_ADMIN`, `docs/site-ops.md`) — не через API.
 
 ## Для менеджера
 
 1. Адмінка (`https://<ADMIN_HOST>/admin`) → меню **API → API-токени → Створити токен**: назва («content-studio»,
-   «Claude Code на ноутбуці»), дозволи, строк (до 90 днів).
+   «AI-агент на ноутбуці»), дозволи, строк (до 90 днів).
 2. Значення `svc_…` показується **один раз** — скопіюйте в змінну оточення чи налаштування студії, не у файл проєкту.
 3. **content-studio (lingualcloud.com):** у студії додати сайт з движком `service_sites`, адреса `https://<сайт>/api/studio`,
    токен — ваш `svc_…` (потрібен дозвіл `studio:write`). Перевірка: `curl -H "Authorization: Bearer $TOKEN"
    https://<сайт>/api/studio/ping` → `{"ok":true,…}`. Спільний `STUDIO_API_TOKEN` з `.env.local` працює, як і раніше.
-4. **Claude Code (MCP):** один раз на ноутбуці
-   ```bash
-   export SVC_TOKEN='svc_…'
-   claude mcp add --transport http service https://<ADMIN_HOST>/mcp --header "Authorization: Bearer ${SVC_TOKEN}"
-   ```
-   далі в Claude Code: «подивись послуги example», «онови лід послуги 12» — інструменти `me`, `list`, `get`, `update`,
+4. **AI-агент (MCP):** один раз додати в MCP-клієнт агента сервер типу Streamable HTTP: адреса
+   `https://<ADMIN_HOST>/mcp`, заголовок `Authorization: Bearer <svc_…>` (назва довільна, напр. `service`).
+   Далі в агента: «подивись послуги example», «онови лід послуги 12» — інструменти `me`, `list`, `get`, `update`,
    `upsert_city_texts` (ті самі дозволи, що в REST). Сервер без сесій і SSE: кожен запит самодостатній.
 5. **Скрипт (REST):**
    ```bash
@@ -82,7 +79,7 @@ SEO (23.10.2026): `redirects_list(site, city|code|kind|q)`, `redirect_create(sit
 | `DELETE /{site}/theme/{path}` | прибрати живе перекриття |
 | `POST /{site}/theme/{path}/revert` | `{"version": "YYYYMMDD-HHMMSS"}` |
 
-MCP: `theme_list`, `theme_get`, `theme_put`, `theme_delete`, `theme_revert`. Порада Claude Code: extends `@engine/…`
+MCP: `theme_list`, `theme_get`, `theme_put`, `theme_delete`, `theme_revert`. Порада агенту: extends `@engine/…`
 з перевизначенням блоків, а не повна копія — виправлення рушія доходитимуть у неперекриті блоки.
 
 ### Що можна в живому шаблоні (allowlist, з 22.10.2026)
@@ -194,7 +191,7 @@ curl -sS -H "$A" -X DELETE "$API/items/42/image"
 `PATCH` записів (усіх kind) проходить валідатор сутності, як форма адмінки: `stars` поза 1–5, від'ємна `position` тощо → 422
 без запису.
 
-Через MCP у Claude Code (після `claude mcp add … /mcp`): «Постав послузі 42 на сайті example фото з
+Через MCP в AI-агента (після підключення `/mcp`): «Постав послузі 42 на сайті example фото з
 https://images.example.com/kitchen.jpg, alt "Кухня після прибирання"» → модель викликає
 `image_put {site: "example", kind: "items", id: 42, url: "…", alt: "…"}` і отримує `image.url` з розмірами; локальний
 файл — `image_put` з `data` (base64) і `filename`; прибрати — `image_delete {site, kind, id}`.

@@ -59,6 +59,7 @@
         .calc-summary input[type=tel], .calc-summary input[type=text] { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; background: #fff; }
         .calc-summary input:focus { outline: 2px solid var(--accent2); border-color: transparent; }
         .calc-summary .disclaimer { font-size: .8rem; color: var(--muted-text); margin: .6rem 0 0; }
+        .calc-summary .disclaimer.city-note { font-size: .88rem; color: var(--text); font-weight: 600; }
         @media (max-width: 900px) {
             .calc-layout { grid-template-columns: 1fr; }
             .calc-summary { position: static; }
@@ -163,6 +164,7 @@
                 <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
                 <button class="btn" type="submit">{{ 'calc.pricelist.submit'|trans({}, 'servicesite') }}</button>
             </form>
+            {{ include('services/partials/_city_note.html.twig', {cls: 'disclaimer'}) }}
             {%- set _disclaimer = 'calc.disclaimer'|trans({}, 'servicesite') %}
             {%- if _disclaimer %}
             <p class="disclaimer">{{ _disclaimer }}</p>

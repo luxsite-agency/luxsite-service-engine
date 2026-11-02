@@ -114,6 +114,17 @@ class ServiceCity implements TimestampableInterface
     private ?string $aboutWhereRu = null;
 
     /**
+     * Рядок лише для цього міста (10.2026): «Мінімальний виклик — від 1500 грн». Виводиться під таблицями цін (головна,
+     * послуга), біля підсумку калькулятора й під заголовком форми заявки (інлайн і модалка). Тексти паку (prices.note,
+     * calc.disclaimer, lead.*) спільні на всі міста, тому міська умова живе тут. Порожньо = рядка нема; ru порожнє = uk.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $priceNoteUk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $priceNoteRu = null;
+
+    /**
      * Ідентифікатор лічильника: GTM-XXXXXXX (Tag Manager), G-XXXXXXXXXX (GA4
      * напряму) або AW-XXXXXXXXX (Google Ads). null = лічильника немає.
      *
@@ -369,6 +380,14 @@ class ServiceCity implements TimestampableInterface
         return $d !== '' ? $d : null;
     }
 
+    /** « текст » → «текст»; лише пробіли → null (порожнє поле в адмінці = рядка на сайті нема) */
+    private static function blankToNull(?string $v): ?string
+    {
+        $v = trim((string) $v);
+
+        return $v !== '' ? $v : null;
+    }
+
     public function getLeadEmails(): ?string
     {
         return $this->leadEmails;
@@ -425,6 +444,30 @@ class ServiceCity implements TimestampableInterface
     public function setAboutWhereRu(?string $aboutWhereRu): self
     {
         $this->aboutWhereRu = $aboutWhereRu;
+
+        return $this;
+    }
+
+    public function getPriceNoteUk(): ?string
+    {
+        return $this->priceNoteUk;
+    }
+
+    public function setPriceNoteUk(?string $priceNoteUk): self
+    {
+        $this->priceNoteUk = self::blankToNull($priceNoteUk);
+
+        return $this;
+    }
+
+    public function getPriceNoteRu(): ?string
+    {
+        return $this->priceNoteRu;
+    }
+
+    public function setPriceNoteRu(?string $priceNoteRu): self
+    {
+        $this->priceNoteRu = self::blankToNull($priceNoteRu);
 
         return $this;
     }

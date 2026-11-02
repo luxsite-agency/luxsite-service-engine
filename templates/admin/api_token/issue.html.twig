@@ -4,7 +4,7 @@
 {% form_theme form 'bootstrap_5_layout.html.twig' %}
 {% block content_title %}Створити API-токен{% endblock %}
 {% block main %}
-    <p class="text-muted">Токен дає content-studio, Claude Code або скрипту ті самі права, що у вас, у межах вибраних дозволів. Значення покажемо один раз.</p>
+    <p class="text-muted">Токен дає content-studio, AI-агенту або скрипту ті самі права, що у вас, у межах вибраних дозволів. Значення покажемо один раз.</p>
     {{ form_start(form, {attr: {id: 'api-token-issue', class: 'ea-new-form'}}) }}
         {{ form_row(form.name) }}
         {{ form_row(form.scopes) }}

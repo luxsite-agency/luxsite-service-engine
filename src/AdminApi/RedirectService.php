@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 /**
- * Редиректи й журнал 404 для менеджерів і Claude Code — одне ядро для REST (/api/admin/v1/{site}/redirects) і MCP
+ * Редиректи й журнал 404 для менеджерів і AI-агентів (MCP) — одне ядро для REST (/api/admin/v1/{site}/redirects) і MCP
  * (redirects_list, redirect_create, redirect_delete, not_found_list). Ті самі правила, що в адмінці (RedirectManager):
  * нормалізація, злиття ланцюгів, відмова на цикл чи живу адресу; чужий домен у цілі — лише власнику з ROLE_ADMIN.
  * Дозволи — content:read на читання, content:write на запис (ScopeVoter).
