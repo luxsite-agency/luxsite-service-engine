@@ -14,6 +14,7 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServiceItemCity;
+use App\Entity\ServicePage;
 use App\Entity\ServicePost;
 use App\Entity\ServicePrice;
 use App\Entity\ServiceReview;
@@ -35,17 +36,17 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class ContentService
 {
-    public const string KINDS = 'items|categories|districts|posts|prices|item-texts|category-texts|works|team|reviews';
+    public const string KINDS = 'items|categories|districts|posts|prices|item-texts|category-texts|works|team|reviews|pages';
 
     /** Поля, які можна читати й правити, за видом запису (ключ JSON → властивість сутності). */
     public const array FIELDS = [
         'items' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
             'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru', 'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'tab_title_uk' => 'tabTitleUk', 'tab_title_ru' => 'tabTitleRu',
             'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu',
-            'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'image_alt' => 'imageAlt', 'active' => 'active'],
+            'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'noindex' => 'noindex'],
         'categories' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru',
             'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
-            'meta_desc_ru' => 'metaDescRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'landing' => 'landing'],
+            'meta_desc_ru' => 'metaDescRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'landing' => 'landing', 'noindex' => 'noindex'],
         'districts' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu',
             'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
             'meta_desc_ru' => 'metaDescRu', 'sub_areas_uk' => 'subAreasUk', 'sub_areas_ru' => 'subAreasRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'active' => 'active'],
@@ -62,12 +63,16 @@ final class ContentService
         'works' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'caption_uk' => 'captionUk', 'caption_ru' => 'captionRu', 'image_alt' => 'imageAlt', 'position' => 'position', 'active' => 'active'],
         'team' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'role_uk' => 'roleUk', 'role_ru' => 'roleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'image_alt' => 'imageAlt',
             'position' => 'position', 'active' => 'active'],
+        'pages' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'h1_uk' => 'h1Uk', 'h1_ru' => 'h1Ru', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu',
+            'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
+            'meta_desc_ru' => 'metaDescRu', 'template' => 'template', 'noindex' => 'noindex', 'in_sitemap' => 'inSitemap', 'in_footer' => 'inFooter',
+            'position' => 'position', 'active' => 'active'],
         'reviews' => ['author_uk' => 'authorUk', 'author_ru' => 'authorRu', 'text_uk' => 'textUk', 'text_ru' => 'textRu', 'location' => 'location', 'stars' => 'stars', 'image_alt' => 'imageAlt', 'active' => 'active'],
     ];
     private const array ENTITY = [
         'items' => ServiceItem::class, 'categories' => ServiceCategory::class, 'districts' => ServiceDistrict::class, 'posts' => ServicePost::class,
         'prices' => ServicePrice::class, 'item-texts' => ServiceItemCity::class, 'category-texts' => ServiceCategoryCity::class,
-        'works' => ServiceWork::class, 'team' => ServiceTeamMember::class, 'reviews' => ServiceReview::class,
+        'works' => ServiceWork::class, 'team' => ServiceTeamMember::class, 'reviews' => ServiceReview::class, 'pages' => ServicePage::class,
     ];
     private const array WRITE_SCOPE = ['prices' => 'scope:prices:write'];
 
@@ -255,6 +260,7 @@ final class ContentService
                 break;
             case 'categories':
             case 'posts':
+            case 'pages':
                 $qb->where('e.site = :site')->setParameter('site', $site)->orderBy('e.id', 'ASC');
                 if ($q !== '') {
                     $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
@@ -318,7 +324,7 @@ final class ContentService
     {
         $e = $this->em->getRepository(self::ENTITY[$kind])->find($id);
         $ok = $e !== null && match ($kind) {
-            'items', 'categories', 'posts' => $e->getSite()?->getId() === $site->getId(),
+            'items', 'categories', 'posts', 'pages' => $e->getSite()?->getId() === $site->getId(),
             'works' => ($e->getCity() === null && $e->getItem() === null)
                 || $e->getCity()?->getSite()?->getId() === $site->getId() || $e->getItem()?->getSite()?->getId() === $site->getId(),
             default => $e->getCity()?->getSite()?->getId() === $site->getId(),
@@ -352,7 +358,7 @@ final class ContentService
             if (\is_array($value) && str_starts_with($key, 'faq')) {
                 $value = array_values(array_filter(array_map(static fn ($r) => \is_array($r) ? ['q' => (string) ($r['q'] ?? ''), 'a' => (string) ($r['a'] ?? '')] : null, $value)));
             }
-            if (\is_bool($before) || \in_array($key, ['active', 'landing', 'in_calculator'], true)) {
+            if (\is_bool($before) || \in_array($key, ['active', 'landing', 'in_calculator', 'noindex', 'in_sitemap', 'in_footer'], true)) {
                 $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             } elseif (\is_int($before) || $key === 'position') {
                 $value = (int) $value;
@@ -430,6 +436,10 @@ final class ContentService
                 break;
             case 'team':
                 $row += ['name_uk' => $e->getNameUk(), 'name_ru' => $e->getNameRu(), 'city' => $e->getCity()?->getSlug(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];
+                break;
+            case 'pages':
+                $row += ['slug' => $e->getSlugUk(), 'path' => '/' . $e->path('uk') . '/', 'title_uk' => $e->getTitleUk(), 'title_ru' => $e->getTitleRu(),
+                    'template' => $e->getTemplate(), 'noindex' => $e->isNoindex(), 'active' => $e->isActive()];
                 break;
             case 'reviews':
                 $row += ['author_uk' => $e->getAuthorUk(), 'city' => $e->getCity()?->getSlug(), 'stars' => $e->getStars(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];

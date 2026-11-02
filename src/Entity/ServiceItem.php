@@ -86,10 +86,10 @@ class ServiceItem implements TimestampableInterface
     #[ORM\Column(nullable: true)]
     private ?int $legacyId = null;
 
-    #[ORM\Column(length: 64)]
+    #[ORM\Column(length: 160)]
     private string $slugUk = '';
 
-    #[ORM\Column(length: 64, nullable: true)]
+    #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
     #[ORM\Column(length: 255)]
@@ -170,6 +170,13 @@ class ServiceItem implements TimestampableInterface
 
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $active = true;
+
+    /**
+     * Сторінка послуги поза індексом (noindex, follow + X-Robots-Tag, без sitemap і HTML-карти): адреса жива й у меню,
+     * але без власного змісту для пошуку (напр. сторінки країн, однакові з точністю до назви).
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $noindex = false;
 
     #[Assert\Image(maxSize: '10M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxWidth: 8000, maxHeight: 8000, mimeTypesMessage: 'Дозволено лише JPG/PNG/WebP.')]
     #[Vich\UploadableField(mapping: 'service_item_media', fileNameProperty: 'imageName')]
@@ -509,6 +516,18 @@ class ServiceItem implements TimestampableInterface
     public function setActive(bool $active): self
     {
         $this->active = $active;
+
+        return $this;
+    }
+
+    public function isNoindex(): bool
+    {
+        return $this->noindex;
+    }
+
+    public function setNoindex(bool $noindex): self
+    {
+        $this->noindex = $noindex;
 
         return $this;
     }

@@ -72,7 +72,7 @@ final class McpController extends AbstractController
     private function tools(): array
     {
         $kinds = explode('|', ContentService::KINDS);
-        $kindProp = ['type' => 'string', 'enum' => $kinds, 'description' => 'Вид запису: items (послуги), categories, districts (райони міста), posts (блог), prices (прайс по містах), item-texts / category-texts (тексти послуги/категорії під місто), works (виконані роботи), team (команда), reviews (відгуки)'];
+        $kindProp = ['type' => 'string', 'enum' => $kinds, 'description' => 'Вид запису: items (послуги), categories, districts (райони міста), posts (блог), prices (прайс по містах), item-texts / category-texts (тексти послуги/категорії під місто), works (виконані роботи), team (команда), reviews (відгуки), pages (сторінки app.pages: тексти, H1, SEO, шаблон, noindex)'];
         $imageKindProp = ['type' => 'string', 'enum' => explode('|', ImageInfo::KINDS), 'description' => 'Вид запису з фото: items (послуги), categories, posts (блог), works (роботи), team (команда), reviews (відгуки)'];
         $siteProp = ['type' => 'string', 'description' => 'Slug сайту з me (наприклад example)'];
 

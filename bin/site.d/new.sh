@@ -11,7 +11,7 @@
 #   --name=TEXT      назва сайту для людей (типово — ключ)
 #   --admin=HOST     хост адмінки
 #   --locales=uk,ru  мови (перша — за замовчуванням), типово uk,ru
-#   --scheme=flat|nested  схема URL каталогу (типово nested)
+#   --scheme=flat|nested|root|slug  схема URL каталогу (типово nested; docs/site-pack.md)
 #   --dir=DIR        куди створити пак (типово $SITE_PACKS_DIR/site-<key>, SITE_PACKS_DIR типово — поточна тека)
 #   --github         ще й створити приватний репо $SITE_GITHUB_ORG/site-<key> (gh), дати доступ команді $SITE_GITHUB_TEAM (developers), push
 #
@@ -57,7 +57,7 @@ admin="${admin:-admin.$domain}"
 [[ "$admin" =~ $host_re ]] || die "new: --admin '$admin' — ім'я хоста"
 [ "$admin" != "$domain" ] || die "new: адмінка й сайт мають бути різними хостами"
 [[ "$locales" =~ ^[a-z]{2}(,[a-z]{2})*$ ]] || die "new: --locales — коди мов через кому (uk,ru)"
-case "$scheme" in flat | nested) ;; *) die "new: --scheme flat|nested" ;; esac
+case "$scheme" in flat | nested | root | slug) ;; *) die "new: --scheme flat|nested|root|slug" ;; esac
 name="${name:-$key}"
 case "$name" in *$'\n'* | *"'"*) die "new: --name без апострофів і переносів рядка" ;; esac
 

@@ -27,7 +27,8 @@
         {% if theme.url('favicon_png') %}<link rel="icon" type="image/png" href="{{ theme.url('favicon_png') }}" sizes="192x192">{% endif ~%}
         {% if theme.url('apple_touch_icon') %}<link rel="apple-touch-icon" href="{{ theme.url('apple_touch_icon') }}">{% endif ~%}
         {# pageNoindex — сторінка, однакова на всіх хостах, поза індексом лише на цьому місті (юридичні: app.legal_noindex_cities) -#}
-        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% elseif pageNoindex|default(false) %}<meta name="robots" content="noindex, follow">{% endif ~%}
+        {#- ru без перекладу (app.ru_mode: noindex) — кожна /ru/-сторінка поза індексом -#}
+        {% if city.noindex %}<meta name="robots" content="noindex, nofollow">{% elseif pageNoindex|default(false) or (locale == 'ru' and ru_mode == 'noindex') %}<meta name="robots" content="noindex, follow">{% endif ~%}
         {# canonicalUrls приходить лише там, де сторінка однакова в усіх містах
            (блог): тоді і canonical, і hreflang ведуть на головний домен, щоб
            чотири копії не конкурували між собою. Перемикач мов у підвалі
@@ -36,7 +37,8 @@
         {% if _canon and _canon[locale] is defined %}
         <link rel="canonical" href="{{ _canon[locale] }}">
         {% endif %}
-        {% if _canon and _canon.uk is defined and _canon.ru is defined %}
+        {#- hreflang лише з повною ru-версією (app.ru_mode: full) -#}
+        {% if _canon and _canon.uk is defined and _canon.ru is defined and ru_mode == 'full' %}
         <link rel="alternate" hreflang="uk-UA" href="{{ _canon.uk }}">
         <link rel="alternate" hreflang="ru-UA" href="{{ _canon.ru }}">
         <link rel="alternate" hreflang="x-default" href="{{ _canon.uk }}">
@@ -265,6 +267,10 @@
             .work-card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
             .work-card figcaption { padding: .6rem .8rem .75rem; font-size: .93rem; color: var(--dark); }
             .work-card figcaption .meta { display: block; margin-top: .15rem; font-size: .84rem; color: var(--muted-text); }
+            {#- сторінки app.pages: галерея сканів (А4 книжкою, без обрізання), додаткові поля #}
+            .page-gallery .work-card img { aspect-ratio: 210 / 297; object-fit: contain; background: #fff; }
+            .page-fields { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.2rem; margin: 1.2rem 0; }
+            .page-fields dt { font-weight: 600; } .page-fields dd { margin: 0; }
             /* «до/після» - дві половини одного кадру, підпис поверх знімка */
             .work-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
             .work-shot { position: relative; display: block; }
@@ -597,7 +603,7 @@
                     {% set _tagline = 'brand.tagline'|trans({}, 'servicesite') %}
                     <span class="name">{{ site.name }}{% if _tagline and _tagline != 'brand.tagline' %}<span class="tagline">{{ _tagline }}</span>{% endif %}</span>
                 </a>
-                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
+                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined and ru_mode != 'off' %}
                 <span class="lang-switch lang-switch--m">
                     <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
                     <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
@@ -623,7 +629,7 @@
                         <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
                     {% endblock %}
                 </nav>
-                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined %}
+                {% if altUrls is defined and altUrls.uk is defined and altUrls.ru is defined and ru_mode != 'off' %}
                 <span class="lang-switch">
                     <a href="{{ altUrls.uk }}" class="{{ locale == 'uk' ? 'active' }}">UA</a>
                     <a href="{{ altUrls.ru }}" class="{{ locale == 'ru' ? 'active' }}">RU</a>
@@ -650,7 +656,7 @@
                     <div class="footer-catalog-cols">
                     {% for g in _fc %}
                         <details class="footer-cat">
-                            <summary>{% if catalog_url_scheme == 'nested' and g.category.landing %}<a href="{{ path('sv_category', {category: g.category.slug(locale)}) }}">{{ g.category.loc('title', locale) }}</a>{% else %}{{ g.category.loc('title', locale) }}{% endif %}</summary>
+                            <summary>{% if catalog_url_scheme in ['nested', 'slug'] and g.category.landing %}<a href="{{ path('sv_category', {category: g.category.slug(locale)}) }}">{{ g.category.loc('title', locale) }}</a>{% else %}{{ g.category.loc('title', locale) }}{% endif %}</summary>
                             <ul>{% for item in g.items %}<li><a href="{{ service_path(item, locale) }}">{{ item.loc('title', locale) }}</a></li>{% endfor %}</ul>
                         </details>
                     {% endfor %}
@@ -666,6 +672,8 @@
                     <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
                     {% if site.aboutUk %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                    {#- сторінки app.pages з позначкою «У футері» (вакансії, ліцензії); вимкнено — нічого #}
+                    {% for _fp in footer_pages(site) %}<a href="{{ path('sv_page', {path: _fp.path(locale)}) }}">{{ _fp.loc('title', locale) }}</a>{% endfor %}
                 </nav>
                 <p>© {{ 'now'|date('Y') }} {{ site.name }} - {{ city.name(locale) }}.
                 {% if city.hours %}{{ city.hours }}.{% endif %}

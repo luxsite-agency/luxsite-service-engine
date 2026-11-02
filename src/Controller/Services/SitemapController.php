@@ -12,6 +12,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
+use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
@@ -41,6 +42,7 @@ final class SitemapController extends AbstractController
         private readonly ServiceItemCityRepository $itemTexts,
         private readonly CatalogUrls $catalogUrls,
         private readonly CalculatorAvailability $calculator,
+        private readonly ServicePageRepository $pages,
     ) {
     }
 
@@ -72,16 +74,17 @@ final class SitemapController extends AbstractController
 
         $add('sv_home', [], null, $city->getUpdatedAt());
         $add('sv_services');
-        // у схемах nested і root у карті є й сторінки категорій
+        // у схемах nested, root і slug у карті є й сторінки категорій
         // послуги, що надаються в цьому місті (sitemap — на хост міста); категорії без них — поза картою
-        $siteItems = $this->items->findActiveBySite($site, $city);
+        // послуги з noindex (сторінки без власного змісту) живі, але в карті їм не місце
+        $siteItems = array_values(array_filter($this->items->findActiveBySite($site, $city), static fn ($i): bool => !$i->isNoindex()));
         $catsWithItems = [];
         foreach ($siteItems as $item) {
             $catsWithItems[$item->getCategory()->getId()] = true;
         }
-        if ($this->catalogUrls->isNested()) {
+        if ($this->catalogUrls->hasCategoryPages()) {
             foreach ($this->categories->findActiveBySite($site) as $category) {
-                if (!$category->isLanding() || !isset($catsWithItems[$category->getId()])) {
+                if (!$category->isLanding() || $category->isNoindex() || !isset($catsWithItems[$category->getId()])) {
                     continue; // не посадкова: noindex, у карті сайту їй не місце
                 }
                 $add('sv_category', ['category' => $category->slug('uk')], ['category' => $category->slug('ru')]);
@@ -123,6 +126,16 @@ final class SitemapController extends AbstractController
         }
         if ($site->getAboutUk() !== null) {
             $add('sv_about');
+        }
+        // сторінки app.pages, видимі в цьому місті (своя карта на кожен хост, як у послуг)
+        if ($this->getParameter('app.pages')) {
+            foreach ($this->pages->findLiveBySite($site, $city) as $page) {
+                // noindex (своя чи батька) і «не в карті» — поза картою
+                if (!$page->isMapped()) {
+                    continue;
+                }
+                $add('sv_page', ['path' => $page->path('uk')], ['path' => $page->path('ru')], $page->getUpdatedAt());
+            }
         }
         // калькулятор є, де він наповнений (типи прибирання або позиції прайсу з in_calculator); адреса — дійсна для режиму
         if ($this->calculator->isAvailable($site, $city)) {

@@ -86,7 +86,8 @@ PY
 #   compose-файл — ім'я в релізі або абсолютний шлях на сервері; порожньо = типовий для proxy) S_PHP (бінарник php на сервері) S_FPM_RELOAD (команда після
 #   перемикання релізу, порожньо = без) S_DOCROOT (симлінк docroot панелі, лише fastpanel) S_LEGACY_APP (стара тека
 #   застосунку: звідки перший деплой бере .env.local і public/media) S_CHECK_IP (IP, на якому слухає nginx сервера;
-#   порожньо = перевірка через nginx пропускається) S_SITE S_ADMIN S_ENGINE S_STATUS S_SUPPORT S_BACKUP_TARGET S_PACK S_REPO
+#   порожньо = перевірка через nginx пропускається) S_SITE S_ADMIN S_EXTRA (domains.extra через пробіл: інші хости міст
+#   на окремих доменах — smoke, http-перевірка, TLS у doctor) S_ENGINE S_STATUS S_SUPPORT S_BACKUP_TARGET S_PACK S_REPO
 site_ctx() {
     need_key "$1"
     need_yaml
@@ -108,7 +109,8 @@ vals = {
     "S_PHP": srv.get("php", "php"), "S_FPM_RELOAD": srv.get("fpm_reload"), "S_DOCROOT": srv.get("docroot"),
     "S_DOCROOT_EXTRA": " ".join(str(x) for x in (srv.get("docroot_extra") or [])),
     "S_LEGACY_APP": srv.get("legacy_app"), "S_CHECK_IP": srv.get("check_ip"),
-    "S_SITE": dom.get("site"), "S_ADMIN": dom.get("admin"), "S_ENGINE": rec.get("engine"), "S_STATUS": rec.get("status", "active"),
+    "S_SITE": dom.get("site"), "S_ADMIN": dom.get("admin"), "S_EXTRA": " ".join(str(x) for x in (dom.get("extra") if isinstance(dom.get("extra"), list) else [dom.get("extra")] if dom.get("extra") else [])),
+    "S_ENGINE": rec.get("engine"), "S_STATUS": rec.get("status", "active"),
     "S_SUPPORT": rec.get("support"), "S_BACKUP_TARGET": rec.get("backup_target"), "S_PACK": rec.get("pack"), "S_REPO": rec.get("repo"),
     "S_AUTO_UPDATE": rec.get("auto_update", False),
 }
@@ -150,7 +152,7 @@ remote() {
         SITE_SKIP_BACKUP="${SITE_SKIP_BACKUP:-0}" SITE_BACKUP_KEEP_DAYS="${SITE_BACKUP_KEEP_DAYS:-14}"
         SITE_RUNTIME="$S_RUNTIME" SITE_PROXY="$S_PROXY" SITE_COMPOSE_FILE="$S_COMPOSE" SITE_USER="$S_USER" SITE_PHP="$S_PHP" SITE_FPM_RELOAD="$S_FPM_RELOAD"
         SITE_DOCROOT="$S_DOCROOT" SITE_DOCROOT_EXTRA="$S_DOCROOT_EXTRA" SITE_LEGACY_APP="$S_LEGACY_APP" SITE_CHECK_IP="$S_CHECK_IP"
-        SITE_HOST="$S_SITE" SITE_ADMIN="$S_ADMIN")
+        SITE_HOST="$S_SITE" SITE_ADMIN="$S_ADMIN" SITE_EXTRA="$S_EXTRA")
     if is_local_host; then
         env "${envs[@]}" bash "$SITE_CMD_DIR/_remote.sh" "$action" "$S_KEY" "$S_PATH" "$@" </dev/null
         return

@@ -116,15 +116,16 @@ final class CatalogController extends AbstractController
             throw $this->createNotFoundException('У цьому місті послуг категорії нема.');
         }
 
-        return $this->render('services/catalog/category.html.twig', [
+        return $this->noindex($cat->isNoindex(), $this->render('services/catalog/category.html.twig', [
             'site' => $site,
             'city' => $city,
             'category' => $cat,
             // тексти категорії під місто (порожні поля падають на категорію)
             'override' => $this->categoryTexts->findOneByCategoryAndCity($cat, $city),
             'items' => $items,
+            'pageNoindex' => $cat->isNoindex(),
             'altUrls' => $this->altUrls('sv_category', ['category' => $cat->slug('uk')], ['category' => $cat->slug('ru')]),
-        ]);
+        ]));
     }
 
     /**
@@ -168,7 +169,7 @@ final class CatalogController extends AbstractController
         $override = $this->itemTexts->findOneByItemAndCity($item, $city);
         $serviceFaq = $this->serviceFaq($item, $override, $city, $locale);
 
-        return $this->render('services/catalog/item.html.twig', [
+        return $this->noindex($item->isNoindex(), $this->render('services/catalog/item.html.twig', [
             'site' => $site,
             'city' => $city,
             'category' => $cat,
@@ -196,12 +197,23 @@ final class CatalogController extends AbstractController
                 $this->items->findActiveByCategory($cat, $city),
                 static fn ($i) => $i->getId() !== $item->getId(),
             )),
+            'pageNoindex' => $item->isNoindex(),
             'altUrls' => $this->altUrls(
                 'sv_service',
                 $this->catalogUrls->itemParams($item, 'uk'),
                 $this->catalogUrls->itemParams($item, 'ru'),
             ),
-        ]);
+        ]));
+    }
+
+    /** noindex запису (послуга, категорія): заголовок X-Robots-Tag — і для паку чи живої теми без pageNoindex у base */
+    private function noindex(bool $noindex, Response $response): Response
+    {
+        if ($noindex) {
+            $response->headers->set('X-Robots-Tag', 'noindex, follow');
+        }
+
+        return $response;
     }
 
     /** @return array<int, \App\Entity\ServiceItem[]> Ключ — id категорії */
