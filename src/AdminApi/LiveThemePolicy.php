@@ -98,6 +98,8 @@ final class LiveThemePolicy
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
         // сторінки app.pages (schema slug / app.pages): шлях, галерея; батько — лише як parentPage (parent заборонено: loop.parent)
         'images', 'parentPage', 'path',
+        // шаблони сторінок app.pages (H1, вид шаблону) і HTML-карта сайту (HtmlSitemap: розділи, назви, дочірні)
+        'h1', 'templateKind', 'formKey', 'template', 'title', 'children', 'catalog', 'pages', 'posts', 'fixed',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */

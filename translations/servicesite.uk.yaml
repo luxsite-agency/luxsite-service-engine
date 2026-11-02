@@ -239,3 +239,6 @@ footer.copyright: 'Усі матеріали сайту захищені зак�
 works.title: 'Наші роботи'
 works.before: 'До'
 works.after: 'Після'
+sitemap.catalog: 'Послуги'
+sitemap.pages: 'Сторінки'
+sitemap.sections: 'Розділи сайту'

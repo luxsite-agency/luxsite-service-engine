@@ -99,6 +99,11 @@ jobs:
       - name: Адреси від кореня і сторінки
         run: php tests/root-slug-pages.php
 
+      # Шаблони сторінок app.pages (hub, sitemap, form:<ключ>), H1, noindex сторінок/послуг/категорій, авто-301 сторінок,
+      # seed pages:, app.ru_mode noindex|off — на схемі root
+      - name: Шаблони сторінок, noindex, ru_mode
+        run: php tests/pages-templates.php
+
       # Без кредів Google OAuth сторінка відгуків не показує відвідувачу кнопку входу й технічних повідомлень
       - name: Відгуки й Google OAuth
         run: |
