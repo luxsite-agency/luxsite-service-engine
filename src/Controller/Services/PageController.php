@@ -79,9 +79,14 @@ final class PageController extends AbstractController
     )]
     public function thanks(Request $request): Response
     {
+        // послуга й контекст заявки (LeadController, флеш lead_meta) — у dataLayer; нема — подія як була
+        $meta = $request->hasSession() ? ($request->getSession()->getFlashBag()->get('lead_meta')[0] ?? []) : [];
+        $meta = \is_array($meta) ? array_intersect_key($meta, ['service' => 1, 'context' => 1]) : [];
+
         return $this->render('services/page/thanks.html.twig', [
             'site' => $this->serviceSite($request),
             'city' => $this->serviceCity($request),
+            'leadMeta' => array_filter($meta, static fn ($v): bool => \is_string($v) && $v !== ''),
             'altUrls' => $this->altUrls('sv_thanks'),
         ]);
     }

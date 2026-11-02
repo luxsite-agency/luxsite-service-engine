@@ -1,0 +1,4 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{#- Файли заявки (ServiceLead.files, app.lead_files): у перегляді заявки — посилання на /admin/lead-file/<id> з назвою й розміром. -#}
+{% set _files = entity.instance.files %}
+{% if _files is empty %}—{% else %}{% for f in _files %}<a href="{{ path('admin_lead_file', {id: f.id}) }}" target="_blank" rel="noopener">{{ f.originalName }}</a> ({{ f.sizeLabel }}){% if not loop.last %}<br>{% endif %}{% endfor %}{% endif %}

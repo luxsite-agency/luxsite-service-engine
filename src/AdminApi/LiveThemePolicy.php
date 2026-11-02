@@ -45,6 +45,8 @@ final class LiveThemePolicy
         // рушій сервісних сайтів
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
+        // файли в заявці (app.lead_files): поле files[] і multipart у формах
+        'lead_files',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -91,6 +93,8 @@ final class LiveThemePolicy
         'position', 'price', 'pricePerSqm', 'pricePrefix', 'primary', 'publishedAt', 'q', 'reviewedAt', 'revindex', 'revindex0',
         'rows', 'ru', 'runtime', 'runtimeJs', 'schemaType', 'shortName', 'skip', 'slug', 'slugUk', 'source', 'stars', 'tagKind',
         'telegram', 'uk', 'updatedAt', 'url', 'v', 'value', 'viber', 'whatsapp',
+        // форма заявки з файлами (lead_files())
+        'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
     ];
 
     /** Короткий опис правил для list().rules, 422 і описів MCP. */

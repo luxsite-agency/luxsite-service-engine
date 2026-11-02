@@ -238,3 +238,4 @@ footer.copyright: 'Усі матеріали сайту захищені зак�
 works.title: 'Наші роботи'
 works.before: 'До'
 works.after: 'Після'
+lead.files: 'Фото чи PDF документа (необов’язково, до %count% файлів, до %mb% МБ кожен)'

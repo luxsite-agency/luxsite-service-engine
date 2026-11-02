@@ -234,6 +234,18 @@ cd <рушій> && SITES_FILE=<ops>/stand.yaml bin/site deploy <key> && SITES_FI
 ```
 35 3 * * * cd <path>/current && <php> bin/console app:seo:not-found:prune >/dev/null 2>&1
 ```
+
+Файли заявок (`app.lead_files`, з 02.11.2026) лежать у `shared/lead-files` (700, власник — користувач сайту; `link_release`
+веде туди `var/lead-files` кожного релізу; у `bin/site backup` не входять — це персональні дані з терміном зберігання).
+Видаляються разом із заявкою в адмінці; за терміном `app.lead_files.retention_days` і «сироти» (файл без запису) — раз на добу:
+
+```
+45 3 * * * cd <path>/current && <php> bin/console app:lead-files:prune >/dev/null 2>&1
+```
+
+PHP сайту з файлами в заявці: `upload_max_filesize` ≥ `max_file_mb` (типово 10M), `post_max_size` ≥ `max_total_mb` + запас
+(типово 32M; образи рушія — уже так), nginx `client_max_body_size` ≥ 32m. На FastPanel — у налаштуваннях PHP сайту в панелі.
+Тіло понад `post_max_size` форма зустріне флешем «Файли завеликі», а не «сесія застаріла».
 Без доступу команда пише «CRM вимкнено» і виходить з кодом 0. Оброблені в адмінці заявки в CRM не тягнуться.
 
 ## Прод у Docker за edge (`runtime: docker`, `proxy: edge`)

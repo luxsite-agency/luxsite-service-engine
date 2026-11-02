@@ -20,6 +20,7 @@
 #
 # Розкладка <root> (…/site-<key>):
 #   shared/.env.local (600) — секрети Symfony; shared/media — public/media; shared/log — var/log; .composer — кеш composer;
+#   shared/lead-files (700) — файли заявок (app.lead_files, персональні дані) → var/lead-files; у бекап не входять;
 #   shared/theme — живий дизайн під токеном (templates/, public/theme.css, history/) → var/theme і public/theme-live релізу
 #   releases/<tag>/ — рушій + пак (+ vendor), current → поточний; release.env — SITE_TAG, SITE_PREV_TAG
 #   backups/ — архіви; db-init/ (docker) — дампи для першого підйому MySQL; ARCHIVED — маркер; docroot.prev — ціль
@@ -278,7 +279,7 @@ settings_key_state() {
 # link_release <реліз>: .env.local, public/media, var/log → shared
 link_release() {
     local rel="$1"
-    run rm -rf "$rel/public/media" "$rel/var/log" "$rel/var/theme" "$rel/public/theme-live"
+    run rm -rf "$rel/public/media" "$rel/var/log" "$rel/var/theme" "$rel/public/theme-live" "$rel/var/lead-files"
     run mkdir -p "$rel/var"
     # живий дизайн (ThemeService): тека могла не існувати на старих сайтах — створити
     run mkdir -p "$ROOT/shared/theme/templates" "$ROOT/shared/theme/public" "$ROOT/shared/theme/history"
@@ -287,6 +288,11 @@ link_release() {
     run ln -sfn "$ROOT/shared/.env.local" "$rel/.env.local"
     run ln -sfn "$ROOT/shared/media" "$rel/public/media"
     run ln -sfn "$ROOT/shared/log" "$rel/var/log"
+    # файли заявок (app.lead_files): поза public/, лише власнику сайту; тека могла не існувати на старих сайтах
+    run mkdir -p "$ROOT/shared/lead-files"
+    run chmod 700 "$ROOT/shared/lead-files"
+    own "$ROOT/shared/lead-files"
+    run ln -sfn "$ROOT/shared/lead-files" "$rel/var/lead-files"
     own "$rel"
 }
 
