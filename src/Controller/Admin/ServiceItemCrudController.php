@@ -112,6 +112,9 @@ class ServiceItemCrudController extends AbstractCrudController
             ->setHelp('Увімкнено = блок «переваги», вимкнено = блок «довіра»');
         yield BooleanField::new('active', 'Активна')->setColumns(4)
             ->setHelp('Вимкнена послуга зникає з каталогу, меню і сторінок районів.');
+        yield BooleanField::new('noindex', 'Не індексувати')->hideOnIndex()->setColumns(4)
+            ->setHelp('Сторінка лишається на сайті й у меню, але noindex, follow (meta і заголовок X-Robots-Tag), без sitemap і HTML-карти. '
+                . 'Для сторінок без власного змісту, однакових з іншими з точністю до назви.');
         yield FormField::addFieldset('Міста');
         yield AssociationField::new('hiddenCities', 'Не надається в містах')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('by_reference', false)

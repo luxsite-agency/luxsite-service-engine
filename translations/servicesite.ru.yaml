@@ -230,3 +230,6 @@ footer.copyright: 'Все материалы сайта защищены зак�
 works.title: 'Наши работы'
 works.before: 'До'
 works.after: 'После'
+sitemap.catalog: 'Услуги'
+sitemap.pages: 'Страницы'
+sitemap.sections: 'Разделы сайта'

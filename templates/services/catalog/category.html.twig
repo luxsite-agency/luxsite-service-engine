@@ -7,7 +7,8 @@
 
 {# meta description: своя → лід (desc без HTML) → загальний текст каталогу -#}
 {% block metaDescription %}{{ ov(override|default(null), category, 'metaDesc', locale) ?? (ov(override|default(null), category, 'desc', locale) ? ov(override|default(null), category, 'desc', locale)|striptags|trim|slice(0, 300) : ('meta.catalog'|trans({'%city%': city.loc('nameLoc', locale) ?? city.name(locale), '%in%': city_in(city, locale)}, 'servicesite'))) }}{% endblock %}
-{% block meta %}{% if not category.landing %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
+{#- noindex категорії виводить base (pageNoindex); тут — лише непосадкова без нього, щоб тег не дублювався -#}
+{% block meta %}{% if not category.landing and not category.noindex %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block ogImage %}{{ category.imageName ? '/media/service_category/' ~ category.imageName : (theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '') }}{% endblock %}
 
 {% block schema %}

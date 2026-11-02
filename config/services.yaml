@@ -39,6 +39,10 @@ parameters:
     # /<батько>/<слаг>/, ru — /ru/…; у sitemap, футері (позначка «У футері»), галерея зображень. false = вимкнено
     # (маршрут не спрацьовує, меню адмінки без пункту) — як на сайтах до v0.9.34.
     app.pages: false
+    # Російська версія сайту (/ru/…): full — як є (типово); noindex — ru ще без перекладу (тексти записів падають на uk):
+    # кожна /ru/-сторінка «noindex, follow» (meta і X-Robots-Tag), без hreflang на обох мовах, sitemap лише з uk-адресами;
+    # off — ru вимкнено: /ru/… → 404, перемикач мов і hreflang зникають, sitemap лише uk. App\EventSubscriber\RuModeSubscriber.
+    app.ru_mode: full
     # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
     app.blog_prefix: blog
     # Калькулятор (docs/site-pack.md «Калькулятор»): режим auto = «за площею», якщо в сайту є типи прибирання (service_calc_type),

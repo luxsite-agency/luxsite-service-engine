@@ -43,6 +43,12 @@ class ServicePage implements TimestampableInterface
     /** Слаг — сегмент адреси, як у маршруті (config/routes, sv_page) */
     public const SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 
+    /**
+     * Шаблон сторінки: page — текст; hub — текст і картки обраних послуг (items) з різних категорій; sitemap — текст і
+     * автоматична HTML-карта сайту; form:<ключ> — текст і форма services/page/form/<ключ>.html.twig (пак або рушій).
+     */
+    public const TEMPLATE_PATTERN = '/^(?:page|hub|sitemap|form:[a-z0-9_-]+)$/';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -121,6 +127,38 @@ class ServicePage implements TimestampableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
 
+    /** H1, якщо має відрізнятися від заголовка (назва в меню, крихтах і списках коротша). Порожньо = заголовок. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $h1Uk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $h1Ru = null;
+
+    /** Ключ шаблону (TEMPLATE_PATTERN) */
+    #[ORM\Column(length: 64, options: ['default' => 'page'])]
+    #[Assert\Regex(pattern: self::TEMPLATE_PATTERN, message: 'Шаблон: page, hub, sitemap або form:<ключ> (латиниця, цифри, - і _).')]
+    private string $template = 'page';
+
+    /** Поза індексом: noindex, follow + X-Robots-Tag, без sitemap.xml і HTML-карти */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $noindex = false;
+
+    /** У sitemap.xml і HTML-карті (сторінка з noindex там не буває незалежно від цього поля) */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $inSitemap = true;
+
+    /**
+     * Послуги для шаблону hub (картки з різних категорій). Порядок на сторінці — як у каталозі (категорія, потім послуга);
+     * неактивні й не надавані в місті не показуються.
+     *
+     * @var Collection<int, ServiceItem>
+     */
+    #[ORM\ManyToMany(targetEntity: ServiceItem::class)]
+    #[ORM\JoinTable(name: 'service_page_item')]
+    #[ORM\JoinColumn(onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(onDelete: 'CASCADE')]
+    private Collection $items;
+
     /** Порядок серед сторінок одного батька і в футері */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $position = 0;
@@ -147,6 +185,18 @@ class ServicePage implements TimestampableInterface
         $this->children = new ArrayCollection();
         $this->images = new ArrayCollection();
         $this->hiddenCities = new ArrayCollection();
+        $this->items = new ArrayCollection();
+    }
+
+    /** Послуги хаба — лише цього сайту */
+    #[Assert\Callback]
+    public function validateItems(ExecutionContextInterface $context): void
+    {
+        foreach ($this->items as $item) {
+            if ($this->site !== null && $item->getSite() !== $this->site) {
+                $context->buildViolation(sprintf('Послуга «%s» належить іншому сайту-бренду.', $item->getTitleUk()))->atPath('items')->addViolation();
+            }
+        }
     }
 
     /** Один рівень вкладеності, батько — з того ж сайту і не сама сторінка */
@@ -413,6 +463,118 @@ class ServicePage implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getH1Uk(): ?string
+    {
+        return $this->h1Uk;
+    }
+
+    public function setH1Uk(?string $h1Uk): self
+    {
+        $this->h1Uk = $h1Uk === '' ? null : $h1Uk;
+
+        return $this;
+    }
+
+    public function getH1Ru(): ?string
+    {
+        return $this->h1Ru;
+    }
+
+    public function setH1Ru(?string $h1Ru): self
+    {
+        $this->h1Ru = $h1Ru === '' ? null : $h1Ru;
+
+        return $this;
+    }
+
+    /** H1 мовою сторінки: свій H1 > заголовок (обидва з фолбеком ru→uk) */
+    public function h1(string $locale): string
+    {
+        return (string) ($this->locRaw('h1', $locale) ?: $this->locRaw('title', $locale) ?: $this->loc('h1', $locale) ?: $this->titleUk);
+    }
+
+    public function getTemplate(): string
+    {
+        return $this->template;
+    }
+
+    public function setTemplate(?string $template): self
+    {
+        $template = trim((string) $template);
+        $this->template = $template === '' ? 'page' : $template;
+
+        return $this;
+    }
+
+    /** Вид шаблону без ключа форми: page|hub|sitemap|form */
+    public function templateKind(): string
+    {
+        return str_starts_with($this->template, 'form:') ? 'form' : $this->template;
+    }
+
+    /** Ключ форми для form:<ключ>, інакше null */
+    public function formKey(): ?string
+    {
+        return str_starts_with($this->template, 'form:') ? substr($this->template, 5) : null;
+    }
+
+    public function isNoindex(): bool
+    {
+        return $this->noindex;
+    }
+
+    public function setNoindex(bool $noindex): self
+    {
+        $this->noindex = $noindex;
+
+        return $this;
+    }
+
+    public function isInSitemap(): bool
+    {
+        return $this->inSitemap;
+    }
+
+    public function setInSitemap(bool $inSitemap): self
+    {
+        $this->inSitemap = $inSitemap;
+
+        return $this;
+    }
+
+    /** Чи йде сторінка в sitemap.xml і HTML-карту: сама і батько індексуються, позначка «у карті» */
+    public function isIndexable(): bool
+    {
+        return !$this->noindex && ($this->parent === null || !$this->parent->isNoindex());
+    }
+
+    public function isMapped(): bool
+    {
+        return $this->inSitemap && $this->isIndexable();
+    }
+
+    /** @return Collection<int, ServiceItem> */
+    public function getItems(): Collection
+    {
+        return $this->items;
+    }
+
+    public function addItem(ServiceItem $item): self
+    {
+        if (!$this->items->contains($item)) {
+            $this->items->add($item);
+        }
+
+        return $this;
+    }
+
+    public function removeItem(ServiceItem $item): self
+    {
+        $this->items->removeElement($item);
 
         return $this;
     }

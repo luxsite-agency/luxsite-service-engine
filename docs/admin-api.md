@@ -126,7 +126,7 @@ request), тож будь-який контролер ішов би без вх�
 | Метод і шлях | Що |
 |---|---|
 | `GET /me` | користувач, токен (без значення), дозволи, активні сайти з містами і `studio_api_url` |
-| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`, `works` (роботи), `team` (команда), `reviews` (відгуки). Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти, works, team, reviews), `?item=<id>` (prices, works) |
+| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`, `works` (роботи), `team` (команда), `reviews` (відгуки), `pages` (сторінки `app.pages`: тексти, H1, SEO, `template`, `noindex`, `in_sitemap`; слаг і батько — лише в адмінці). Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти, works, team, reviews), `?item=<id>` (prices, works) |
 | `GET /{site}/{kind}/{id}` | запис з усіма дозволеними полями; у items, categories, posts, works, team, reviews — ще блок `image` (див. «Зображення») |
 | `PATCH /{site}/{kind}/{id}` | JSON `{поле: значення}` лише з дозволених полів (перелік у 422 на невідоме поле); FAQ — `[{"q":"…","a":"…"}]`; відповідь — запис після змін + `changed` |
 | `POST /{site}/item-texts` | `{item_id, city_id, …поля}` — створити/оновити тексти послуги для міста (upsert) |

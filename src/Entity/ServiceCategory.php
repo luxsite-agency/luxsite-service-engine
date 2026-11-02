@@ -122,6 +122,13 @@ class ServiceCategory implements TimestampableInterface
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $landing = true;
 
+    /**
+     * Сторінка категорії поза індексом (noindex, follow + X-Robots-Tag, без sitemap і HTML-карти), окремо від landing:
+     * посадкова сторінка з крихтами й посиланнями лишається, лише пошуковикам не віддається. Послуг категорії не стосується.
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $noindex = false;
+
     #[Assert\Image(maxSize: '10M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxWidth: 8000, maxHeight: 8000, mimeTypesMessage: 'Дозволено лише JPG/PNG/WebP.')]
     #[Vich\UploadableField(mapping: 'service_category_media', fileNameProperty: 'imageName')]
     private ?File $imageFile = null;
@@ -412,6 +419,18 @@ class ServiceCategory implements TimestampableInterface
     public function setLanding(bool $landing): self
     {
         $this->landing = $landing;
+
+        return $this;
+    }
+
+    public function isNoindex(): bool
+    {
+        return $this->noindex;
+    }
+
+    public function setNoindex(bool $noindex): self
+    {
+        $this->noindex = $noindex;
 
         return $this;
     }

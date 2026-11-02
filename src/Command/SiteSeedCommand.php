@@ -35,16 +35,17 @@ use Symfony\Component\Yaml\Yaml;
  *   cities: [{slug, host, apex: true|false, name_nom_uk, name_gen_uk?, name_dat_uk?, name_loc_uk?, name_*_ru?, phone?, email?,
  *             hours?, address_uk?, meta_title_uk?, meta_desc_uk?, intro_title_uk?, intro_text_uk?, text2_uk?, text3_uk?,
  *             faq_uk?: [{q,a}], districts_intro_uk?, noindex?: bool, gtm_id?}]
- *   categories: [{slug, title_uk, title_ru?, desc_uk?, position?, landing?}]
+ *   categories: [{slug, title_uk, title_ru?, desc_uk?, position?, landing?, noindex?}]
  *   items: [{slug, category, title_uk, title_ru?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
- *            meta_desc_uk?, faq_uk?: [{q,a}], position?, utp?, hidden_cities?: [slug], price_hidden_cities?: [slug],
+ *            meta_desc_uk?, faq_uk?: [{q,a}], position?, utp?, noindex?, hidden_cities?: [slug], price_hidden_cities?: [slug],
  *            prices?: [{city, name_uk, name_ru?, price?, prefix?, text_uk?, unit_uk?, per_unit?, calculator?}]}]
  *   districts: [{city, slug, name_uk, name_ru?, title_uk?, lead_uk?, desc_uk?, group_uk?, sub_areas_uk?, primary?, min_price?, faq_uk?}]
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
  *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
- *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
- *            footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
+ *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, h1_uk?, lead_uk?, desc_uk? (або body_uk?), meta_title_uk?,
+ *            meta_desc_uk?, template?: page|hub|sitemap|form:<ключ>, items?: [slug послуги] (hub), noindex?, in_sitemap?,
+ *            position?, footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
  */
 #[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
@@ -86,13 +87,14 @@ final class SiteSeedCommand
             }
         }
         $categories = [];
+        $items = [];
         foreach ($data['categories'] ?? [] as $i => $c) {
             $categories[$c['slug']] = $this->category($site, $c, $i);
         }
         foreach ($data['items'] ?? [] as $i => $it) {
             $cat = $categories[$it['category']] ?? $this->em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => $it['category']])
                 ?? throw new \RuntimeException('items: нема категорії ' . $it['category']);
-            $item = $this->item($site, $cat, $it, $i, $cities);
+            $item = $items[$it['slug']] = $this->item($site, $cat, $it, $i, $cities);
             foreach ($it['prices'] ?? [] as $j => $p) {
                 $this->price($item, $this->cityOf($cities, $p['city']), $p, $j);
             }
@@ -121,6 +123,17 @@ final class SiteSeedCommand
                     ?? throw new \RuntimeException('pages: нема батьківської сторінки ' . $p['parent']);
             }
             $pages[$p['slug']]->setParent($parent);
+            // послуги хаба: з цього ж файлу або вже наявні; список у файлі замінює попередній
+            if (\array_key_exists('items', $p)) {
+                $page = $pages[$p['slug']];
+                foreach ($page->getItems()->toArray() as $old) {
+                    $page->removeItem($old);
+                }
+                foreach ((array) $p['items'] as $slug) {
+                    $page->addItem($items[$slug] ?? $this->em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => $slug])
+                        ?? throw new \RuntimeException('pages: нема послуги ' . $slug . ' (сторінка ' . $p['slug'] . ')'));
+                }
+            }
         }
 
         if ($dryRun) {
@@ -203,6 +216,9 @@ final class SiteSeedCommand
         if (isset($d['landing'])) {
             $cat->setLanding((bool) $d['landing']);
         }
+        if (isset($d['noindex'])) {
+            $cat->setNoindex((bool) $d['noindex']);
+        }
         $cat->setActive(true);
         $this->em->persist($cat);
         $this->count('category', $new);
@@ -225,6 +241,9 @@ final class SiteSeedCommand
         $item->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['utp'])) {
             $item->setUtp((bool) $d['utp']);
+        }
+        if (isset($d['noindex'])) {
+            $item->setNoindex((bool) $d['noindex']);
         }
         foreach ($d['hidden_cities'] ?? [] as $slug) {
             $item->addHiddenCity($this->cityOf($cities, $slug));
@@ -342,7 +361,26 @@ final class SiteSeedCommand
         if (\array_key_exists('slug_ru', $d)) {
             $page->setSlugRu($d['slug_ru'] !== null ? (string) $d['slug_ru'] : null);
         }
-        $this->loc($page, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        // body_uk/body_ru — синонім desc_* (так поле зветься в паках, що переносять сторінки зі старої CMS)
+        foreach (['uk', 'ru'] as $l) {
+            if (\array_key_exists('body_' . $l, $d) && !\array_key_exists('desc_' . $l, $d)) {
+                $d['desc_' . $l] = $d['body_' . $l];
+            }
+            unset($d['body_' . $l]);
+        }
+        $this->loc($page, $d, ['title' => 'title', 'h1' => 'h1', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        if (\array_key_exists('template', $d)) {
+            $page->setTemplate($d['template'] !== null ? (string) $d['template'] : null);
+            if (preg_match(ServicePage::TEMPLATE_PATTERN, $page->getTemplate()) !== 1) {
+                throw new \RuntimeException(sprintf('pages: невідомий шаблон «%s» (сторінка %s): page, hub, sitemap або form:<ключ>', $page->getTemplate(), $d['slug']));
+            }
+        }
+        if (isset($d['noindex'])) {
+            $page->setNoindex((bool) $d['noindex']);
+        }
+        if (isset($d['in_sitemap'])) {
+            $page->setInSitemap((bool) $d['in_sitemap']);
+        }
         $page->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         $page->setInFooter((bool) ($d['footer'] ?? $page->isInFooter()));
         $page->setActive((bool) ($d['active'] ?? true));

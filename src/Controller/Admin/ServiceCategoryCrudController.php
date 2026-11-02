@@ -115,6 +115,9 @@ class ServiceCategoryCrudController extends AbstractCrudController
         yield BooleanField::new('landing', 'Посадкова сторінка')->setColumns(6)
             ->setHelp('Так: повна сторінка категорії (верх як у послуги, лід, сітка послуг, SEO-блоки), у sitemap, з крихт і каталогу на неї є посилання. '
                 . 'Ні: адреси послуг не змінюються, але сторінка категорії noindex, без sitemap і без посилань на неї. Діє в схемах URL зі сторінками категорій (nested, root, slug).');
+        yield BooleanField::new('noindex', 'Не індексувати')->hideOnIndex()->setColumns(6)
+            ->setHelp('Посадкова сторінка лишається (крихти, посилання з каталогу), але noindex, follow (meta і X-Robots-Tag), без sitemap і HTML-карти. '
+                . 'Послуг категорії не стосується.');
         yield FormField::addFieldset('Зображення');
         yield from $this->imageFields('/media/service_category');
 

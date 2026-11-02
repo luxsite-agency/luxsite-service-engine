@@ -120,6 +120,10 @@ class ServicePageCrudController extends AbstractCrudController
             ->setHelp('H1 сторінки і назва в списках, футері, хлібних крихтах.');
         yield TextField::new('titleRu', 'Заголовок ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - показується український заголовок.');
+        yield TextField::new('h1Uk', 'H1 uk')->hideOnIndex()->setColumns(6)
+            ->setHelp('Якщо H1 має бути довшим за назву в меню й крихтах. Порожньо = заголовок.');
+        yield TextField::new('h1Ru', 'H1 ru')->hideOnIndex()->setColumns(6)
+            ->setHelp('Порожньо = заголовок ru, далі H1 uk.');
         yield TextField::new('slugUk', 'Слаг uk')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'))
             ->setHelp('Частина адреси латиницею: licenzii-i-sertifikaty → /licenzii-i-sertifikaty/. ⚠️ Зміна ламає посилання, які вже є в Google. '
@@ -129,6 +133,15 @@ class ServicePageCrudController extends AbstractCrudController
             ->setHelp('Порожньо = український слаг: /ru/<слаг uk>/.');
         yield TextField::new('slugUk', 'Адреса')->onlyOnIndex()
             ->formatValue(static fn ($v, ?ServicePage $p) => $p !== null ? '/' . $p->path('uk') . '/' : '');
+        yield FormField::addFieldset('Шаблон');
+        yield TextField::new('template', 'Шаблон')->setColumns(6)
+            ->setHelp('page — текст; hub — текст і картки послуг, обраних нижче; sitemap — текст і автоматична карта сайту (каталог, '
+                . 'сторінки, блог, розділи; без noindex); form:<ключ> — текст і форма services/page/form/<ключ>.html.twig з паку чи рушія '
+                . '(form:lead — стандартна форма заявки).');
+        yield AssociationField::new('items', 'Послуги хаба')->hideOnIndex()->setColumns(6)
+            ->setFormTypeOption('by_reference', false)
+            ->setHelp('Лише для шаблону hub: картки цих послуг (будь-яких категорій цього сайту) у порядку каталогу. '
+                . 'Вимкнені й не надавані в місті не показуються.');
         yield FormField::addFieldset('Показ');
         yield IntegerField::new('position', 'Порядок')->setColumns(4)
             ->setHelp('Порядок серед сторінок одного батька і в футері: менше число — вище.');
@@ -136,6 +149,10 @@ class ServicePageCrudController extends AbstractCrudController
             ->setHelp('Посилання на сторінку в нижньому меню сайту, поруч із «Контактами».');
         yield BooleanField::new('active', 'Активна')->setColumns(4)
             ->setHelp('Вимкнена сторінка (і всі її дочірні) віддає 404 і зникає з карти сайту.');
+        yield BooleanField::new('noindex', 'Не індексувати')->setColumns(4)
+            ->setHelp('noindex, follow (meta і X-Robots-Tag), поза sitemap і HTML-картою; дочірні теж.');
+        yield BooleanField::new('inSitemap', 'У карті сайту')->hideOnIndex()->setColumns(4)
+            ->setHelp('Вимкнено — сторінка індексується, але її нема в sitemap.xml і HTML-карті. Сторінки з noindex там не буває ніколи.');
         yield AssociationField::new('hiddenCities', 'Не показувати в містах')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('by_reference', false)
             ->setHelp('На хостах цих міст (філій) сторінка віддає 404 і її нема в карті сайту й футері. Порожньо = на всіх.');

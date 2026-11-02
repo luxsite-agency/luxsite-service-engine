@@ -1,7 +1,10 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {# Сторінка app.pages (ServicePage, ServicePageController): /<slug>/ або /<батько>/<slug>/. Пак перекриває шаблон цілком
-   (templates/services/page/show.html.twig) або блоками через {% extends '@engine/services/page/show.html.twig' %};
-   різні сторінки — розгалуження за page.slugUk. #}
+   (templates/services/page/show.html.twig) або блоками через {% extends '@engine/services/page/show.html.twig' %}
+   (title, metaDescription, page_body — текст, page_extra — частина за шаблоном); різні сторінки — розгалуження за
+   page.slugUk або page.template. Частини за шаблоном: hub — services/page/_hub.html.twig (hubItems), sitemap —
+   services/page/_sitemap.html.twig (htmlSitemap), form:<ключ> — services/page/form/<ключ>.html.twig (pageForm: рендерить
+   контролер, бо include з виразом жива тема не пропускає; нема файлу — нічого). #}
 {% extends 'services/base.html.twig' %}
 
 {% block title %}{{ page.loc('metaTitle', locale) ?? (page.loc('title', locale) ~ ' - ' ~ site.name) }}{% endblock %}
@@ -35,12 +38,22 @@
         {% if page.parentPage %}<a href="{{ path('sv_page', {path: page.parentPage.path(locale)}) }}">{{ page.parentPage.loc('title', locale) }}</a> →{% endif %}
         {{ page.loc('title', locale) }}
     </nav>
-    <h1>{{ page.loc('title', locale) }}</h1>
+    <h1>{{ page.h1(locale) }}</h1>
     {% if page.imageName %}
     <img src="/media/service_page/{{ page.imageName }}" alt="{{ page.imageAlt ?? page.loc('title', locale) }}" width="1200" height="675" class="post-cover">
     {% endif %}
+    {% block page_body %}
     {% if page.loc('lead', locale) %}<p class="lead">{{ page.loc('lead', locale)|striptags }}</p>{% endif %}
     {% if page.loc('desc', locale) %}<div class="page-text">{{ page.loc('desc', locale)|raw }}</div>{% endif %}
+    {% endblock %}
+
+    {% block page_extra %}
+    {% set _kind = page.templateKind %}
+    {% if _kind == 'hub' %}{{ include('services/page/_hub.html.twig') }}
+    {% elseif _kind == 'sitemap' %}{{ include('services/page/_sitemap.html.twig') }}
+    {% elseif _kind == 'form' and pageForm|default('') %}<div class="page-form">{{ pageForm|raw }}</div>
+    {% endif %}
+    {% endblock %}
 
     {% set _specs = custom_fields(page, locale) %}
     {% if _specs is not empty %}

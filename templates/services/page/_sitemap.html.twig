@@ -1,0 +1,29 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# HTML-карта сайту (сторінка app.pages з шаблоном sitemap): htmlSitemap — App\ServiceSite\HtmlSitemap (каталог, сторінки,
+   блог, розділи; без noindex, як sitemap.xml). Пак перекриває цей файл. -#}
+{% if htmlSitemap %}
+<section class="block html-sitemap">
+    {% if htmlSitemap.catalog is not empty %}
+    <h2>{{ 'sitemap.catalog'|trans({}, 'servicesite') }}</h2>
+    {% for cat in htmlSitemap.catalog %}
+    <h3>{% if cat.url %}<a href="{{ cat.url }}">{{ cat.title }}</a>{% else %}{{ cat.title }}{% endif %}</h3>
+    <ul>{% for i in cat.items %}<li><a href="{{ i.url }}">{{ i.title }}</a></li>{% endfor %}</ul>
+    {% endfor %}
+    {% endif %}
+    {% if htmlSitemap.pages is not empty %}
+    <h2>{{ 'sitemap.pages'|trans({}, 'servicesite') }}</h2>
+    <ul>
+        {% for p in htmlSitemap.pages %}
+        <li><a href="{{ p.url }}">{{ p.title }}</a>{% if p.children is not empty %}
+            <ul>{% for c in p.children %}<li><a href="{{ c.url }}">{{ c.title }}</a></li>{% endfor %}</ul>{% endif %}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if htmlSitemap.posts is not empty %}
+    <h2>{{ 'nav.blog'|trans({}, 'servicesite') }}</h2>
+    <ul>{% for p in htmlSitemap.posts %}<li><a href="{{ p.url }}">{{ p.title }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    <h2>{{ 'sitemap.sections'|trans({}, 'servicesite') }}</h2>
+    <ul>{% for f in htmlSitemap.fixed %}<li><a href="{{ f.url }}">{{ f.title }}</a></li>{% endfor %}</ul>
+</section>
+{% endif %}
