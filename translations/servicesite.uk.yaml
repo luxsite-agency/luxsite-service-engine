@@ -100,6 +100,7 @@ lead.phone: Телефон
 lead.name: "Ім'я"
 lead.message: Що потрібно зробити?
 lead.submit: Надіслати
+lead.files: 'Фото чи PDF документа (необов’язково, до %count% файлів, до %mb% МБ кожен)'
 
 brand.tagline: ''
 brand.in: у
@@ -238,4 +239,3 @@ footer.copyright: 'Усі матеріали сайту захищені зак�
 works.title: 'Наші роботи'
 works.before: 'До'
 works.after: 'Після'
-lead.files: 'Фото чи PDF документа (необов’язково, до %count% файлів, до %mb% МБ кожен)'
