@@ -94,6 +94,8 @@ lead.name: Имя
 lead.message: Что нужно сделать?
 lead.submit: Отправить
 lead.files: 'Фото или PDF документа (необязательно, до %count% файлов, до %mb% МБ каждый)'
+application.files: 'Файлы (резюме, диплом — PDF, DOC, фото)'
+application.consent: 'Согласен на обработку персональных данных'
 
 brand.tagline: ''
 brand.in: в

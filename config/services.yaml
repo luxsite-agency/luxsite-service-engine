@@ -147,6 +147,10 @@ parameters:
         retention_days: 0
     # Приватна тека файлів заявок: на проді bin/site deploy веде var/lead-files релізу в shared/lead-files
     app.lead_files_dir: '%kernel.project_dir%/var/lead-files'
+    # Форми анкет (анкета перекладача, резюме, заявка партнера): POST /application/<ключ>, адмінка «Анкети», лист на
+    # «Адресу для анкет» (адмінка → Налаштування) або email форми; не в CRM і не конверсія. {} — анкет нема.
+    # Схема — App\ServiceSite\Applications, docs/site-pack.md «Анкети».
+    app.applications: {}
     # /districts/: групи (group_uk) з цього списку — «Передмістя» (акордеон як є); решта груп — «Райони %cityGen%»:
     # акордеон адмінрайонів із чипами місцевостей, назва групи веде на її primary-сторінку (якщо є). Порожньо = стара
     # поведінка (картки лише primary-районів + усі групи без primary у «передмісті»).

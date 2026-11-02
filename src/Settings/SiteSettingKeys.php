@@ -40,9 +40,10 @@ final class SiteSettingKeys
     public const string HTML_HEAD = 'html.head';
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
+    public const string APPLICATIONS_EMAIL = 'forms.applications_email';
 
     /** Порядок груп у списку налаштувань і в підписах «група → поле». */
-    public const array GROUPS = ['google', 'analytics', 'seo', 'html', 'site'];
+    public const array GROUPS = ['google', 'analytics', 'seo', 'html', 'forms', 'site'];
 
     /** @var array<string, array{type: string, group: string}> */
     private const array KEYS = [
@@ -61,6 +62,7 @@ final class SiteSettingKeys
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],
+        self::APPLICATIONS_EMAIL => ['type' => self::TYPE_TEXT, 'group' => 'forms'],
         self::ADMIN_TITLE => ['type' => self::TYPE_TEXT, 'group' => 'site'],
     ];
 
@@ -80,6 +82,8 @@ final class SiteSettingKeys
         self::GOOGLE_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::BING_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::ADMIN_TITLE => '/^[^\r\n<>]{1,64}$/u',
+        // одна чи кілька адрес через кому
+        self::APPLICATIONS_EMAIL => '/^[^\s@,<>]+@[^\s@,<>]+\.[a-z]{2,}(?:\s*,\s*[^\s@,<>]+@[^\s@,<>]+\.[a-z]{2,})*$/i',
     ];
 
     /** @return list<string> */

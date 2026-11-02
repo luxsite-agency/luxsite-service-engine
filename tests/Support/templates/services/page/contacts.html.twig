@@ -1,0 +1,4 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{#- Тест анкет (ApplicationsKernel): контакти з анкетою translator — так пак підключає форму анкети у свій шаблон. -#}
+{% extends '@engine/services/page/contacts.html.twig' %}
+{% block body %}{{ parent() }}{{ include('services/partials/_application_form.html.twig', {form: 'translator', lead_context: 'контакти'}) }}{% endblock %}

@@ -54,6 +54,25 @@ final class LeadFiles
         }
     }
 
+    /**
+     * Ті самі тека й перевірки з іншими лімітами (файли анкети app.applications.<форма>.files): ключі, яких нема, — з
+     * app.lead_files; enabled — завжди так.
+     *
+     * @param array<string, mixed> $config
+     */
+    public function withConfig(array $config): self
+    {
+        $copy = clone $this;
+        $copy->config = ['enabled' => true] + $config + $this->config;
+        foreach ($copy->config['mime'] as $mime) {
+            if (!isset(self::EXTENSIONS[$mime])) {
+                throw new \InvalidArgumentException(sprintf('Файли форми: MIME «%s» не підтримується (%s).', $mime, implode(', ', array_keys(self::EXTENSIONS))));
+            }
+        }
+
+        return $copy;
+    }
+
     public function enabled(): bool
     {
         return (bool) $this->config['enabled'];
@@ -111,8 +130,8 @@ final class LeadFiles
             }
             $total += $size;
             // MIME — за вмістом файлу (finfo), не з імені й не з того, що надіслав браузер
-            if (!\in_array((string) $file->getMimeType(), $c['mime'], true)) {
-                return sprintf($ru ? 'Файл «%s»: можно лишь фото или PDF.' : 'Файл «%s»: можна лише фото або PDF.', self::clientName($file));
+            if (!\in_array(self::mime($file), $c['mime'], true)) {
+                return sprintf($ru ? 'Файл «%s»: можно лишь %s.' : 'Файл «%s»: можна лише %s.', self::clientName($file), self::kinds($c['mime'], $ru));
             }
         }
         if ($total > $c['max_total_mb'] * 1048576) {
@@ -141,7 +160,7 @@ final class LeadFiles
         $stored = [];
         try {
             foreach ($files as $file) {
-                $mime = (string) $file->getMimeType();
+                $mime = self::mime($file);
                 $name = bin2hex(random_bytes(16)) . '.' . self::EXTENSIONS[$mime];
                 $size = (int) $file->getSize();
                 $file->move($this->dir, $name);
@@ -222,6 +241,35 @@ final class LeadFiles
         if (is_file($path) && !@unlink($path)) {
             $this->logger->warning('Файл заявки не видалено з диска: {name}', ['name' => $name]);
         }
+    }
+
+    /**
+     * MIME за вмістом. Word finfo бачить по-різному: DOCX — як zip, DOC — як OLE-контейнер; такі уточнюємо розширенням
+     * (лише ці два випадки — інакше розширення нічого не вирішує).
+     */
+    private static function mime(UploadedFile $file): string
+    {
+        $mime = (string) $file->getMimeType();
+        $ext = strtolower(pathinfo($file->getClientOriginalName(), \PATHINFO_EXTENSION));
+
+        return match (true) {
+            $ext === 'docx' && \in_array($mime, ['application/zip', 'application/octet-stream'], true) => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            $ext === 'doc' && \in_array($mime, ['application/CDFV2', 'application/x-ole-storage', 'application/vnd.ms-office'], true) => 'application/msword',
+            default => $mime,
+        };
+    }
+
+    /** «фото або PDF», «фото, PDF або DOC/DOCX» — для повідомлення про недозволений тип */
+    private static function kinds(array $mime, bool $ru): string
+    {
+        $kinds = [];
+        foreach ($mime as $m) {
+            $kinds[str_starts_with($m, 'image/') ? 'фото' : ($m === 'application/pdf' ? 'PDF' : 'DOC/DOCX')] = true;
+        }
+        $kinds = array_keys($kinds);
+        $last = array_pop($kinds);
+
+        return $kinds === [] ? (string) $last : implode(', ', $kinds) . ($ru ? ' или ' : ' або ') . $last;
     }
 
     /** Ім'я від людини без шляху й керівних символів, до 255 */

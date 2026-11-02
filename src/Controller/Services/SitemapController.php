@@ -177,6 +177,7 @@ Disallow: /
             'User-agent: *',
             'Allow: /',
             'Disallow: /lead',
+            'Disallow: /application/',
             'Disallow: /thank-you/',
             'Disallow: /ru/thank-you/',
             'Disallow: /connect/',

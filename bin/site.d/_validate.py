@@ -146,7 +146,7 @@ def engine_params(engine_dir):
 # Перші сегменти фіксованих маршрутів сайту — як CatalogUrls::RESERVED_SEGMENTS (src/ServiceSite/CatalogUrls.php)
 RESERVED_SEGMENTS = {
     "services", "districts", "blog", "news", "about", "contacts", "faq", "reviews", "privacy-policy",
-    "terms-of-service", "thank-you", "calculator-cleaning", "calculator", "lead", "sitemap.xml", "robots.txt",
+    "terms-of-service", "thank-you", "calculator-cleaning", "calculator", "lead", "application", "sitemap.xml", "robots.txt",
     "ru", "uk", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
 }
 

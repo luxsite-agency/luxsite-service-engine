@@ -1,0 +1,4 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{#- Поля анкети (ServiceApplication.data): підпис — значення, у порядку форми на момент відправки. -#}
+{% set _rows = entity.instance.data %}
+{% if _rows is empty %}—{% else %}<dl class="mb-0">{% for r in _rows %}<dt>{{ r.label }}</dt><dd style="white-space:pre-line">{{ r.value }}</dd>{% endfor %}</dl>{% endif %}
