@@ -9,6 +9,7 @@ namespace App\ServiceSite\Bitrix24;
 
 use App\Entity\ServiceLead;
 use App\Repository\ServiceItemRepository;
+use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\Crm\AbstractLeadCrm;
 use App\ServiceSite\Crm\CrmException;
 use App\ServiceSite\Crm\LeadCrmCapabilities;
@@ -80,6 +81,8 @@ final class Bitrix24Crm extends AbstractLeadCrm
         string $webhookUrl = '',
         #[Autowire('%app.crm%')]
         array $crm = [],
+        /** схема URL каталогу: де в шляху сторінки слаг послуги; null = flat/nested (/services/…) */
+        private readonly ?CatalogUrls $catalogUrls = null,
     ) {
         parent::__construct($em, $logger);
         $this->base = self::normalizeBase($webhookUrl);
@@ -282,19 +285,21 @@ final class Bitrix24Crm extends AbstractLeadCrm
         ];
     }
 
-    /** Послуга - за останнім сегментом шляху /services/…/<slug>/ сторінки форми (у flat і nested однаково). */
+    /**
+     * Послуга - за шляхом сторінки форми під схему URL паку (CatalogUrls::itemSlugFromPath): /services/…/<slug>/ у flat
+     * і nested, /<категорія>/<slug>/ у root, /<slug>/ у slug.
+     */
     private function serviceTitle(ServiceLead $lead): ?string
     {
         $site = $lead->getCity()?->getSite();
         $path = (string) parse_url((string) $lead->getPageUrl(), PHP_URL_PATH);
-        $segments = array_values(array_filter(explode('/', $path), static fn (string $s): bool => $s !== ''));
-        $at = array_search('services', $segments, true);
-        if ($site === null || $at === false || !isset($segments[$at + 1])) {
+        $slug = ($this->catalogUrls ?? new CatalogUrls())->itemSlugFromPath($path);
+        if ($site === null || $slug === null) {
             return null;
         }
 
         $locale = $lead->getLocale() === 'ru' ? 'ru' : 'uk';
-        $item = $this->items->findOneActiveBySiteAndSlug($site, (string) end($segments), $locale);
+        $item = $this->items->findOneActiveBySiteAndSlug($site, $slug, $locale);
         $title = $item !== null ? trim((string) $item->loc('title', $locale)) : '';
 
         return $title !== '' ? $title : null;

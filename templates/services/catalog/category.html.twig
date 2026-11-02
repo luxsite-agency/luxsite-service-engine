@@ -14,7 +14,7 @@
     {% import 'services/partials/_schema.html.twig' as schema %}
     {{ schema.crumbs([
         {'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})},
-    ]|merge(catalog_url_scheme != 'root' ? [{'name': 'catalog.title'|trans({}, 'servicesite'), 'url': url('sv_services', {_locale: locale})}] : [])|merge([
+    ]|merge(catalog_url_scheme not in ['root', 'slug'] ? [{'name': 'catalog.title'|trans({}, 'servicesite'), 'url': url('sv_services', {_locale: locale})}] : [])|merge([
         {'name': ov(override|default(null), category, 'title', locale)},
     ])) }}
     {{ schema.faqPage(category.loc('faq', locale) ?? []) }}
@@ -23,7 +23,7 @@
 {% block body %}
     <nav class="breadcrumbs">
         <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
-        {% if catalog_url_scheme != 'root' %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
+        {% if catalog_url_scheme not in ['root', 'slug'] %}<a href="{{ path('sv_services') }}">{{ 'catalog.title'|trans({}, 'servicesite') }}</a> →{% endif %}
         {{ ov(override|default(null), category, 'title', locale) }}
     </nav>
     {% set _cdesc = ov(override|default(null), category, 'desc', locale) %}

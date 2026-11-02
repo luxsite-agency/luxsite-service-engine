@@ -59,7 +59,7 @@ class Kernel extends BaseKernel
     /**
      * Маршрути каталогу залежать від паку: один сайт живе на /services/<категорія>/<послуга>/
      * (nested), інший — на /services/<послуга>/ (flat), третій (з Joomla) — на /<категорія>/<послуга>/
-     * від кореня (root). Усі схеми в індексі Google,
+     * від кореня (root), четвертий — на /<послуга>/ і /<категорія>/ від кореня (slug). Усі схеми в індексі Google,
      * тому вибір — параметр app.catalog.url_scheme, а не константа в атрибутах контролера.
      */
     protected function configureRoutes(RoutingConfigurator $routes): void
@@ -67,8 +67,8 @@ class Kernel extends BaseKernel
         $this->configureRoutesDefaults($routes);
 
         $scheme = (string) $this->container->getParameter('app.catalog.url_scheme');
-        if (!\in_array($scheme, ['flat', 'nested', 'root'], true)) {
-            throw new \InvalidArgumentException(sprintf('app.catalog.url_scheme: очікується flat, nested або root, отримано «%s».', $scheme));
+        if (!\in_array($scheme, ['flat', 'nested', 'root', 'slug'], true)) {
+            throw new \InvalidArgumentException(sprintf('app.catalog.url_scheme: очікується flat, nested, root або slug, отримано «%s».', $scheme));
         }
         // префікс блогу стає сегментом маршрутів (/%app.blog_prefix%/…): лише [a-z0-9-] і не інший фіксований розділ
         $blog = (string) $this->container->getParameter('app.blog_prefix');

@@ -47,3 +47,10 @@ liip_imagine:
             format: webp
             filters:
                 thumbnail: { size: [460, 307], mode: outbound }
+        # галерея сторінки app.pages (скани ліцензій, сертифікати — переважно А4 книжкою): вписати без обрізання (inset),
+        # клік веде на оригінал
+        page_gallery:
+            quality: 82
+            format: webp
+            filters:
+                thumbnail: { size: [600, 848], mode: inset }

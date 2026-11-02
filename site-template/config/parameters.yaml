@@ -2,8 +2,11 @@
 # Дефолти й повний перелік ключів — config/services.yaml і App\ServiceSite\SiteTheme::DEFAULTS у рушії.
 # Секрети (DATABASE_URL, MAILER_DSN, STUDIO_API_TOKEN, GOOGLE_CLIENT_*, PIPEDRIVE_API_TOKEN, BITRIX24_WEBHOOK_URL) — лише .env.local на сервері.
 parameters:
-    # URL каталогу: nested = /services/<категорія>/<послуга>/ + сторінки категорій; flat = /services/<послуга>/
+    # URL каталогу: nested = /services/<категорія>/<послуга>/ + сторінки категорій; flat = /services/<послуга>/;
+    # root = /<категорія>/<послуга>/; slug = /<послуга>/ і /<категорія>/ від кореня (docs/site-pack.md, «Схема URL»)
     app.catalog.url_scheme: nested
+    # сторінки від кореня (адмінка → «Сторінки»: вакансії, ліцензії): /<слаг>/, /<батько>/<слаг>/; false = вимкнено
+    app.pages: false
     # google-site-verification (html-тег GSC); порожньо = без тега
     app.site_verification: ''
     # Microsoft Clarity: id проєкту (тег у head поруч із GTM); порожньо = без тега

@@ -53,6 +53,17 @@ t "validate: app.calculator.* коректні — ок" 0 bin/site validate "$b
 printf 'parameters:\n    app.calculator.mode: table\n    app.calculator.path: { uk: "/kalkuliator", ru: "/kalkuliator/" }\n' > "$bad/config/parameters.yaml"
 t "validate: app.calculator.mode і .path хибні — відмова" '!0' bin/site validate "$bad"
 has "app.calculator.mode"; has "app.calculator.path.uk"; has "app.calculator.path.ru"
+printf 'parameters:\n    app.blog_prefix: novosti\n    app.catalog.url_scheme: slug\n    app.pages: true\n' > "$bad/config/parameters.yaml"
+t "validate: схема slug + app.pages — ок" 0 bin/site validate "$bad"
+printf 'parameters:\n    app.catalog.url_scheme: pages\n    app.pages: "yes"\n' > "$bad/config/parameters.yaml"
+t "validate: невідома схема і app.pages не bool — відмова" '!0' bin/site validate "$bad"
+has "flat|nested|root|slug"; has "app.pages — true|false"
+sed -e 's/^          extra: \[north-demo.example.org\]$/          extra: north-demo.example.org/' tests/site/sites.yaml > "$bad/sites-extra.yaml"
+t "validate: domains.extra не список — відмова" '!0' env SITES_FILE="$bad/sites-extra.yaml" bin/site validate
+has "domains.extra"
+sed -e 's/^          extra: \[north-demo.example.org\]$/          extra: [demo.example.com]/' tests/site/sites.yaml > "$bad/sites-extra2.yaml"
+t "validate: domains.extra = domains.site — відмова" '!0' env SITES_FILE="$bad/sites-extra2.yaml" bin/site validate
+has "без повторів"
 sed -e 's/^          proxy: edge$/          proxy: nginx/' tests/site/sites.yaml > "$bad/sites-proxy.yaml"
 t "validate: невідомий server.proxy — відмова" '!0' env SITES_FILE="$bad/sites-proxy.yaml" bin/site validate
 has "server.proxy"
@@ -106,6 +117,7 @@ has "тег"
 has "[dry-run] ssh client.example.com deploy"
 t "deploy demo (local, docker, --pack)" 0 bin/site deploy demo HEAD --pack tests/site/pack-demo
 has "[dry-run] smoke"; has "перемикання на"
+has "https://north-demo.example.org/sitemap.xml"; has "http_check demo.example.com north-demo.example.org"
 t "backup edgedemo (ssh, docker + proxy edge)" 0 bin/site backup edgedemo
 has "[dry-run] ssh edge.example.com backup"
 t "_remote.sh deploy: docker/edge (сухий прогін на сервері)" 0 env SITE_RUNTIME=docker SITE_PROXY=edge SITE_CRON=0 bash bin/site.d/_remote.sh deploy edgedemo /tmp/nonexistent/site-edgedemo t1

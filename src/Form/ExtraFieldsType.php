@@ -88,7 +88,7 @@ final class ExtraFieldsType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults(['data_class' => null, 'record_type' => 'item', 'required' => false]);
-        $resolver->setAllowedValues('record_type', ['item', 'post', 'category']);
+        $resolver->setAllowedValues('record_type', ['item', 'post', 'category', 'page']);
         // EasyAdmin бачить json-поле як колекцію і підмішує свої опції (allow_add,
         // entry_type тощо). Нам вони не потрібні, але без оголошення форма падає
         // з UndefinedOptionsException — сторінка редагування запису віддавала 500.

@@ -1,0 +1,83 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Сторінка app.pages (ServicePage, ServicePageController): /<slug>/ або /<батько>/<slug>/. Пак перекриває шаблон цілком
+   (templates/services/page/show.html.twig) або блоками через {% extends '@engine/services/page/show.html.twig' %};
+   різні сторінки — розгалуження за page.slugUk. #}
+{% extends 'services/base.html.twig' %}
+
+{% block title %}{{ page.loc('metaTitle', locale) ?? (page.loc('title', locale) ~ ' - ' ~ site.name) }}{% endblock %}
+
+{% block metaDescription %}{{ (page.loc('metaDesc', locale) ?? page.loc('lead', locale) ?? page.loc('desc', locale))|striptags|slice(0, 300) }}{% endblock %}
+{% block ogImage %}{{ page.imageName ? '/media/service_page/' ~ page.imageName : (theme.url('og_image') ?? theme.url('hero_image') ?? site.heroImagePath ?? '') }}{% endblock %}
+
+{% block schema %}
+    {% import 'services/partials/_schema.html.twig' as schema %}
+    {% set _crumbs = [{'name': 'common.breadcrumb_home'|trans({}, 'servicesite'), 'url': url('sv_home', {_locale: locale})}] %}
+    {% if page.parentPage %}
+        {% set _crumbs = _crumbs|merge([{'name': page.parentPage.loc('title', locale), 'url': url('sv_page', {path: page.parentPage.path(locale), _locale: locale})}]) %}
+    {% endif %}
+    {{ schema.crumbs(_crumbs|merge([{'name': page.loc('title', locale)}])) }}
+    {% set _ld = {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        'name': page.loc('title', locale),
+        'url': altUrls[locale],
+        'inLanguage': locale == 'ru' ? 'ru-UA' : 'uk-UA',
+        'isPartOf': {'@type': 'WebSite', 'url': app.request.schemeAndHttpHost ~ '/'},
+    } %}
+    {% if page.loc('lead', locale) %}{% set _ld = _ld|merge({'description': page.loc('lead', locale)|striptags}) %}{% endif %}
+    {% if page.imageName %}{% set _ld = _ld|merge({'primaryImageOfPage': app.request.schemeAndHttpHost ~ '/media/service_page/' ~ page.imageName}) %}{% endif %}
+    {{ schema.ld(_ld) }}
+{% endblock %}
+
+{% block body %}
+    <nav class="breadcrumbs">
+        <a href="{{ path('sv_home') }}">{{ 'common.breadcrumb_home'|trans({}, 'servicesite') }}</a> →
+        {% if page.parentPage %}<a href="{{ path('sv_page', {path: page.parentPage.path(locale)}) }}">{{ page.parentPage.loc('title', locale) }}</a> →{% endif %}
+        {{ page.loc('title', locale) }}
+    </nav>
+    <h1>{{ page.loc('title', locale) }}</h1>
+    {% if page.imageName %}
+    <img src="/media/service_page/{{ page.imageName }}" alt="{{ page.imageAlt ?? page.loc('title', locale) }}" width="1200" height="675" class="post-cover">
+    {% endif %}
+    {% if page.loc('lead', locale) %}<p class="lead">{{ page.loc('lead', locale)|striptags }}</p>{% endif %}
+    {% if page.loc('desc', locale) %}<div class="page-text">{{ page.loc('desc', locale)|raw }}</div>{% endif %}
+
+    {% set _specs = custom_fields(page, locale) %}
+    {% if _specs is not empty %}
+    <dl class="page-fields">
+        {% for f in _specs %}<dt>{{ f.label }}</dt><dd>{{ f.value }}</dd>{% endfor %}
+    </dl>
+    {% endif %}
+
+    {#- дочірні сторінки (вакансії під /vakansii/): список посилань із вступом #}
+    {% if children is not empty %}
+    <section class="block page-children">
+        <div class="grid">
+            {% for child in children %}
+            <div class="card">
+                <h2 class="card-name"><a href="{{ path('sv_page', {path: child.path(locale)}) }}">{{ child.loc('title', locale) }}</a></h2>
+                {% if child.loc('lead', locale) %}<p>{{ child.loc('lead', locale)|striptags }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {#- галерея: скани ліцензій і сертифікатів — без обрізання, клік відкриває оригінал #}
+    {% if page.images is not empty %}
+    <section class="block page-gallery">
+        <div class="works-grid">
+            {% for img in page.images %}{% if img.imageName %}
+            {% set _cap = img.loc('caption', locale) %}
+            <figure class="work-card">
+                <a href="/media/service_page/{{ img.imageName }}" target="_blank" rel="noopener">
+                    <img src="{{ asset('media/service_page/' ~ img.imageName)|imagine_filter('page_gallery') }}"
+                         alt="{{ _cap ?? page.loc('title', locale) }}" width="600" height="848" loading="lazy" decoding="async">
+                </a>
+                {% if _cap %}<figcaption>{{ _cap }}</figcaption>{% endif %}
+            </figure>
+            {% endif %}{% endfor %}
+        </div>
+    </section>
+    {% endif %}
+{% endblock %}

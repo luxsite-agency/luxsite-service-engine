@@ -86,10 +86,10 @@ class ServiceItem implements TimestampableInterface
     #[ORM\Column(nullable: true)]
     private ?int $legacyId = null;
 
-    #[ORM\Column(length: 64)]
+    #[ORM\Column(length: 160)]
     private string $slugUk = '';
 
-    #[ORM\Column(length: 64, nullable: true)]
+    #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
     #[ORM\Column(length: 255)]
