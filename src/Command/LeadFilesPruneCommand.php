@@ -16,8 +16,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Термін зберігання файлів заявок (персональні дані): файли, старші за app.lead_files.retention_days (або --days), видаляються
- * з диска й з БД, заявка лишається. Ще прибирає «сироти» — файли в теці без запису в БД (заявку видалив каскад БД, а не ORM),
+ * Термін зберігання файлів заявок і анкет (персональні дані): файли, старші за app.lead_files.retention_days (або --days),
+ * видаляються з диска й з БД, заявка чи анкета лишається. Ще прибирає «сироти» — файли в теці без запису в БД (заявку видалив каскад БД, а не ORM),
  * старші за добу. retention_days: 0 і без --days — лише сироти. Крон раз на добу (docs/site-ops.md).
  */
 #[AsCommand(name: 'app:lead-files:prune', description: 'Файли заявок: видалити старші за термін зберігання (app.lead_files.retention_days) і файли без запису')]
@@ -44,6 +44,7 @@ final class LeadFilesPruneCommand
                 ++$expired;
                 if (!$dryRun) {
                     $file->getLead()?->removeFile($file);
+                    $file->getApplication()?->removeFile($file);
                     $this->em->remove($file); // файл з диска — LeadFiles::postRemove
                 }
             }

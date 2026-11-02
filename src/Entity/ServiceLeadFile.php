@@ -11,7 +11,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Файл, доданий до заявки (фото чи PDF документа; app.lead_files). Лежить поза public/ — у приватній теці
+ * Файл, доданий до заявки (фото чи PDF документа; app.lead_files) або до анкети (app.applications.<форма>.files). Лежить поза public/ — у приватній теці
  * App\ServiceSite\LeadFiles (на проді shared/lead-files), віддається лише модератору адмінки (/admin/lead-file/<id>).
  * Видаляється разом із заявкою (ORM: файл на диску — LeadFiles::postRemove) і за терміном зберігання (app:lead-files:prune).
  */
@@ -28,6 +28,11 @@ class ServiceLeadFile
     #[ORM\ManyToOne(targetEntity: ServiceLead::class, inversedBy: 'files')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?ServiceLead $lead = null;
+
+    /** Анкета (app.applications), якщо файл доданий до неї, а не до заявки */
+    #[ORM\ManyToOne(targetEntity: ServiceApplication::class, inversedBy: 'files')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?ServiceApplication $application = null;
 
     /** Ім'я файлу, як його надіслала людина (для підпису й завантаження); у шлях на диску не потрапляє */
     #[ORM\Column(length: 255)]
@@ -64,6 +69,18 @@ class ServiceLeadFile
     public function setLead(?ServiceLead $lead): self
     {
         $this->lead = $lead;
+
+        return $this;
+    }
+
+    public function getApplication(): ?ServiceApplication
+    {
+        return $this->application;
+    }
+
+    public function setApplication(?ServiceApplication $application): self
+    {
+        $this->application = $application;
 
         return $this;
     }

@@ -101,6 +101,8 @@ lead.name: "Ім'я"
 lead.message: Що потрібно зробити?
 lead.submit: Надіслати
 lead.files: 'Фото чи PDF документа (необов’язково, до %count% файлів, до %mb% МБ кожен)'
+application.files: 'Файли (резюме, диплом — PDF, DOC, фото)'
+application.consent: 'Погоджуюся на обробку персональних даних'
 
 brand.tagline: ''
 brand.in: у

@@ -10,8 +10,16 @@
 {% block body %}
     {# конверсія: подія летить у dataLayer, звідти GTM робить ціль GA4. Перелік подій — app.lead_events паку
        (дефолт [generate_lead]; чужий контейнер може чекати form_submit) — усі з тими самими полями.
-       src=dup - повторна відправка того самого номера: конверцію вдруге не рахуємо -#}
-    {% if app.request.query.get('src') != 'dup' %}
+       src=dup - повторна відправка того самого номера: конверцію вдруге не рахуємо;
+       src=app-<форма> - анкета (app.applications): не заявка клієнта, лише подія application_submit, без конверсій -#}
+    {% set _src = app.request.query.get('src') ?? '' %}
+    {% set _app = _src starts with 'app-' and _src|length > 4 ? _src|slice(4, 32) : null %}
+    {% if _app %}
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({event: 'application_submit', form: {{ _app|json_encode|raw }}, city: {{ city.name('uk')|json_encode|raw }}, site_host: {{ app.request.host|json_encode|raw }}});
+    </script>
+    {% elseif _src != 'dup' %}
     <script>
         window.dataLayer = window.dataLayer || [];
         {% for _ev in lead_events %}
@@ -40,7 +48,9 @@
         </div>
         <h1 style="margin:.4rem 0">{{ 'thanks.title'|trans({}, 'servicesite') }}</h1>
         <p style="font-size:1.15rem;color:var(--muted-text);max-width:560px;margin:0 auto 1.6rem">
-            {{ 'thanks.text'|trans({}, 'servicesite') }}
+            {#- текст анкети — ключ thanks.text.<форма> паку; нема — загальний -#}
+            {% set _appText = _app ? ('thanks.text.' ~ _app)|trans({}, 'servicesite') : '' %}
+            {{ _app and _appText != 'thanks.text.' ~ _app ? _appText : 'thanks.text'|trans({}, 'servicesite') }}
             {% if city.phone %}<br>{{ 'thanks.urgent'|trans({}, 'servicesite') }}
             <a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}" style="font-weight:700;white-space:nowrap">{{ city.phone }}</a>{% endif %}
         </p>

@@ -1,0 +1,41 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{#- Анкета (app.applications.<form>): поля з конфігурації паку, POST /application/<form>, multipart, CSRF sv_application, пастка
+   website. Параметри include: form (ключ), lead_context (необов'язково — звідки анкета). Сторінка app.pages з шаблоном
+   form:<ключ> підключає це з templates/services/page/form/<ключ>.html.twig паку одним рядком. -#}
+{% set _af = application_form(form, locale) %}
+{% if _af %}
+<section class="block application-form" id="application">
+    {% for msg in app.flashes('application_error') %}
+    <p class="form-error" style="color:#b00020;font-weight:600">{{ msg }}</p>
+    {% endfor %}
+    <form method="post" action="{{ path('sv_application', {form: _af.key}) }}" enctype="multipart/form-data" data-application-form="{{ _af.key }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('sv_application') }}">
+        <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+        {% if lead_context|default('') %}<input type="hidden" name="context" value="{{ lead_context }}">{% endif %}
+        <p><label>{{ 'lead.name'|trans({}, 'servicesite') }}{% if 'name' in _af.required %} *{% endif %}<br>
+            <input type="text" name="name" maxlength="128"{% if 'name' in _af.required %} required{% endif %}></label></p>
+        <p><label>{{ 'lead.phone'|trans({}, 'servicesite') }}{% if 'phone' in _af.required %} *{% endif %}<br>
+            <input type="tel" name="phone" maxlength="32"{% if 'phone' in _af.required %} required{% endif %}></label></p>
+        <p><label>Email{% if 'email' in _af.required %} *{% endif %}<br>
+            <input type="email" name="email" maxlength="191"{% if 'email' in _af.required %} required{% endif %}></label></p>
+        {% for f in _af.fields %}
+        {% if f.type == 'list' %}
+        <fieldset><legend>{{ f.label }}{% if f.required %} *{% endif %}</legend>
+            {% for o in f.options %}<label><input type="checkbox" name="{{ f.name }}[]" value="{{ o.value }}"> {{ o.label }}</label> {% endfor %}
+        </fieldset>
+        {% elseif f.type == 'textarea' %}
+        <p><label>{{ f.label }}{% if f.required %} *{% endif %}<br><textarea name="{{ f.name }}" rows="4"{% if f.required %} required{% endif %}></textarea></label></p>
+        {% else %}
+        <p><label>{{ f.label }}{% if f.required %} *{% endif %}<br><input type="text" name="{{ f.name }}" maxlength="500"{% if f.required %} required{% endif %}></label></p>
+        {% endif %}
+        {% endfor %}
+        {% if _af.files %}
+        <p><label>{{ 'application.files'|trans({}, 'servicesite') }}<br><input type="file" name="files[]" multiple></label></p>
+        {% endif %}
+        {% if _af.consent %}
+        <p><label><input type="checkbox" name="consent" value="1" required> {{ 'application.consent'|trans({}, 'servicesite') }}</label></p>
+        {% endif %}
+        <button class="btn" type="submit">{{ 'lead.submit'|trans({}, 'servicesite') }}</button>
+    </form>
+</section>
+{% endif %}

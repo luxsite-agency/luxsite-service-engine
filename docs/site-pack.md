@@ -153,6 +153,45 @@ live (токен) > пак > рушій.
 зображення — sandbox-CSP). Видаляються разом із заявкою (адмінка); `retention_days` > 0 — ще й через N днів
 (`app:lead-files:prune`, крон раз на добу), заявка лишається. Без `enabled` поле `files[]` ігнорується — інші сайти без змін.
 
+### Анкети: форми не про послугу (`app.applications`, 02.11.2026)
+
+Анкета перекладача, резюме, заявка партнера — не заявка клієнта: окремий запис `ServiceApplication`, адмінка → «Анкети»
+(пункт є, лише коли в паку описана форма), **не йде в CRM** і **не рахується конверсією**. Лист — на «Адресу для анкет»
+(адмінка → Налаштування → Форми, `forms.applications_email`, одна чи кілька через кому), інакше на `email` форми з паку;
+без обох — лише в адмінці (попередження в лозі). Адреси заявок міста анкету не отримують.
+
+```yaml
+parameters:
+    app.applications:
+        translator:                                   # ключ форми: POST /application/translator
+            title: {uk: Анкета перекладача, ru: Анкета переводчика}
+            email: hr@example.com                     # запасна адреса
+            required: [name, phone, email, languages] # базові name/phone/email і свої поля; типово [name, phone]
+            consent: true                             # обов'язкова позначка згоди (поле consent)
+            files: {max_files: 5, max_file_mb: 10, max_total_mb: 25,
+                    mime: [application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, image/jpeg, image/png]}
+            fields:                                   # лише ці поля потрапляють в анкету, решта з запиту відкидається
+                city: {label: {uk: Місто, ru: Город}}                                  # type: text (типово), до 500
+                languages: {label: {uk: Мови, ru: Языки}}
+                work: {label: {uk: Види робіт, ru: Виды работ}, type: list,            # чекбокси work[]; лише значення з options
+                       options: {written: {uk: Письмовий, ru: Письменный}, oral: {uk: Усний, ru: Устный}}}
+                about: {label: {uk: Про себе, ru: О себе}, type: textarea}             # до 5000
+```
+
+- Захист — як у `/lead`: CSRF `sv_application`, пастка `website`, той самий ліміт частоти. Перевірки: обов'язкові поля,
+  телефон (9–15 цифр), email, згода; помилка — флеш `application_error` на сторінці форми.
+- `context` (звідки анкета) приймається завжди. Поля зберігаються з українськими підписами в порядку форми (`data`),
+  у шаблоні — `application.value('languages')`.
+- Файли — як у заявках (поза `public/`, `/admin/lead-file/<id>`, видалення з анкетою, `app:lead-files:prune`), ліміти —
+  `files` форми поверх `app.lead_files`; DOC/DOCX, які finfo бачить як OLE/zip, уточнюються розширенням.
+- Успіх — `/thank-you/?src=app-<ключ>`: подія `application_submit` (`form`, `city`, `site_host`), без `app.lead_events` і
+  без конверсій Ads/Pixel; текст — ключ `thanks.text.<ключ>` паку (нема — загальний `thanks.text`).
+- Шаблон: `services/partials/_application_form.html.twig` (параметри `form`, `lead_context`) — поля з конфігурації;
+  `application_form(ключ, locale)` у Twig — опис форми для своєї розмітки (поля `name`, `phone`, `email`, свої, `consent`,
+  `files[]`, `context`, дія `path('sv_application', {form: ключ})`, `enctype="multipart/form-data"`).
+  Сторінка `app.pages` з шаблоном `form:translator` — один рядок у паку, `templates/services/page/form/translator.html.twig`:
+  `{{ include('services/partials/_application_form.html.twig', {form: 'translator'}) }}`.
+
 ### Чистий HTML: без коментарів розробника (стандарт рушія з 25.10.2026)
 
 Вимога власника: у `view-source` сторінок сайтів не має бути коментарів розробника — ні HTML `<!-- -->`, ні CSS `/* */`, ні JS

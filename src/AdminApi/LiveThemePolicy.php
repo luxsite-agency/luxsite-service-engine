@@ -45,6 +45,8 @@ final class LiveThemePolicy
         // рушій сервісних сайтів
         // файли в заявці (app.lead_files): поле files[] і multipart у формах
         'lead_files',
+        // форми анкет (app.applications)
+        'application_form',
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
     ];
@@ -84,6 +86,8 @@ final class LiveThemePolicy
     public const array ATTRIBUTES = [
         // форма заявки з файлами (lead_files())
         'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
+        // форма анкети (application_form()): поля з конфігурації паку
+        'title', 'consent', 'files', 'required', 'fields', 'type', 'options',
         'a', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',
         'calcType', 'category', 'city', 'clarityId', 'colors', 'configured', 'consentBanner', 'consultation_cost', 'count', 'cssVars',
         'dirt_level', 'displayName', 'districts', 'email', 'experience', 'extraValue', 'filter', 'first', 'fleet', 'founder', 'get',

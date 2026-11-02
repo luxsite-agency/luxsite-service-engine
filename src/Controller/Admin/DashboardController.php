@@ -101,6 +101,11 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::section('Заявки')->setPermission('ROLE_MODERATOR');
         yield MenuItem::linkTo(ServiceLeadCrudController::class, 'Заявки', 'fa fa-phone-volume')
             ->setPermission('ROLE_MODERATOR');
+        // анкети (app.applications: анкета перекладача тощо) — пункт є, лише коли в паку описана хоч одна форма
+        if ($this->getParameter('app.applications') !== []) {
+            yield MenuItem::linkTo(ServiceApplicationCrudController::class, 'Анкети', 'fa fa-id-card')
+                ->setPermission('ROLE_MODERATOR');
+        }
 
         yield MenuItem::section('SEO')->setPermission('ROLE_MODERATOR');
         yield MenuItem::linkTo(ServiceRedirectCrudController::class, 'Редиректи', 'fa fa-share')
