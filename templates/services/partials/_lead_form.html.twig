@@ -3,9 +3,12 @@
    Honeypot-поле website приховане; CSRF-токен sv_lead.
    Параметри include: magnet (bool, головна — лід-магніт: абзац lead.subtitle під заголовком і месенджери міста з підписом
    lead.messengers_hint під формою; порожні ключі = елементів нема), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
-   у dataLayer, щоб у GA4 було видно, звідки заявка). Під заголовком будь-якої форми — умова лише для міста (_city_note). -#}
+   у dataLayer, щоб у GA4 було видно, звідки заявка), lead_service і lead_context (необов'язкові: назва послуги з кнопки й звідки
+   заявка — окремими полями заявки). Поле файлів і multipart — лише з app.lead_files.enabled (lead_files()).
+   Під заголовком будь-якої форми — умова лише для міста (_city_note). -#}
 {% set magnet = magnet|default(false) %}
 {% set lead_type = lead_type|default('form') %}
+{% set _lf = lead_files() %}
 <section class="block lead-form{% if magnet %} lead-magnet{% endif %}" id="lead">
     {# не h2: заголовок форми не входить у смислову структуру сторінки (SEO) -#}
     <p class="form-title">{{ 'lead.title'|trans({}, 'servicesite') }}</p>
@@ -17,13 +20,20 @@
     {% for msg in app.flashes('lead_error') %}
     <p style="color:#b00020;font-weight:600">{{ msg }}</p>
     {% endfor %}
-    <form method="post" action="{{ path('sv_lead') }}" data-lead-form data-lead-type="{{ lead_type }}" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-start">
+    <form method="post" action="{{ path('sv_lead') }}"{% if _lf.enabled %} enctype="multipart/form-data"{% endif %} data-lead-form data-lead-type="{{ lead_type }}" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-start">
         <input type="hidden" name="_token" value="{{ csrf_token('sv_lead') }}">
         <input type="hidden" name="lead_type" value="{{ lead_type }}">
+        {% if lead_service|default('') %}<input type="hidden" name="service" value="{{ lead_service }}">{% endif %}
+        {% if lead_context|default('') %}<input type="hidden" name="context" value="{{ lead_context }}">{% endif %}
         <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
         <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;min-width:200px" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
         <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;min-width:180px" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
         <input type="text" name="message" placeholder="{{ 'lead.message'|trans({}, 'servicesite') }}" style="padding:.55rem;border:1px solid #ccc;border-radius:6px;flex:1;min-width:220px" aria-label="{{ 'lead.message'|trans({}, 'servicesite') }}">
+        {% if _lf.enabled %}
+        <label class="lead-files" style="flex-basis:100%">{{ 'lead.files'|trans({'%count%': _lf.max_files, '%mb%': _lf.max_file_mb}, 'servicesite') }}
+            <input type="file" name="files[]" multiple accept="{{ _lf.accept }}">
+        </label>
+        {% endif %}
         <button class="btn" type="submit">{{ 'lead.submit'|trans({}, 'servicesite') }}</button>
     </form>
     {% if magnet and city.hasMessengers %}{% set _hint = 'lead.messengers_hint'|trans({}, 'servicesite') %}

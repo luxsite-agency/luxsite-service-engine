@@ -184,7 +184,7 @@ curl -sS -H "$A" -X DELETE "$API/items/42/image"
 без `content:write` — 403. Кожна операція — у `var/log/security_audit.log` (`admin_api.image.put|delete`: хто, токен,
 вид, id, джерело, MIME, розмір, яке ім'я замінено). Кеш варіантів Liip старого файлу прибирається (`VichLiipCacheSubscriber`,
 і для адмінки). Межа 10 МБ діє з образів рушія цієї версії: `docker/php/*.ini` задають `upload_max_filesize = 10M`,
-`post_max_size = 16M` (до того PHP-дефолт 2M/8M обмежував multipart в адмінці й API); nginx образів — `client_max_body_size 32m`.
+`post_max_size = 32M` (з 02.11.2026, заявки з файлами до 25 МБ; до того 16M, а PHP-дефолт 2M/8M обмежував multipart в адмінці й API); nginx образів — `client_max_body_size 32m`.
 На сторонньому хостингу перевірити ті самі значення. Multipart понад `post_max_size` → 413 з поясненням (JSON з base64
 цей ліміт не зачіпає).
 

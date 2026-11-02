@@ -43,6 +43,8 @@ final class LiveThemePolicy
         'absolute_url', 'asset', 'block', 'constant', 'csrf_token', 'cycle', 'date', 'html_classes', 'include', 'max', 'min', 'parent',
         'path', 'random', 'range', 'relative_path', 'url',
         // рушій сервісних сайтів
+        // файли в заявці (app.lead_files): поле files[] і multipart у формах
+        'lead_files',
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',
@@ -81,6 +83,8 @@ final class LiveThemePolicy
      * Масиви з таким ключем — x['token'], x['parent'] (ARRAY_CALL на об'єкті без ArrayAccess методів не викликає).
      */
     public const array ATTRIBUTES = [
+        // форма заявки з файлами (lead_files())
+        'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
         'a', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',
         'calcType', 'category', 'city', 'clarityId', 'colors', 'configured', 'consentBanner', 'consultation_cost', 'count', 'cssVars',
         'dirt_level', 'displayName', 'districts', 'email', 'experience', 'extraValue', 'filter', 'first', 'fleet', 'founder', 'get',

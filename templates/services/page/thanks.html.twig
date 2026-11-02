@@ -19,7 +19,8 @@
             event: {{ _ev|json_encode|raw }},
             lead_type: {{ (({calc: 'calculator', magnet: 'magnet'})[app.request.query.get('src')] ?? 'form')|json_encode|raw }},
             city: {{ city.name('uk')|json_encode|raw }},
-            site_host: {{ app.request.host|json_encode|raw }}
+            {% for _k, _v in leadMeta|default({}) %}lead_{{ _k }}: {{ _v|json_encode|raw }},
+            {% endfor %}site_host: {{ app.request.host|json_encode|raw }}
         });
         {% endfor %}
     </script>

@@ -135,6 +135,18 @@ parameters:
     app.catalog.faq_city_fallback: true
     # Юридичні сторінки (privacy, terms) на неапексних містах — noindex, follow і поза sitemap: текст однаковий на всіх хостах
     app.legal_noindex_cities: false
+    # Файли в заявці (/lead, поле files[]): фото чи PDF документа. enabled: false — поля нема, файли ігноруються (як до
+    # 02.11.2026). Перевірка за вмістом; зберігання поза public/ (app.lead_files_dir), доступ — лише з адмінки; файли
+    # видаляються разом із заявкою, а з retention_days > 0 — ще й через N днів (app:lead-files:prune, крон).
+    app.lead_files:
+        enabled: false
+        max_files: 5
+        max_file_mb: 10
+        max_total_mb: 25
+        mime: [image/jpeg, image/png, image/webp, image/gif, image/heic, image/heif, application/pdf]
+        retention_days: 0
+    # Приватна тека файлів заявок: на проді bin/site deploy веде var/lead-files релізу в shared/lead-files
+    app.lead_files_dir: '%kernel.project_dir%/var/lead-files'
     # /districts/: групи (group_uk) з цього списку — «Передмістя» (акордеон як є); решта груп — «Райони %cityGen%»:
     # акордеон адмінрайонів із чипами місцевостей, назва групи веде на її primary-сторінку (якщо є). Порожньо = стара
     # поведінка (картки лише primary-районів + усі групи без primary у «передмісті»).
