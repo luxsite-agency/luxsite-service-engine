@@ -93,6 +93,7 @@ lead.phone: Телефон
 lead.name: Имя
 lead.message: Что нужно сделать?
 lead.submit: Отправить
+lead.files: 'Фото или PDF документа (необязательно, до %count% файлов, до %mb% МБ каждый)'
 
 brand.tagline: ''
 brand.in: в

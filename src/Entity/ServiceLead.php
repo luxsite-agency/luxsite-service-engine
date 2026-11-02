@@ -10,6 +10,8 @@ namespace App\Entity;
 use App\Doctrine\TimestampableInterface;
 use App\Doctrine\TimestampsTrait;
 use App\Repository\ServiceLeadRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -46,6 +48,23 @@ class ServiceLead implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
+
+    /** Послуга з кнопки «Замовити» (поле service форми) — окремо від повідомлення, у листі, адмінці, CRM і dataLayer */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $service = null;
+
+    /** Звідки заявка (поле context форми: «шапка», «картка ціни», «доставка»…) */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $context = null;
+
+    /**
+     * Файли заявки (app.lead_files): видаляються разом із нею.
+     *
+     * @var Collection<int, ServiceLeadFile>
+     */
+    #[ORM\OneToMany(targetEntity: ServiceLeadFile::class, mappedBy: 'lead', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $files;
 
     /** Сторінка, з якої відправлено форму */
     #[ORM\Column(length: 512, nullable: true)]
@@ -101,6 +120,64 @@ class ServiceLead implements TimestampableInterface
     /** Остання помилка відправки - видно в адмінці, чекає на app:crm:sync. */
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $crmError = null;
+
+    public function __construct()
+    {
+        $this->files = new ArrayCollection();
+    }
+
+    public function getService(): ?string
+    {
+        return $this->service;
+    }
+
+    public function setService(?string $service): self
+    {
+        $this->service = $service;
+
+        return $this;
+    }
+
+    public function getContext(): ?string
+    {
+        return $this->context;
+    }
+
+    public function setContext(?string $context): self
+    {
+        $this->context = $context;
+
+        return $this;
+    }
+
+    /** @return Collection<int, ServiceLeadFile> */
+    public function getFiles(): Collection
+    {
+        return $this->files;
+    }
+
+    /** Кількість файлів — для колонки списку заявок в адмінці */
+    public function getFilesCount(): int
+    {
+        return $this->files->count();
+    }
+
+    public function addFile(ServiceLeadFile $file): self
+    {
+        if (!$this->files->contains($file)) {
+            $this->files->add($file);
+            $file->setLead($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFile(ServiceLeadFile $file): self
+    {
+        $this->files->removeElement($file);
+
+        return $this;
+    }
 
     public function getLegacyId(): ?int
     {

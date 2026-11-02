@@ -97,7 +97,8 @@ live (токен) > пак > рушій.
 |---|---|---|
 | `app.catalog.url_scheme` | `flat` | `flat` = `/services/<послуга>/`; `nested` = `/services/<категорія>/<послуга>/` + сторінки категорій; `root` = `/<категорія>/<послуга>/` від кореня (як у сайтів з Joomla; фіксовані сторінки мають пріоритет, невідомий `/<x>/` — legacy-редирект або 404); `slug` = послуга `/<послуга>/` і категорія `/<категорія>/` від кореня одним сегментом (старі CMS, де кожна сторінка жила на `/<слаг>/`; невідомий `/<x>/` — legacy-редирект або 404, не категорія; див. «Адреси від кореня» нижче). Послуга під чужою категорією — 301 на справжню адресу (nested/root). Маршрути — `config/routes/catalog/<scheme>.yaml`, вибір у `Kernel::configureRoutes`. У коді посилання на послугу — лише `service_path(item, locale)` (Twig) / `CatalogUrls::itemParams()` (PHP). |
 | `app.site_verification` | `''` | `<meta name="google-site-verification">` у `<head>`. |
-| `app.lead_events` | `[generate_lead]` | події dataLayer на `/thanks` після заявки (усі з `lead_type`, `city`, `site_host`); чужий GTM з ціллю на `form_submit` — `[generate_lead, form_submit]`. |
+| `app.lead_events` | `[generate_lead]` | події dataLayer на `/thanks` після заявки (усі з `lead_type`, `city`, `site_host`; з полями форми `service`/`context` — ще `lead_service`, `lead_context`); чужий GTM з ціллю на `form_submit` — `[generate_lead, form_submit]`. |
+| `app.lead_files` | `{enabled: false, max_files: 5, max_file_mb: 10, max_total_mb: 25, mime: [image/jpeg, image/png, image/webp, image/gif, image/heic, image/heif, application/pdf], retention_days: 0}` | Файли в заявці — див. «Форма заявки: послуга, контекст, файли» нижче. Пак задає лише змінені ключі (`{enabled: true}`). |
 | `app.analytics_defer` | `false` | `true` = GTM/gtag і Clarity стартують після `window.load` + 800 мс або на першу взаємодію (прапорець проти подвійного старту; пасивні візити рахуються таймером). Знімає ~310 КБ з ланцюжка LCP (PSI mobile 69–75 → 89–94). Для нових паків `site-template` ставить `true`. Після вмикання на проді — `/analytics-healthcheck` (page_view без взаємодії через 10 с). |
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
 | `app.clarity_id` | `''` | id проєкту Microsoft Clarity — тег у `<head>` поруч із GTM на всіх хостах сайту (коли Clarity не в GTM). |
@@ -131,6 +132,27 @@ live (токен) > пак > рушій.
 | `app.calculator.path` | `{}` | Адреса калькулятора `{uk: '/…/', ru: '/ru/…/'}`. Порожньо = типова за режимом: площа — `/calculator-cleaning/`, прайс — `/calculator/` (інша типова → 301). Задана паком — статична, обидві типові адреси → 301 на неї з переносом query; перший сегмент резервується серед слагів категорій (схема `root`). |
 | `app.html` | `{strip_comments: true}` | Чистий HTML (стандарт рушія з 25.10.2026, див. «Чистий HTML» нижче): з відповідей на хостах сайтів прибираються коментарі розробника — HTML, CSS у `<style>`, JS в інлайн-скриптах; статика теми в релізі чиститься при deploy. `strip_comments: false` — лишити коментарі (пак, якому вони потрібні для чужого інструменту). |
 | `env(PIPEDRIVE_OWNER_ID)` | `'0'` | id власника лідів (не секрет). |
+
+### Форма заявки: послуга, контекст, файли (02.11.2026)
+
+`POST /lead` крім `phone`, `name`, `message` приймає (усе необов'язкове, CSRF `sv_lead`, пастка `website` і ліміт частоти —
+як були):
+
+| Поле | Що | Де видно |
+|---|---|---|
+| `service` | назва послуги з кнопки «Замовити» (до 255, без тегів) | колонка заявки «Послуга», лист, CRM (Bitrix24 — поле `service` з пріоритетом над послугою за адресою сторінки; Pipedrive — примітка), dataLayer `/thank-you/` — `lead_service` |
+| `context` | звідки заявка: блок чи форма сторінки («шапка», «картка ціни»…) | «Звідки» в заявці, листі, CRM; dataLayer — `lead_context` |
+| `files[]` | лише з `app.lead_files.enabled: true`: до `max_files` файлів, кожен до `max_file_mb`, разом до `max_total_mb`, тип **за вмістом** із `mime` (типово фото й PDF; ще можна `application/msword`, `…wordprocessingml.document`) | «Файли» в перегляді заявки (адмінка → Заявки → 👁), у листі й CRM — посилання `https://<ADMIN_HOST>/admin/lead-file/<id>` (відкривається лише після входу модератора) |
+
+Форма рушія (`partials/_lead_form.html.twig`) з увімкненими файлами сама стає `multipart/form-data` і показує поле
+(`lead.files` — підпис з `%count%`, `%mb%`); `service`/`context` — параметри include `lead_service`, `lead_context`.
+Свої форми паку: `enctype="multipart/form-data"`, `<input type="file" name="files[]" multiple accept="{{ lead_files().accept }}">`
+лише коли `lead_files().enabled`. Невдалий файл — флеш `lead_error` з причиною, заявка не створюється (людина повторює без нього).
+
+**Зберігання:** поза `public/` — `app.lead_files_dir` (типово `var/lead-files`, на проді `shared/lead-files`, див. site-ops),
+ім'я на диску випадкове, оригінальне — лише в БД. Віддає `/admin/lead-file/<id>` (модератор, хост адмінки; nosniff,
+зображення — sandbox-CSP). Видаляються разом із заявкою (адмінка); `retention_days` > 0 — ще й через N днів
+(`app:lead-files:prune`, крон раз на добу), заявка лишається. Без `enabled` поле `files[]` ігнорується — інші сайти без змін.
 
 ### Чистий HTML: без коментарів розробника (стандарт рушія з 25.10.2026)
 

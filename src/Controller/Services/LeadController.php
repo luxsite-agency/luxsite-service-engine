@@ -7,7 +7,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Controller\Api\Admin\ImageApiController;
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadFiles;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
@@ -21,7 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Заявка з форми (телефон + ім'я + повідомлення). Виправляє типовий борг
+ * Заявка з форми (телефон + ім'я + повідомлення; необов'язково — послуга service, контекст context і файли files[] з
+ * app.lead_files, форма multipart/form-data). Виправляє типовий борг
  * Joomla-сайтів: персистенція в БД, маршрутизація на email МІСТА (не хардкод),
  * rate limit + honeypot + CSRF. Мейл шле LeadNotifier (best effort: заявка
  * вже в БД, падіння SMTP її не втрачає).
@@ -40,6 +43,7 @@ final class LeadController extends AbstractController
         private readonly LeadAttribution $attribution,
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadFiles $files,
     ) {
     }
 
@@ -57,6 +61,14 @@ final class LeadController extends AbstractController
         // /lead нелокалізований, тож локаль беремо зі сторінки-джерела, не з request
         $locale = str_starts_with((string) parse_url($back, PHP_URL_PATH), '/ru/') ? 'ru' : 'uk';
 
+        // тіло понад post_max_size PHP мовчки викидає разом із $_POST (і токеном) — кажемо про розмір, а не «сесія застаріла»
+        $max = ImageApiController::iniBytes((string) ini_get('post_max_size'));
+        if ($request->request->count() === 0 && $max > 0 && (int) $request->server->get('CONTENT_LENGTH', 0) > $max) {
+            $this->addFlash('lead_error', $locale === 'ru' ? 'Файлы слишком большие, уменьшите их или отправьте без них.' : 'Файли завеликі, зменште їх або надішліть без них.');
+
+            return $this->redirect($back);
+        }
+
         if (!$this->isCsrfTokenValid('sv_lead', (string) $request->request->get('_token'))) {
             $this->addFlash('lead_error', 'Сесія застаріла, спробуйте ще раз.');
 
@@ -71,11 +83,22 @@ final class LeadController extends AbstractController
         $phone = trim((string) $request->request->get('phone', ''));
         $name = trim((string) $request->request->get('name', ''));
         $message = trim((string) $request->request->get('message', ''));
+        // послуга з кнопки «Замовити» і контекст форми — короткі рядки без розмітки
+        $service = self::line($request->request->get('service', ''));
+        $context = self::line($request->request->get('context', ''));
 
         $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15
             || mb_strlen($name) > 128 || mb_strlen($message) > 3000) {
             $this->addFlash('lead_error', 'Перевірте номер телефону.');
+
+            return $this->redirect($back);
+        }
+
+        // файли: лише з app.lead_files.enabled; без нього поле ігнорується, як до файлів
+        $uploads = $this->files->enabled() ? LeadFiles::fromRequest($request->files->get('files')) : [];
+        if (($fileError = $this->files->validate($uploads, $locale)) !== null) {
+            $this->addFlash('lead_error', $fileError);
 
             return $this->redirect($back);
         }
@@ -99,11 +122,28 @@ final class LeadController extends AbstractController
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
             ->setMessage($message !== '' ? $message : null)
+            ->setService($service)
+            ->setContext($context)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);
+        try {
+            $stored = $this->files->store($uploads);
+        } catch (\Throwable $e) {
+            $this->addFlash('lead_error', $locale === 'ru' ? 'Не удалось сохранить файлы, попробуйте ещё раз или отправьте без них.' : 'Не вдалося зберегти файли, спробуйте ще раз або надішліть без них.');
+
+            return $this->redirect($back);
+        }
+        foreach ($stored as $file) {
+            $lead->addFile($file);
+        }
         $this->em->persist($lead);
-        $this->em->flush();
+        try {
+            $this->em->flush();
+        } catch (\Throwable $e) {
+            $this->files->discard($stored);
+            throw $e;
+        }
 
         $this->notifier->notify($lead, 'Заявка', $request->getHost());
         // CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
@@ -112,8 +152,20 @@ final class LeadController extends AbstractController
         // успіх веде на сенкю-сторінку (ціль конверсії), помилки лишаються флешами на формі;
         // src = тип форми (form | magnet — лід-магніт головної) → lead_type у dataLayer, щоб GA4 бачив, звідки заявка
         $type = (string) $request->request->get('lead_type', 'form');
+        // послуга й контекст — у dataLayer сторінки подяки (без телефону й імені: персональні дані туди не йдуть)
+        if ($service !== null || $context !== null) {
+            $this->addFlash('lead_meta', ['service' => $service, 'context' => $context]);
+        }
 
         return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => \in_array($type, ['form', 'magnet'], true) ? $type : 'form']);
+    }
+
+    /** Короткий рядок з форми: без тегів і переносів, до 255; порожній — null */
+    private static function line(mixed $value): ?string
+    {
+        $value = trim((string) preg_replace('/\s+/u', ' ', strip_tags(\is_scalar($value) ? (string) $value : '')));
+
+        return $value !== '' ? mb_substr($value, 0, 255) : null;
     }
 
     /**

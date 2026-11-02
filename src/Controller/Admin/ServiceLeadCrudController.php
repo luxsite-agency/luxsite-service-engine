@@ -15,7 +15,9 @@ use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -49,7 +51,9 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     public function configureActions(Actions $actions): Actions
     {
+        // перегляд заявки (detail) — там файли посиланнями; редагування лишається для позначки «Оброблено»
         return $this->addCancelAction($actions)
+            ->add(Crud::PAGE_INDEX, Action::DETAIL)
             ->disable(Action::NEW);
     }
 
@@ -73,6 +77,15 @@ class ServiceLeadCrudController extends AbstractCrudController
                 'Текст із форми або розрахунок калькулятора: тип, площа, коефіцієнти, опції, сума. Суму '
                 . 'рахує сервер, з форми вона не приймається.'
             );
+        yield TextField::new('service', 'Послуга')
+            ->setHelp('Послуга з кнопки «Замовити», з якої надіслали форму (поле service). Порожньо — форма без послуги.');
+        yield TextField::new('context', 'Звідки')->hideOnIndex()
+            ->setHelp('Яка саме форма чи блок сторінки (поле context): шапка, картка ціни, доставка…');
+        yield IntegerField::new('filesCount', 'Файли')->onlyOnIndex()
+            ->setHelp('Скільки файлів людина додала до заявки (app.lead_files).');
+        yield Field::new('files', 'Файли')->onlyOnDetail()->setTemplatePath('admin/lead/field/files.html.twig')
+            ->setHelp('Фото чи PDF, які людина додала до заявки (app.lead_files). Лежать поза сайтом, відкриваються лише після входу; '
+                . 'видаляються разом із заявкою.');
         yield TextField::new('pageUrl', 'Сторінка')->hideOnIndex()
             ->setHelp('Сторінка, з якої надіслали заявку. Показує, що саме людина читала перед зверненням.');
         yield TextField::new('locale', 'Мова')->hideOnIndex()

@@ -212,6 +212,10 @@ final class PipedriveCrm extends AbstractLeadCrm
         if ($lead->getPageUrl() !== null) {
             $rows[] = 'Сторінка: https://' . $host . $lead->getPageUrl();
         }
+        if ($lead->getService() !== null) {
+            $rows[] = 'Послуга: ' . $lead->getService();
+        }
+        array_push($rows, ...$this->detailLines($lead));
         if (($message = trim((string) $lead->getMessage())) !== '') {
             $rows[] = '';
             $rows[] = $message;

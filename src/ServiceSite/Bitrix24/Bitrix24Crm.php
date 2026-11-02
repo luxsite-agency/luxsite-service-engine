@@ -246,7 +246,8 @@ final class Bitrix24Crm extends AbstractLeadCrm
             str_starts_with($page, 'http://'), str_starts_with($page, 'https://') => $page,
             default => 'https://' . $host . '/' . ltrim($page, '/'),
         };
-        $service = $this->serviceTitle($lead);
+        // послуга з форми (кнопка «Замовити» з назвою) точніша за сторінку, з якої її надіслали
+        $service = $lead->getService() ?? $this->serviceTitle($lead);
         $message = trim((string) $lead->getMessage());
 
         $comments = array_filter([
@@ -256,6 +257,7 @@ final class Bitrix24Crm extends AbstractLeadCrm
             'Джерело: ' . LeadAttribution::summary($lead),
             $lead->getClickId() !== null ? 'gclid: ' . $lead->getClickId() : null,
         ]);
+        array_push($comments, ...$this->detailLines($lead));
         if ($message !== '') {
             $comments[] = '';
             $comments[] = $message;

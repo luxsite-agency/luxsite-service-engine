@@ -27,6 +27,7 @@ final class LeadNotifier
         // Gmail SMTP вимагає from = автентифікований акаунт; порожньо = noreply@апекс бренду
         #[Autowire(env: 'MAIL_FROM')]
         private readonly string $mailFrom = '',
+        private readonly ?LeadFiles $files = null,
     ) {
     }
 
@@ -60,10 +61,12 @@ final class LeadNotifier
                 ->to(...$recipients)
                 ->subject(sprintf('%s з %s: %s (%s)', $subjectPrefix, $city->getHost(), $subjectPhone, $city->getNameNomUk()))
                 ->text(sprintf(
-                    "Телефон: %s\nІм'я: %s\nПовідомлення:\n%s\n\nДжерело: %s\nСторінка: %s\nМісто: %s",
+                    "Телефон: %s\nІм'я: %s\n%sПовідомлення:\n%s\n%s\nДжерело: %s\nСторінка: %s\nМісто: %s",
                     $lead->getPhone(),
                     $lead->getName() ?? '-',
+                    $this->extraLines($lead),
                     $lead->getMessage() ?? '-',
+                    $this->fileLines($lead),
                     LeadAttribution::summary($lead),
                     self::pageLink($lead, $city->getHost()),
                     $city->getHost(),
@@ -72,6 +75,28 @@ final class LeadNotifier
             // заявка вже в БД (черга в адмінці) - мейл лише дублює
             $this->logger->error('Не вдалося надіслати мейл заявки: ' . $e->getMessage(), ['lead_id' => $lead->getId()]);
         }
+    }
+
+    /** Послуга й контекст форми (рядки є, лише коли поля заповнені — листи без них не змінюються) */
+    private function extraLines(ServiceLead $lead): string
+    {
+        $rows = '';
+        if ($lead->getService() !== null) {
+            $rows .= 'Послуга: ' . $lead->getService() . "\n";
+        }
+        if ($lead->getContext() !== null) {
+            $rows .= 'Звідки: ' . $lead->getContext() . "\n";
+        }
+
+        return $rows;
+    }
+
+    /** Файли заявки — посиланнями на адмінку (самі файли листом не шлемо: персональні дані в пошті) */
+    private function fileLines(ServiceLead $lead): string
+    {
+        $rows = $this->files?->lines($lead->getFiles()) ?? [];
+
+        return $rows === [] ? '' : "\nФайли (відкриваються після входу в адмінку):\n" . implode("\n", $rows) . "\n";
     }
 
     /** Повне посилання на сторінку заявки: у пошті відносний шлях некликабельний. */
