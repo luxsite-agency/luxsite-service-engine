@@ -103,6 +103,10 @@ lead.submit: Надіслати
 lead.files: 'Фото чи PDF документа (необов’язково, до %count% файлів, до %mb% МБ кожен)'
 application.files: 'Файли (резюме, диплом — PDF, DOC, фото)'
 application.consent: 'Погоджуюся на обробку персональних даних'
+# поля запису (app.lead_fields) і згода на обробку ПД (app.lead_consent; {policy} — посилання на політику)
+lead.select_placeholder: '- оберіть -'
+lead.consent: 'Погоджуюсь на обробку персональних даних відповідно до {policy}'
+lead.consent_policy: політики конфіденційності
 
 brand.tagline: ''
 brand.in: у

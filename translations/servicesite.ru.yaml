@@ -96,6 +96,9 @@ lead.submit: Отправить
 lead.files: 'Фото или PDF документа (необязательно, до %count% файлов, до %mb% МБ каждый)'
 application.files: 'Файлы (резюме, диплом — PDF, DOC, фото)'
 application.consent: 'Согласен на обработку персональных данных'
+lead.select_placeholder: '- выберите -'
+lead.consent: 'Соглашаюсь на обработку персональных данных в соответствии с {policy}'
+lead.consent_policy: политикой конфиденциальности
 
 brand.tagline: ''
 brand.in: в

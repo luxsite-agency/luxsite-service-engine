@@ -1,0 +1,14 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Обов'язковий чекбокс згоди на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не виводить.
+   Вставляється всередину будь-якої форми заявки (sv_lead, sv_calc_lead): сервер без consent=1 заявку не приймає.
+   Текст і посилання — з паку; порожні — переклади lead.consent («… {policy}») / lead.consent_policy і сторінка sv_privacy. #}
+{% set _cl = locale|default(app.request.locale) == 'ru' ? 'ru' : 'uk' %}
+{% set _c = lead_consent(_cl) %}
+{% if _c is not null %}
+{% set _text = _c.text ?: 'lead.consent'|trans({}, 'servicesite') %}
+{% set _parts = _text|split('{policy}', 2) %}
+<label class="lead-consent">
+    <input type="checkbox" name="consent" value="1" required>
+    <span>{{ _parts[0] }}{% if _parts|length == 1 %} {% endif %}<a href="{{ _c.policy_url ?: path('sv_privacy', {_locale: _cl}) }}" target="_blank" rel="noopener">{{ _c.policy_text ?: 'lead.consent_policy'|trans({}, 'servicesite') }}</a>{{ _parts[1]|default('') }}</span>
+</label>
+{% endif %}

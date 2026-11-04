@@ -10,6 +10,8 @@ namespace App\Controller\Services;
 use App\Controller\Api\Admin\ImageApiController;
 use App\ServiceSite\LeadAttribution;
 use App\ServiceSite\LeadFiles;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
@@ -44,6 +46,8 @@ final class LeadController extends AbstractController
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
         private readonly LeadFiles $files,
+        private readonly LeadFields $fields,
+        private readonly LeadConsent $consent,
     ) {
     }
 
@@ -83,9 +87,6 @@ final class LeadController extends AbstractController
         $phone = trim((string) $request->request->get('phone', ''));
         $name = trim((string) $request->request->get('name', ''));
         $message = trim((string) $request->request->get('message', ''));
-        // послуга з кнопки «Замовити» і контекст форми — короткі рядки без розмітки
-        $service = self::line($request->request->get('service', ''));
-        $context = self::line($request->request->get('context', ''));
 
         $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15
@@ -94,6 +95,36 @@ final class LeadController extends AbstractController
 
             return $this->redirect($back);
         }
+
+        // додаткові поля форми (app.lead_fields паку: запис на прийом, запит на розрахунок); без них — нічого не змінюється.
+        // Коротка форма без полів (лише телефон — «передзвоніть мені») details[…] не шле: поля паку їй не потрібні, інакше
+        // обов'язкові поля відхиляли б кожну таку заявку. Форма з полями шле details і перевіряється повністю.
+        $details = [];
+        if ($this->fields->enabled() && $request->request->has('details')) {
+            [$details, $bad] = $this->fields->validate($request->request->all()['details'] ?? [], $city);
+            if ($bad !== []) {
+                $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
+
+                return $this->redirect($back);
+            }
+            $summary = $this->fields->summary($details);
+            if ($summary !== '') {
+                $message = trim($message . "\n\n" . $summary);
+            }
+        }
+
+        // згода на обробку персональних даних (app.lead_consent паку); вимкнено — нічого не змінюється
+        if (!$this->consent->accepted($request->request->get('consent'))) {
+            $this->addFlash('lead_error', $locale === 'ru'
+                ? 'Подтвердите согласие на обработку персональных данных.'
+                : 'Підтвердьте згоду на обробку персональних даних.');
+
+            return $this->redirect($back);
+        }
+
+        // послуга з кнопки «Замовити» і контекст форми — короткі рядки без розмітки
+        $service = self::line($request->request->get('service', ''));
+        $context = self::line($request->request->get('context', ''));
 
         // файли: лише з app.lead_files.enabled; без нього поле ігнорується, як до файлів
         $uploads = $this->files->enabled() ? LeadFiles::fromRequest($request->files->get('files')) : [];
@@ -121,7 +152,9 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
-            ->setMessage($message !== '' ? $message : null)
+            ->setMessage($message !== '' ? mb_substr($message, 0, 4000) : null)
+            ->setDetails($details)
+            ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setService($service)
             ->setContext($context)
             ->setPageUrl(mb_substr($back, 0, 512))
