@@ -16,6 +16,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Table(name: 'service_lead_assignment')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_assignment_lead_partner', columns: ['lead_id', 'partner_id'])]
 #[ORM\Index(columns: ['partner_id', 'assigned_at'], name: 'idx_svc_assignment_partner_assigned')]
+#[ORM\Index(columns: ['next_attempt_at'], name: 'idx_svc_assignment_next_attempt')]
 class ServiceLeadAssignment
 {
     public const string STATUS_NEW = 'new';
@@ -45,8 +46,21 @@ class ServiceLeadAssignment
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $assignedAt;
 
+    /** Час успішної доставки email партнеру. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $deliveredAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $webhookDeliveredAt = null;
+
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $attempts = 0;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $nextAttemptAt = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $lastError = null;
 
     #[ORM\Column(length: 16, options: ['default' => 'new'])]
     #[Assert\Choice(choices: self::STATUSES)]
@@ -130,6 +144,73 @@ class ServiceLeadAssignment
         $this->deliveredAt = $deliveredAt;
 
         return $this;
+    }
+
+    public function getWebhookDeliveredAt(): ?\DateTimeImmutable
+    {
+        return $this->webhookDeliveredAt;
+    }
+
+    public function setWebhookDeliveredAt(?\DateTimeImmutable $at): self
+    {
+        $this->webhookDeliveredAt = $at;
+
+        return $this;
+    }
+
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function setAttempts(int $attempts): self
+    {
+        $this->attempts = $attempts;
+
+        return $this;
+    }
+
+    public function getNextAttemptAt(): ?\DateTimeImmutable
+    {
+        return $this->nextAttemptAt;
+    }
+
+    public function setNextAttemptAt(?\DateTimeImmutable $at): self
+    {
+        $this->nextAttemptAt = $at;
+
+        return $this;
+    }
+
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    public function setLastError(?string $error): self
+    {
+        $this->lastError = $error === null ? null : mb_substr($error, 0, 500);
+
+        return $this;
+    }
+
+    /** @return list<'email'|'webhook'> */
+    public function pendingChannels(): array
+    {
+        $pending = [];
+        if (trim($this->partner?->getNotifyEmails() ?? '') !== '' && $this->deliveredAt === null) {
+            $pending[] = 'email';
+        }
+        if (trim($this->partner?->getWebhookUrl() ?? '') !== '' && $this->webhookDeliveredAt === null) {
+            $pending[] = 'webhook';
+        }
+
+        return $pending;
+    }
+
+    public function isFullyDelivered(): bool
+    {
+        return $this->pendingChannels() === [];
     }
 
     public function getStatus(): string

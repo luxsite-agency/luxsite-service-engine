@@ -14,13 +14,17 @@ use App\Entity\ServicePartner;
 use App\Repository\ServiceLeadAssignmentRepository;
 use App\Repository\ServicePartnerRepository;
 use App\ServiceSite\LeadFields;
+use App\ServiceSite\Partners\HostResolver;
 use App\ServiceSite\Partners\LeadRouter;
 use App\ServiceSite\Partners\PartnerNotifier;
 use App\ServiceSite\Partners\PartnersConfig;
+use App\ServiceSite\Partners\WebhookSender;
+use App\Settings\SecretBox;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -88,7 +92,7 @@ final class LeadRouterTest extends TestCase
         $em = $this->createMock(EntityManagerInterface::class);
         $mailer = $this->createMock(MailerInterface::class);
         $mailer->expects(self::never())->method('send');
-        $notifier = new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em);
+        $notifier = new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em, $this->webhooks());
         $router = new LeadRouter($config, $partners, $assignments, $em, $notifier);
         $city = new ServiceCity();
         $full = self::partner(1)->setDailyLimit(1);
@@ -129,7 +133,7 @@ final class LeadRouterTest extends TestCase
             $em->expects(self::never())->method('flush');
             $mailer = $this->createMock(MailerInterface::class);
             $mailer->expects(self::never())->method('send');
-            $notifier = new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em);
+            $notifier = new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em, $this->webhooks());
             $router = new LeadRouter($config, $partners, $this->createStub(ServiceLeadAssignmentRepository::class), $em, $notifier);
             $lead = new ServiceLead();
             if (!$enabled) {
@@ -144,14 +148,14 @@ final class LeadRouterTest extends TestCase
     {
         $config = new PartnersConfig(['enabled' => true]);
         $em = $this->createMock(EntityManagerInterface::class);
-        $em->expects(self::never())->method('flush');
+        $em->expects(self::once())->method('flush');
         $mailer = $this->createMock(MailerInterface::class);
         $mailer->expects(self::once())->method('send')->willThrowException(new TransportException('SMTP unavailable'));
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects(self::once())->method('error');
         $assignment = (new ServiceLeadAssignment())->setLead((new ServiceLead())->setCity((new ServiceCity())->setHost('example.test')))
             ->setPartner(self::partner(1)->setNotifyEmails('a@example.test'));
-        (new PartnerNotifier($config, $mailer, $logger, new LeadFields(), $em))->notify($assignment);
+        (new PartnerNotifier($config, $mailer, $logger, new LeadFields(), $em, $this->webhooks()))->notify($assignment);
         self::assertNull($assignment->getDeliveredAt());
     }
 
@@ -172,7 +176,7 @@ final class LeadRouterTest extends TestCase
             ->setConsentText('Текст згоди')->setConsentAt(new \DateTimeImmutable('2026-11-04 10:00:00 America/New_York'));
         (new \ReflectionProperty(ServiceLead::class, 'id'))->setValue($lead, 42);
         $assignment = (new ServiceLeadAssignment())->setLead($lead)->setPartner(self::partner(1)->setNotifyEmails('a@example.test, b@example.test'));
-        (new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em))->notify($assignment);
+        (new PartnerNotifier($config, $mailer, $this->createStub(LoggerInterface::class), new LeadFields(), $em, $this->webhooks()))->notify($assignment);
         self::assertNotNull($assignment->getDeliveredAt());
     }
 
@@ -192,5 +196,11 @@ final class LeadRouterTest extends TestCase
         (new \ReflectionProperty(ServicePartner::class, 'id'))->setValue($partner, $id);
 
         return $partner;
+    }
+
+    private function webhooks(): WebhookSender
+    {
+        return new WebhookSender(new MockHttpClient(static fn () => self::fail('У тестах PR A немає вебхуків')),
+            $this->createStub(HostResolver::class), new SecretBox());
     }
 }

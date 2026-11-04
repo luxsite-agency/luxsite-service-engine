@@ -10,6 +10,7 @@ namespace App\Entity;
 use App\Doctrine\TimestampableInterface;
 use App\Doctrine\TimestampsTrait;
 use App\Repository\ServicePartnerRepository;
+use App\Settings\SecretBox;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -64,6 +65,15 @@ class ServicePartner implements TimestampableInterface
     #[ORM\Column(length: 512, nullable: true)]
     #[Assert\Length(max: 512)]
     private ?string $notifyEmails = null;
+
+    #[ORM\Column(length: 512, nullable: true)]
+    #[Assert\Length(max: 512)]
+    #[Assert\Url(protocols: ['https'])]
+    private ?string $webhookUrl = null;
+
+    /** Лише зашифрований конверт SecretBox; відкритий секрет сюди не записується. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $webhookSecret = null;
 
     #[ORM\Column(length: 16, options: ['default' => 'shared'])]
     #[Assert\Choice(choices: [self::MODEL_SHARED, self::MODEL_EXCLUSIVE])]
@@ -180,6 +190,38 @@ class ServicePartner implements TimestampableInterface
         $this->notifyEmails = $notifyEmails;
 
         return $this;
+    }
+
+    public function getWebhookUrl(): ?string
+    {
+        return $this->webhookUrl;
+    }
+
+    public function setWebhookUrl(?string $url): self
+    {
+        $this->webhookUrl = trim($url ?? '') ?: null;
+
+        return $this;
+    }
+
+    public function getWebhookSecret(): ?string
+    {
+        return $this->webhookSecret;
+    }
+
+    public function setWebhookSecret(?string $envelope): self
+    {
+        if ($envelope !== null && !SecretBox::isEnvelope($envelope)) {
+            throw new \InvalidArgumentException('Секрет вебхука має бути конвертом SecretBox.');
+        }
+        $this->webhookSecret = $envelope;
+
+        return $this;
+    }
+
+    public function getWebhookSecretMask(): string
+    {
+        return SecretBox::mask($this->webhookSecret) ?? 'не задано';
     }
 
     public function getModel(): string
