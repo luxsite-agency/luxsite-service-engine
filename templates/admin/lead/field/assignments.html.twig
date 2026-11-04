@@ -1,6 +1,12 @@
 {# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
 {% for assignment in entity.instance.assignments %}
-    <div>{{ assignment.position }}. {{ assignment.partner.name }} — {{ assignment.status }} — {{ assignment.assignedAt|date('Y-m-d H:i:s', 'UTC') }} UTC</div>
+    <div>
+        {{ assignment.position }}. {{ assignment.partner.name }} — {{ assignment.status }} — {{ assignment.assignedAt|date('Y-m-d H:i:s') }}
+        {% if assignment.deliveredAt %} / ✓ email{% endif %}
+        {% if assignment.webhookDeliveredAt %} / ✓ вебхук{% endif %}
+        {% if assignment.lastError %} / помилка: {{ assignment.lastError }} (спроб: {{ assignment.attempts }}){% endif %}
+        {% if assignment.nextAttemptAt %} / наступна спроба: {{ assignment.nextAttemptAt|date('Y-m-d H:i:s') }}{% endif %}
+    </div>
 {% else %}
     —
 {% endfor %}

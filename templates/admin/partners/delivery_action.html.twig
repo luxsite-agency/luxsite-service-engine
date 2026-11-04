@@ -1,0 +1,11 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{% block content_title %}{{ title }}{% endblock %}
+{% block main %}
+    <p>{{ description }}</p>
+    {{ form_start(form) }}
+        {{ form_widget(form) }}
+        <button class="btn btn-primary" type="submit">{{ title }}</button>
+        <a class="btn btn-secondary" href="{{ detail_url }}">Скасувати</a>
+    {{ form_end(form) }}
+{% endblock %}
