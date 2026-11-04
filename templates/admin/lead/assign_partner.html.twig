@@ -1,0 +1,11 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{% block content_title %}Передати компанії: заявка #{{ lead.id }}{% endblock %}
+{% block main %}
+    <p>Ручна передача компанії міста заявки. Дозволені активні та призупинені компанії; ZIP і добовий ліміт не обмежують ручний вибір.</p>
+    {{ form_start(form) }}
+        {{ form_widget(form) }}
+        <button type="submit" class="btn btn-primary">Передати компанії</button>
+        <a href="{{ detail_url }}" class="btn btn-secondary">Назад до заявки</a>
+    {{ form_end(form) }}
+{% endblock %}

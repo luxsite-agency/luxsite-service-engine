@@ -12,6 +12,8 @@ use App\ServiceSite\LeadAttribution;
 use App\ServiceSite\LeadFiles;
 use App\ServiceSite\LeadConsent;
 use App\ServiceSite\LeadFields;
+use App\ServiceSite\Partners\PartnersConfig;
+use App\ServiceSite\Partners\LeadRouter;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
 use App\ServiceSite\LeadNotifier;
@@ -23,6 +25,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Заявка з форми (телефон + ім'я + повідомлення; необов'язково — послуга service, контекст context і файли files[] з
@@ -48,6 +51,9 @@ final class LeadController extends AbstractController
         private readonly LeadFiles $files,
         private readonly LeadFields $fields,
         private readonly LeadConsent $consent,
+        private readonly PartnersConfig $partners,
+        private readonly LeadRouter $router,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -159,6 +165,13 @@ final class LeadController extends AbstractController
             ->setContext($context)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
+        if ($this->partners->enabled) {
+            $lead->setZipFrom(PartnersConfig::normalizeZip($details[$this->partners->zipFromKey] ?? null))
+                ->setZipTo(PartnersConfig::normalizeZip($details[$this->partners->zipToKey] ?? null));
+        }
+        if ($this->consent->enabled()) {
+            $lead->setConsentText($this->consent->textForRecord($locale, $this->translator))->setConsentIp($request->getClientIp());
+        }
         $this->attribution->apply($request, $lead);
         try {
             $stored = $this->files->store($uploads);
@@ -181,6 +194,7 @@ final class LeadController extends AbstractController
         $this->notifier->notify($lead, 'Заявка', $request->getHost());
         // CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
         $this->crm->push($lead);
+        $this->router->routeSafely($lead);
 
         // успіх веде на сенкю-сторінку (ціль конверсії), помилки лишаються флешами на формі;
         // src = тип форми (form | magnet — лід-магніт головної) → lead_type у dataLayer, щоб GA4 бачив, звідки заявка

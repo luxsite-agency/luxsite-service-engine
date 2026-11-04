@@ -10,6 +10,7 @@ namespace App\Controller\Admin;
 use App\Repository\ServiceSiteRepository;
 use App\Security\GoogleOAuthConfig;
 use App\Settings\AdminBranding;
+use App\ServiceSite\Partners\PartnersConfig;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -29,6 +30,7 @@ class DashboardController extends AbstractDashboardController
         private readonly GoogleOAuthConfig $googleOAuth,
         private readonly ServiceSiteRepository $sites,
         private readonly AdminUrlGeneratorInterface $adminUrls,
+        private readonly PartnersConfig $partners,
     ) {
     }
 
@@ -109,6 +111,12 @@ class DashboardController extends AbstractDashboardController
         if ($this->getParameter('app.applications') !== []) {
             yield MenuItem::linkTo(ServiceApplicationCrudController::class, 'Анкети', 'fa fa-id-card')
                 ->setPermission('ROLE_MODERATOR');
+        }
+
+        if ($this->partners->enabled) {
+            yield MenuItem::section('Партнери')->setPermission('ROLE_MODERATOR');
+            yield MenuItem::linkTo(ServicePartnerCrudController::class, 'Компанії', 'fa fa-building')->setPermission('ROLE_MODERATOR');
+            yield MenuItem::linkTo(ServiceLeadAssignmentCrudController::class, 'Передачі заявок', 'fa fa-share')->setPermission('ROLE_MODERATOR');
         }
 
         yield MenuItem::section('SEO')->setPermission('ROLE_MODERATOR');

@@ -9,6 +9,9 @@ namespace App\Controller\Services;
 
 use App\ServiceSite\LeadAttribution;
 use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
+use App\ServiceSite\Partners\PartnersConfig;
+use App\ServiceSite\Partners\LeadRouter;
 use App\Entity\ServiceCalcFactor;
 use App\Entity\ServiceCalcOption;
 use App\Entity\ServiceCity;
@@ -71,6 +74,9 @@ final class CalculatorController extends AbstractController
         private readonly CalculatorAvailability $availability,
         private readonly PricelistCalc $pricelist,
         private readonly LeadConsent $consent,
+        private readonly LeadFields $fields,
+        private readonly PartnersConfig $partners,
+        private readonly LeadRouter $router,
     ) {
     }
 
@@ -276,6 +282,19 @@ final class CalculatorController extends AbstractController
     /** Запис заявки, сповіщення, CRM і редирект на «дякуємо» — спільне для обох режимів. */
     private function storeLead(Request $request, ServiceCity $city, string $phone, string $name, string $message, string $sourceUrl, string $locale): Response
     {
+        $details = [];
+        if ($this->partners->enabled && $this->fields->enabled() && $request->request->has('details')) {
+            [$details, $bad] = $this->fields->validate($request->request->all()['details'] ?? [], $city);
+            if ($bad !== []) {
+                $this->addFlash('lead_error', $locale === 'ru' ? 'Заполните обязательные поля формы.' : "Заповніть обов'язкові поля форми.");
+
+                return $this->redirect($sourceUrl);
+            }
+            $summary = $this->fields->summary($details);
+            if ($summary !== '') {
+                $message = trim($message . "\n\n" . $summary);
+            }
+        }
         $lead = (new ServiceLead())
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
@@ -284,6 +303,14 @@ final class CalculatorController extends AbstractController
             ->setConsentAt($this->consent->enabled() ? new \DateTimeImmutable() : null)
             ->setPageUrl(mb_substr($sourceUrl, 0, 512))
             ->setLocale($locale);
+        if ($this->partners->enabled) {
+            $lead->setDetails($details)
+                ->setZipFrom(PartnersConfig::normalizeZip($details[$this->partners->zipFromKey] ?? null))
+                ->setZipTo(PartnersConfig::normalizeZip($details[$this->partners->zipToKey] ?? null));
+        }
+        if ($this->consent->enabled()) {
+            $lead->setConsentText($this->consent->textForRecord($locale, $this->translator))->setConsentIp($request->getClientIp());
+        }
         $this->attribution->apply($request, $lead);
         $this->em->persist($lead);
         $this->em->flush();
@@ -291,6 +318,7 @@ final class CalculatorController extends AbstractController
         $this->notifier->notify($lead, 'Заявка з калькулятора', $request->getHost());
         // CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
         $this->crm->push($lead);
+        $this->router->routeSafely($lead);
 
         return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'calc']);
     }

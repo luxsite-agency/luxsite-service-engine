@@ -23,6 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'service_lead')]
 #[ORM\Index(columns: ['city_id', 'processed', 'created_at'], name: 'idx_svc_lead_city_processed')]
 #[ORM\Index(columns: ['crm_external_id', 'created_at'], name: 'idx_svc_lead_crm')]
+#[ORM\Index(columns: ['routing'], name: 'idx_svc_lead_routing')]
 class ServiceLead implements TimestampableInterface
 {
     use TimestampsTrait;
@@ -117,6 +118,29 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $consentAt = null;
 
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $zipFrom = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $zipTo = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $consentText = null;
+
+    #[ORM\Column(length: 45, nullable: true)]
+    private ?string $consentIp = null;
+
+    public const string ROUTING_ASSIGNED = 'assigned';
+    public const string ROUTING_UNROUTED = 'unrouted';
+
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $routing = null;
+
+    /** @var Collection<int, ServiceLeadAssignment> */
+    #[ORM\OneToMany(targetEntity: ServiceLeadAssignment::class, mappedBy: 'lead')]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    private Collection $assignments;
+
     // - CRM сайту (app.crm, конектор App\ServiceSite\Crm\LeadCrmConnector) -
 
     /** Ід запису в CRM (лід Pipedrive - uuid, угода Bitrix24 - число); null - ще не відправлено, черга app:crm:sync. */
@@ -137,6 +161,7 @@ class ServiceLead implements TimestampableInterface
     public function __construct()
     {
         $this->files = new ArrayCollection();
+        $this->assignments = new ArrayCollection();
     }
 
     public function getService(): ?string
@@ -467,6 +492,82 @@ class ServiceLead implements TimestampableInterface
     public function setConsentAt(?\DateTimeImmutable $consentAt): self
     {
         $this->consentAt = $consentAt;
+
+        return $this;
+    }
+
+    public function getZipFrom(): ?string
+    {
+        return $this->zipFrom;
+    }
+
+    public function setZipFrom(?string $zipFrom): self
+    {
+        $this->zipFrom = $zipFrom;
+
+        return $this;
+    }
+
+    public function getZipTo(): ?string
+    {
+        return $this->zipTo;
+    }
+
+    public function setZipTo(?string $zipTo): self
+    {
+        $this->zipTo = $zipTo;
+
+        return $this;
+    }
+
+    public function getConsentText(): ?string
+    {
+        return $this->consentText;
+    }
+
+    public function setConsentText(?string $consentText): self
+    {
+        $this->consentText = $consentText;
+
+        return $this;
+    }
+
+    public function getConsentIp(): ?string
+    {
+        return $this->consentIp;
+    }
+
+    public function setConsentIp(?string $consentIp): self
+    {
+        $this->consentIp = $consentIp;
+
+        return $this;
+    }
+
+    public function getRouting(): ?string
+    {
+        return $this->routing;
+    }
+
+    public function setRouting(?string $routing): self
+    {
+        $this->routing = $routing;
+
+        return $this;
+    }
+
+    /** @return Collection<int, ServiceLeadAssignment> */
+    public function getAssignments(): Collection
+    {
+        return $this->assignments;
+    }
+
+    public function addAssignment(ServiceLeadAssignment $assignment): self
+    {
+        if (!$this->assignments->contains($assignment)) {
+            $this->assignments->add($assignment);
+            $assignment->setLead($this);
+        }
 
         return $this;
     }

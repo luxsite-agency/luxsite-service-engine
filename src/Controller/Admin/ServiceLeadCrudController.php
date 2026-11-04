@@ -8,11 +8,18 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServiceLead;
+use App\Entity\ServicePartner;
+use App\Repository\ServicePartnerRepository;
 use App\ServiceSite\LeadConsent;
 use App\ServiceSite\LeadFields;
+use App\ServiceSite\Partners\LeadRouter;
+use App\ServiceSite\Partners\PartnersConfig;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
-use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
+use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
@@ -22,7 +29,13 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Validator\Constraints\NotNull;
 
 /**
  * Черга заявок: read-mostly — створюються фронт-формою, в адмінці лише
@@ -40,6 +53,7 @@ class ServiceLeadCrudController extends AbstractCrudController
     public function __construct(
         private readonly LeadFields $leadFields,
         private readonly LeadConsent $leadConsent,
+        private readonly PartnersConfig $partners,
     ) {
     }
 
@@ -59,6 +73,11 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     public function configureActions(Actions $actions): Actions
     {
+        if ($this->partners->enabled) {
+            $actions->add(Crud::PAGE_DETAIL, Action::new('assignPartner', 'Передати компанії', 'fa fa-share')
+                ->linkToCrudAction('assignPartner'));
+            $actions->setPermission('assignPartner', 'ROLE_MODERATOR');
+        }
         // перегляд заявки (detail) — там файли посиланнями; редагування лишається для позначки «Оброблено»
         return $this->addCancelAction($actions)
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
@@ -71,6 +90,41 @@ class ServiceLeadCrudController extends AbstractCrudController
         yield from $this->withHints($this->primaryFirst($this->fieldList($pageName), $pageName));
     }
 
+    public function configureFilters(Filters $filters): Filters
+    {
+        if ($this->partners->enabled) {
+            $filters->add(ChoiceFilter::new('routing', 'Маршрутизація')->setChoices(['Передано' => ServiceLead::ROUTING_ASSIGNED, 'Без виконавця' => ServiceLead::ROUTING_UNROUTED]));
+        }
+
+        return $filters;
+    }
+
+    #[AdminRoute(path: '/{entityId}/assign-partner', name: 'assign_partner', options: ['methods' => ['GET', 'POST']])]
+    public function assignPartner(AdminContext $context, Request $request, ServicePartnerRepository $partners, LeadRouter $router): Response
+    {
+        if (!$this->partners->enabled) {
+            throw $this->createNotFoundException();
+        }
+        $lead = $context->getEntity()->getInstance();
+        if (!$lead instanceof ServiceLead || $lead->getCity() === null) {
+            throw $this->createNotFoundException();
+        }
+        $form = $this->createFormBuilder(null, ['csrf_token_id' => 'partner-assign-' . $lead->getId()])
+            ->add('partner', EntityType::class, ['class' => ServicePartner::class, 'label' => 'Компанія', 'placeholder' => 'Оберіть компанію',
+                'choices' => $partners->manualForCity($lead->getCity()), 'constraints' => [new NotNull()]])->getForm();
+        $form->handleRequest($request);
+        $detailUrl = $this->container->get(AdminUrlGeneratorInterface::class)->unsetAll()->setController(self::class)
+            ->setAction(Action::DETAIL)->setEntityId($lead->getId())->generateUrl();
+        if ($form->isSubmitted() && $form->isValid()) {
+            $router->assignManually($lead, $form->get('partner')->getData());
+            $this->addFlash('success', 'Заявку передано компанії.');
+
+            return $this->redirect($detailUrl);
+        }
+
+        return $this->render('admin/lead/assign_partner.html.twig', ['form' => $form->createView(), 'lead' => $lead, 'detail_url' => $detailUrl]);
+    }
+
     /** @return iterable<\EasyCorp\Bundle\EasyAdminBundle\Contracts\Field\FieldInterface> */
     private function fieldList(string $pageName): iterable
     {
@@ -78,6 +132,12 @@ class ServiceLeadCrudController extends AbstractCrudController
         yield AssociationField::new('city', 'Місто');
         yield TextField::new('phone', 'Телефон')
             ->setHelp('Як його ввела людина. Саме за цим номером CRM (Pipedrive) шукає дублі контактів.');
+        if ($this->partners->enabled) {
+            yield TextField::new('zipFrom', 'Звідки ZIP')->hideOnForm();
+            yield TextField::new('routing', 'Маршрутизація')->hideOnForm();
+            yield TextField::new('zipTo', 'Куди ZIP')->onlyOnDetail();
+            yield Field::new('assignments', 'Передано')->onlyOnDetail()->setTemplatePath('admin/lead/field/assignments.html.twig');
+        }
         yield TextField::new('name', 'Ім\'я')
             ->setHelp('Необовʼязкове поле у формі, тому часто порожнє.');
         if ($this->leadFields->enabled()) {
@@ -102,6 +162,8 @@ class ServiceLeadCrudController extends AbstractCrudController
         yield TextField::new('pageUrl', 'Сторінка')->hideOnIndex()
             ->setHelp('Сторінка, з якої надіслали заявку. Показує, що саме людина читала перед зверненням.');
         if ($this->leadConsent->enabled()) {
+            yield TextareaField::new('consentText', 'Текст згоди')->onlyOnDetail();
+            yield TextField::new('consentIp', 'IP згоди')->onlyOnDetail();
             yield DateTimeField::new('consentAt', 'Згода на обробку ПД')->hideOnIndex()->setFormTypeOption('disabled', true)
                 ->setHelp('Коли людина поставила галочку згоди на обробку персональних даних у формі.');
         }
