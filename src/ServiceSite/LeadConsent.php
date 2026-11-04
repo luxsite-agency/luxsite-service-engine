@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\ServiceSite;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Обов'язковий чекбокс згоди на обробку персональних даних у формах заявки (app.lead_consent паку):
@@ -73,5 +74,19 @@ final class LeadConsent
     public function accepted(mixed $value): bool
     {
         return !$this->enabled || $value === '1' || $value === 1 || $value === true || $value === 'on';
+    }
+
+    /** Знімок показаного тексту без HTML, з тими самими фолбеками, що й у формі. */
+    public function textForRecord(string $locale, TranslatorInterface $translator): ?string
+    {
+        $form = $this->forForm($locale);
+        if ($form === null) {
+            return null;
+        }
+        $text = $form['text'] !== '' ? $form['text'] : $translator->trans('lead.consent', [], 'servicesite', $locale);
+        $policy = $form['policy_text'] !== '' ? $form['policy_text'] : $translator->trans('lead.consent_policy', [], 'servicesite', $locale);
+        $parts = explode('{policy}', $text, 2);
+
+        return $parts[0] . (\count($parts) === 1 ? ' ' : '') . $policy . ($parts[1] ?? '');
     }
 }

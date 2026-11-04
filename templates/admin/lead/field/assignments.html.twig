@@ -1,0 +1,6 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{% for assignment in entity.instance.assignments %}
+    <div>{{ assignment.position }}. {{ assignment.partner.name }} — {{ assignment.status }} — {{ assignment.assignedAt|date('Y-m-d H:i:s', 'UTC') }} UTC</div>
+{% else %}
+    —
+{% endfor %}
