@@ -345,6 +345,7 @@ final class SiteSeedCommand
         $post = $this->em->getRepository(ServicePost::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $post === null;
         $post ??= (new ServicePost())->setSite($site)->setSlugUk($d['slug']);
+        $this->slugEn($post, $d);
         $this->loc($post, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $post->setPublishedAt($this->date($d['published'] ?? 'now'));
         $post->setActive(true);

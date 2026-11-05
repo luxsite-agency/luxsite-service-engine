@@ -38,6 +38,7 @@ final class HtmlSitemap
         private readonly UrlGeneratorInterface $urls,
         private readonly TranslatorInterface $translator,
         #[Autowire(param: 'app.pages')] private readonly bool $pagesEnabled,
+        private readonly ?FixedPages $fixedPages = null,
     ) {
     }
 
@@ -108,6 +109,9 @@ final class HtmlSitemap
             $fixed[] = ['title' => $this->t('nav.about', $locale), 'url' => $this->path('sv_about', [], $locale)];
         }
         foreach (['sv_reviews' => 'nav.reviews', 'sv_faq' => 'nav.faq', 'sv_contacts' => 'nav.contacts'] as $route => $key) {
+            if ($this->fixedPages !== null && !$this->fixedPages->enabled(substr($route, 3))) {
+                continue;
+            }
             $fixed[] = ['title' => $this->t($key, $locale), 'url' => $this->path($route, [], $locale)];
         }
 

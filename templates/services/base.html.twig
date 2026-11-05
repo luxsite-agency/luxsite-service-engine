@@ -623,10 +623,10 @@
                         {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
                         <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                         {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
-                        <a href="{{ path('sv_reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>
-                        <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
+                        {% if fixed_page_path('reviews') %}<a href="{{ fixed_page_path('reviews') }}">{{ 'nav.reviews'|trans({}, 'servicesite') }}</a>{% endif %}
+                        {% if fixed_page_path('faq') %}<a href="{{ fixed_page_path('faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>{% endif %}
                         {% if site.aboutFor(locale) or city.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
-                        <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                        {% if fixed_page_path('contacts') %}<a href="{{ fixed_page_path('contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>{% endif %}
                     {% endblock %}
                 </nav>
                 {% if _svSwitch|length > 1 %}
@@ -668,9 +668,9 @@
                     {% if site_has_calculator(site) %}<a href="{{ path('sv_calculator') }}">{{ 'nav.calculator'|trans({}, 'servicesite') }}</a>{% endif %}
                     <a href="{{ path('sv_districts') }}">{{ 'nav.districts'|trans({}, 'servicesite') }}</a>
                     {% if site_has_blog(site) %}<a href="{{ path('sv_blog') }}">{{ 'nav.blog'|trans({}, 'servicesite') }}</a>{% endif %}
-                    <a href="{{ path('sv_faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>
+                    {% if fixed_page_path('faq') %}<a href="{{ fixed_page_path('faq') }}">{{ 'nav.faq'|trans({}, 'servicesite') }}</a>{% endif %}
                     {% if site.aboutFor(locale) or city.aboutFor(locale) %}<a href="{{ path('sv_about') }}">{{ 'nav.about'|trans({}, 'servicesite') }}</a>{% endif %}
-                    <a href="{{ path('sv_contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>
+                    {% if fixed_page_path('contacts') %}<a href="{{ fixed_page_path('contacts') }}">{{ 'nav.contacts'|trans({}, 'servicesite') }}</a>{% endif %}
                     {#- сторінки app.pages з позначкою «У футері» (вакансії, ліцензії); вимкнено — нічого #}
                     {% for _fp in footer_pages(site) %}<a href="{{ path('sv_page', {path: _fp.path(locale)}) }}">{{ _fp.loc('title', locale) }}</a>{% endfor %}
                 </nav>
@@ -686,10 +686,10 @@
                 {% if city.address(locale) %}{# адреса - як її записали в адмінці; city-raw, інакше CityWordsSubscriber зробить з «Київ» поточне місто #}
                 <p class="footer-address"><!--city-raw-->{{ city.address(locale)|nl2br }}<!--/city-raw--></p>{% endif %}
                 <p class="footer-copyright">{{ 'footer.copyright'|trans({}, 'servicesite') }}</p>
-                {# юридичні сторінки є завжди: текст із адмінки (ServiceSite) або типовий текст рушія -#}
+                {# Юридичні сторінки: посилання враховують app.fixed_pages. -#}
                 <p class="footer-legal">
-                    <a href="{{ path('sv_privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
-                    · <a href="{{ path('sv_terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>
+                    {% if fixed_page_path('privacy') %}<a href="{{ fixed_page_path('privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>{% endif %}
+                    {% if fixed_page_path('privacy') and fixed_page_path('terms') %} · {% endif %}{% if fixed_page_path('terms') %}<a href="{{ fixed_page_path('terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>{% endif %}
                 </p>
                 {% endblock %}
             </div>
@@ -879,7 +879,7 @@
             «Прийняти» — consent update granted і старт Clarity/Pixel (svTags 'consent'), «Відхилити» — denied. 180 днів. #}
         {%~ if _svTags.consentBanner %}
         <div id="sv-consent" role="dialog" aria-live="polite" aria-label="{{ 'consent.title'|trans({}, 'servicesite') }}" hidden style="position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;max-width:760px;margin:0 auto;background:#fff;color:#1a1f24;border:1px solid var(--border, #d5dce3);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;font-size:.95rem">
-            <span style="flex:1 1 280px">{{ 'consent.text'|trans({}, 'servicesite') }} <a href="{{ path('sv_privacy') }}">{{ 'consent.more'|trans({}, 'servicesite') }}</a></span>
+            <span style="flex:1 1 280px">{{ 'consent.text'|trans({}, 'servicesite') }} {% if fixed_page_path('privacy') %}<a href="{{ fixed_page_path('privacy') }}">{{ 'consent.more'|trans({}, 'servicesite') }}</a>{% endif %}</span>
             <button type="button" class="btn" data-consent="granted">{{ 'consent.accept'|trans({}, 'servicesite') }}</button>
             <button type="button" class="btn btn-ghost" data-consent="denied">{{ 'consent.decline'|trans({}, 'servicesite') }}</button>
         </div>

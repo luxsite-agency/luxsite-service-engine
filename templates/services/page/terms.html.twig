@@ -71,7 +71,7 @@
         <h2>Связь</h2>
         <p>Вопросы по этим условиям: <a href="mailto:{{ (city.email ?? ('info@' ~ site.apexDomain)) }}">{{ (city.email ?? ('info@' ~ site.apexDomain)) }}</a>{% if city.phone %},
             <a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ city.phone }}</a>{% endif %}.
-            Обработка персональных данных описана в <a href="{{ path('sv_privacy') }}">политике конфиденциальности</a>.</p>
+            Обработка персональных данных описана в {% if fixed_page_path('privacy') %}<a href="{{ fixed_page_path('privacy') }}">политике конфиденциальности</a>{% else %}политике конфиденциальности{% endif %}.</p>
     </section>
     {% else %}
     <h1>Умови використання</h1>
@@ -119,7 +119,7 @@
         <h2>Звʼязок</h2>
         <p>Питання щодо цих умов: <a href="mailto:{{ (city.email ?? ('info@' ~ site.apexDomain)) }}">{{ (city.email ?? ('info@' ~ site.apexDomain)) }}</a>{% if city.phone %},
             <a href="tel:{{ city.phone|replace({' ': '', '(': '', ')': '', '-': ''}) }}">{{ city.phone }}</a>{% endif %}.
-            Обробка персональних даних описана в <a href="{{ path('sv_privacy') }}">політиці конфіденційності</a>.</p>
+            Обробка персональних даних описана в {% if fixed_page_path('privacy') %}<a href="{{ fixed_page_path('privacy') }}">політиці конфіденційності</a>{% else %}політиці конфіденційності{% endif %}.</p>
     </section>
     {% endif %}
 {% endblock %}

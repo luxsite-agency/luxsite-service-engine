@@ -49,19 +49,29 @@
         '@context': 'https://schema.org',
         '@type': site.schemaType,
         '@id': host ~ '/#business',
-        'name': site.name ~ ' - ' ~ city.name(locale),
+        'name': schema_business.name_with_city ? site.name ~ ' - ' ~ city.name(locale) : site.name,
         'url': url,
         'address': {'@type': 'PostalAddress', 'addressLocality': city.name(locale), 'addressCountry': schema_country},
         'areaServed': {'@type': 'City', 'name': city.name(locale)},
-        'priceRange': '$$',
     } %}
+    {% if schema_business.price_range is not empty and site.schemaType != 'Organization' %}{% set data = data|merge({'priceRange': schema_business.price_range}) %}{% endif %}
+    {% if schema_business.area_served is not empty %}
+        {% set places = [] %}
+        {% for name in (schema_business.area_served is iterable ? schema_business.area_served : [schema_business.area_served]) %}
+            {% set places = places|merge([{'@type': 'Place', 'name': name}]) %}
+        {% endfor %}
+        {% set data = data|merge({'areaServed': schema_business.area_served is iterable ? places : places|first}) %}
+    {% endif %}
     {% if schema_business.legal_name %}{% set data = data|merge({'legalName': schema_business.legal_name}) %}{% endif %}
     {% if schema_business.founder %}{% set data = data|merge({'founder': {'@type': 'Person', 'name': schema_business.founder}}) %}{% endif %}
     {% if city.phone %}{% set data = data|merge({'telephone': city.phone}) %}{% endif %}
     {% if city.email %}{% set data = data|merge({'email': city.email}) %}{% endif %}
     {# адрес може бути кілька, по рядку; у розмітку йде лише перший (адреса цього міста).
        Вулиця - до другої коми: «вулиця Прикладна, 4» -#}
-    {% if city.address(locale) %}
+    {% if schema_business.address.street is not empty %}
+        {% set address = schema_business.address %}
+        {% set data = data|merge({'address': {'@type': 'PostalAddress', 'streetAddress': address.street, 'addressLocality': address.locality, 'addressRegion': address.region, 'postalCode': address.postal_code, 'addressCountry': address.country}}) %}
+    {% elseif city.address(locale) %}
         {% set parts = (city.address(locale)|split("\n")|first)|split(', ') %}
         {% set data = data|merge({'address': data.address|merge({'streetAddress': parts|slice(0, 2)|join(', ')})}) %}
     {% endif %}
