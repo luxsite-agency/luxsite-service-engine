@@ -27,7 +27,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class LeadConsent
 {
     private readonly bool $enabled;
-    /** @var array<string, array{uk: string, ru: string}> */
+    /** @var array<string, array{uk: string, ru: string, en: string}> */
     private readonly array $texts;
 
     /** @param array<string, mixed> $config app.lead_consent */
@@ -40,8 +40,9 @@ final class LeadConsent
         foreach (['text', 'policy_text', 'policy_url'] as $k) {
             $v = $config[$k] ?? [];
             $v = \is_scalar($v) ? ['uk' => (string) $v] : (\is_array($v) ? $v : []);
-            $uk = trim((string) ($v['uk'] ?? ''));
-            $texts[$k] = ['uk' => $uk, 'ru' => trim((string) ($v['ru'] ?? '')) ?: $uk];
+            $en = trim((string) ($v['en'] ?? ''));
+            $uk = trim((string) ($v['uk'] ?? '')) ?: $en;
+            $texts[$k] = ['uk' => $uk, 'ru' => trim((string) ($v['ru'] ?? '')) ?: $uk, 'en' => $en !== '' ? $en : $uk];
         }
         $this->texts = $texts;
     }
@@ -61,7 +62,7 @@ final class LeadConsent
         if (!$this->enabled) {
             return null;
         }
-        $lang = $locale === 'ru' ? 'ru' : 'uk';
+        $lang = \in_array($locale, ['ru', 'en'], true) ? $locale : 'uk';
 
         return [
             'text' => $this->texts['text'][$lang],

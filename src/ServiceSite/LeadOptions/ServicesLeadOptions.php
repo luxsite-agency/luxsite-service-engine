@@ -35,8 +35,10 @@ final class ServicesLeadOptions implements LeadOptionSource
 
         $out = [];
         foreach ($this->items->findActiveBySite($site, $city) as $item) {
-            $uk = trim($item->getTitleUk());
-            $out[] = ['value' => $item->getSlugUk(), 'label' => ['uk' => $uk, 'ru' => trim((string) $item->getTitleRu()) ?: $uk]];
+            // англійська назва — лише там, де в сутності є колонка titleEn (англійський каталог)
+            $en = method_exists($item, 'getTitleEn') ? trim((string) $item->getTitleEn()) : '';
+            $uk = trim($item->getTitleUk()) ?: $en;
+            $out[] = ['value' => $item->getSlugUk(), 'label' => ['uk' => $uk, 'ru' => trim((string) $item->getTitleRu()) ?: $uk, 'en' => $en !== '' ? $en : $uk]];
         }
 
         return $out;
