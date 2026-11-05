@@ -15,9 +15,11 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
+#[ORM\Index(columns: ['partner_id'], name: 'idx_user_partner')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, \Stringable, TimestampableInterface
 {
     use TimestampsTrait;
@@ -35,6 +37,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, \String
     /** @var list<string> */
     #[ORM\Column(type: Types::JSON)]
     private array $roles = [];
+
+    #[ORM\ManyToOne(targetEntity: ServicePartner::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ServicePartner $partner = null;
+
+    public function getPartner(): ?ServicePartner
+    {
+        return $this->partner;
+    }
+
+    public function setPartner(?ServicePartner $partner): static
+    {
+        $this->partner = $partner;
+
+        return $this;
+    }
+
+    #[Assert\Callback]
+    public function validatePartnerRole(ExecutionContextInterface $context): void
+    {
+        if (!\in_array('ROLE_PARTNER', $this->roles, true)) {
+            return;
+        }
+        if ($this->partner === null) {
+            $context->buildViolation('Для ролі компанії обов’язково оберіть компанію.')->atPath('partner')->addViolation();
+        }
+        if (array_intersect(['ROLE_MODERATOR', 'ROLE_ADMIN'], $this->roles) !== []) {
+            $context->buildViolation('Роль компанії несумісна з ролями модератора й адміністратора.')->atPath('roles')->addViolation();
+        }
+    }
 
     #[ORM\Column]
     private string $password = '';

@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServicePartner;
+use App\Entity\ServiceLeadAssignment;
+use App\Entity\User;
 use App\ServiceSite\Partners\PartnersConfig;
 use App\ServiceSite\Partners\PartnerNotifier;
 use App\Settings\SecretBox;
@@ -22,6 +24,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
+use EasyCorp\Bundle\EasyAdminBundle\Config\KeyValueStore;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
@@ -40,7 +43,7 @@ final class ServicePartnerCrudController extends AbstractCrudController
 {
     use CancelActionTrait;
 
-    public function __construct(private readonly PartnersConfig $partners, private readonly SecretBox $box)
+    public function __construct(private readonly PartnersConfig $partners, private readonly SecretBox $box, private readonly EntityManagerInterface $em)
     {
     }
 
@@ -56,6 +59,7 @@ final class ServicePartnerCrudController extends AbstractCrudController
         }
 
         return $crud->setEntityLabelInSingular('Компанія')->setEntityLabelInPlural('Компанії')
+            ->overrideTemplate('crud/detail', 'admin/partners/detail.html.twig')
             ->setDefaultSort(['isOwn' => 'DESC', 'priority' => 'DESC', 'id' => 'ASC'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
@@ -66,6 +70,26 @@ final class ServicePartnerCrudController extends AbstractCrudController
             ->add(Crud::PAGE_DETAIL, Action::new('pingWebhook', 'Перевірити вебхук', 'fa fa-paper-plane')
                 ->linkToCrudAction('pingWebhook')->displayIf(static fn (ServicePartner $p): bool => $p->getWebhookUrl() !== null))
             ->setPermission('pingWebhook', 'ROLE_MODERATOR');
+    }
+
+    public function configureResponseParameters(KeyValueStore $responseParameters): KeyValueStore
+    {
+        if ($responseParameters->get('pageName') !== Crud::PAGE_DETAIL) {
+            return $responseParameters;
+        }
+        $partner = $this->getContext()?->getEntity()->getInstance();
+        $users = array_values(array_filter($this->em->getRepository(User::class)->findBy(['partner' => $partner], ['email' => 'ASC']),
+            static fn (User $user): bool => \in_array('ROLE_PARTNER', $user->getRoles(), true)));
+        $counts = $this->em->getRepository(ServiceLeadAssignment::class)->createQueryBuilder('a')
+            ->select('COUNT(a.id) AS total, SUM(CASE WHEN a.status = :junk THEN 1 ELSE 0 END) AS junk')
+            ->andWhere('a.partner = :partner AND a.assignedAt >= :since')
+            ->setParameter('partner', $partner)->setParameter('junk', ServiceLeadAssignment::STATUS_JUNK)
+            ->setParameter('since', new \DateTimeImmutable('-30 days'))->getQuery()->getSingleResult();
+        $responseParameters->set('cabinet_users', $users);
+        $responseParameters->set('junk_total', (int) $counts['total']);
+        $responseParameters->set('junk_percent', (int) $counts['total'] === 0 ? 0 : 100 * (int) $counts['junk'] / (int) $counts['total']);
+
+        return $responseParameters;
     }
 
     public function configureFilters(Filters $filters): Filters

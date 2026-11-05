@@ -41,7 +41,7 @@ final class AdminHostSubscriber implements EventSubscriberInterface
         $path = $request->getPathInfo();
         // /logout НЕ блокуємо: він потрібен і Google-юзерам на міських доменах
         // /api/admin — REST адмінки (персональні токени), теж лише на службовому хості
-        $isAdminPath = str_starts_with($path, '/admin') || str_starts_with($path, '/api/admin') || $path === '/mcp' || $path === '/login';
+        $isAdminPath = str_starts_with($path, '/admin') || PartnerCabinetSubscriber::isCabinetPath($path) || str_starts_with($path, '/api/admin') || $path === '/mcp' || $path === '/login';
 
         if ($isAdminPath && strtolower($request->getHost()) !== strtolower($this->adminHost)) {
             throw new NotFoundHttpException('Not found.');

@@ -9,7 +9,7 @@
 parameters:
     # Часовий пояс добових лімітів партнерів; пак сайту може перевизначити.
     app.timezone: 'Europe/Kyiv'
-    app.partners: {enabled: false, share_max: 3, unrouted_notify: true, zip_from_key: zip_from, zip_to_key: zip_to}
+    app.partners: {enabled: false, share_max: 3, unrouted_notify: true, zip_from_key: zip_from, zip_to_key: zip_to, cabinet_locale: en, billing_excludes: [junk]}
     # Фолбек: хост адмінки, якщо ADMIN_HOST не задано в оточенні
     # (dev — service-sites.localhost; прод задасть свій хост у .env.local)
     env(ADMIN_HOST): 'service-sites.localhost'

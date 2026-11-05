@@ -1,0 +1,41 @@
+cabinet_title: Partner cabinet
+home: Home
+lead: Lead
+leads: Leads
+billing: Billing
+logout: Sign out
+new_count: New
+accepted_count: In progress
+month_count: This month
+assignment_id: Assignment ID
+assigned_at: Assigned at
+zip_from: From ZIP
+zip_to: To ZIP
+customer_name: Customer name
+phone: Phone
+status_label: Status
+price: Price
+status_note: Status note
+status_at: Last status change
+message: Message
+request_fields: Request fields
+consent_text: Consent text
+consent_at: Consent time
+month: Month
+show: Show
+download_csv: Download CSV
+assignment_count: Assignments
+total: Amount billed
+billed: Billed
+'yes': 'Yes'
+'no': 'No'
+no_assignments: No assignments in this month.
+status_new_forbidden: Choose a new status; returning to New is not allowed.
+junk_note_required: Explain why this lead is junk in the status note.
+status:
+    new: New
+    accepted: Accepted
+    no_answer: No answer
+    junk: Junk
+    won: Won
+    lost: Lost

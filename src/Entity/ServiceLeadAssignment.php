@@ -11,6 +11,7 @@ use App\Repository\ServiceLeadAssignmentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: ServiceLeadAssignmentRepository::class)]
 #[ORM\Table(name: 'service_lead_assignment')]
@@ -72,6 +73,17 @@ class ServiceLeadAssignment
     #[ORM\Column(length: 255, nullable: true)]
     #[Assert\Length(max: 255)]
     private ?string $statusNote = null;
+
+    #[Assert\Callback(groups: ['partner_cabinet'])]
+    public function validateCabinetStatus(ExecutionContextInterface $context): void
+    {
+        if ($this->status === self::STATUS_NEW) {
+            $context->buildViolation('status_new_forbidden')->setTranslationDomain('partner')->atPath('status')->addViolation();
+        }
+        if ($this->status === self::STATUS_JUNK && trim($this->statusNote ?? '') === '') {
+            $context->buildViolation('junk_note_required')->setTranslationDomain('partner')->atPath('statusNote')->addViolation();
+        }
+    }
 
     #[ORM\Column(nullable: true)]
     private ?int $price = null;

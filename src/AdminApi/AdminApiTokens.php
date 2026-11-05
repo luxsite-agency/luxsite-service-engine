@@ -48,6 +48,9 @@ final class AdminApiTokens
      */
     public function allowedScopes(User $owner): array
     {
+        if (\in_array('ROLE_PARTNER', $owner->getRoles(), true)) {
+            return [];
+        }
         $reachable = $this->roles->getReachableRoleNames($owner->getRoles());
 
         return array_values(array_filter(ApiScope::cases(), static fn (ApiScope $s): bool => \in_array($s->requiredRole(), $reachable, true)));
