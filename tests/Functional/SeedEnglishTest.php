@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\ServiceCategory;
+use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePage;
@@ -35,7 +36,7 @@ final class SeedEnglishTest extends SeoTestCase
         file_put_contents($yaml, <<<YAML
             site: {slug: seed-en-$s, name: 'Seed EN', apex: seed-en-$s.example}
             cities:
-              - {slug: main, host: seed-en-$s.example, apex: true, name_nom_uk: 'Hamptons', name_nom_en: 'Hamptons'}
+              - {slug: main, host: seed-en-$s.example, apex: true, name_nom_uk: 'Hamptons', name_nom_en: 'Hamptons', districts_intro_en: 'Our districts', about_where_en: 'Across the Hamptons', price_note_en: 'Minimum call-out USD 100', address_en: '123 Main Street'}
             categories:
               - {slug: pereizd-$s, slug_en: moving-$s, title_uk: 'Переїзд', title_en: 'Moving', meta_title_en: 'Moving services'}
             items:
@@ -57,6 +58,13 @@ final class SeedEnglishTest extends SeoTestCase
         $em->clear();
         $site = $em->getRepository(ServiceSite::class)->findOneBy(['slug' => "seed-en-$s"]);
         self::assertNotNull($site);
+        $city = $em->getRepository(ServiceCity::class)->findOneBy(['site' => $site, 'slug' => 'main']);
+        self::assertNotNull($city);
+        self::assertSame('Our districts', $city->getDistrictsIntroEn());
+        self::assertSame('Across the Hamptons', $city->getAboutWhereEn());
+        self::assertSame('Minimum call-out USD 100', $city->getPriceNoteEn());
+        self::assertSame('123 Main Street', $city->getAddressEn());
+        self::assertSame('Our districts', $city->loc('districtsIntro', 'en'));
         $cat = $em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => "pereizd-$s"]);
         self::assertSame(["moving-$s", 'Moving', 'Moving services'], [$cat?->getSlugEn(), $cat?->getTitleEn(), $cat?->getMetaTitleEn()]);
         $item = $em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => "mistsevyi-$s"]);

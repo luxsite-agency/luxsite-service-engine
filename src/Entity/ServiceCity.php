@@ -95,6 +95,9 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $addressRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $addressEn = null;
+
     /**
      * Абзац «Де ми працюємо» для сторінки «Про нас». Сам текст «Про нас» спільний
      * для всіх міст і написаний під Київ, тому райони й передмістя живуть тут,
@@ -113,6 +116,9 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $aboutWhereRu = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutWhereEn = null;
+
     /**
      * Рядок лише для цього міста (10.2026): «Мінімальний виклик — від 1500 грн». Виводиться під таблицями цін (головна,
      * послуга), біля підсумку калькулятора й під заголовком форми заявки (інлайн і модалка). Тексти паку (prices.note,
@@ -123,6 +129,9 @@ class ServiceCity implements TimestampableInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $priceNoteRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $priceNoteEn = null;
 
     /**
      * Ідентифікатор лічильника: GTM-XXXXXXX (Tag Manager), G-XXXXXXXXXX (GA4
@@ -268,6 +277,9 @@ class ServiceCity implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $districtsIntroRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $districtsIntroEn = null;
 
     /**
      * Сирий текст «Про нас» міста для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
@@ -450,6 +462,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getAddressEn(): ?string
+    {
+        return $this->addressEn;
+    }
+
+    public function setAddressEn(?string $addressEn): self
+    {
+        $this->addressEn = $addressEn === '' ? null : $addressEn;
+
+        return $this;
+    }
+
     public function getAddressRu(): ?string
     {
         return $this->addressRu;
@@ -474,6 +498,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getAboutWhereEn(): ?string
+    {
+        return $this->aboutWhereEn;
+    }
+
+    public function setAboutWhereEn(?string $aboutWhereEn): self
+    {
+        $this->aboutWhereEn = $aboutWhereEn === '' ? null : $aboutWhereEn;
+
+        return $this;
+    }
+
     public function getAboutWhereRu(): ?string
     {
         return $this->aboutWhereRu;
@@ -494,6 +530,18 @@ class ServiceCity implements TimestampableInterface
     public function setPriceNoteUk(?string $priceNoteUk): self
     {
         $this->priceNoteUk = self::blankToNull($priceNoteUk);
+
+        return $this;
+    }
+
+    public function getPriceNoteEn(): ?string
+    {
+        return $this->priceNoteEn;
+    }
+
+    public function setPriceNoteEn(?string $priceNoteEn): self
+    {
+        $this->priceNoteEn = $priceNoteEn === '' ? null : $priceNoteEn;
 
         return $this;
     }
@@ -864,6 +912,18 @@ class ServiceCity implements TimestampableInterface
     public function setDistrictsIntroUk(?string $districtsIntroUk): self
     {
         $this->districtsIntroUk = $districtsIntroUk;
+
+        return $this;
+    }
+
+    public function getDistrictsIntroEn(): ?string
+    {
+        return $this->districtsIntroEn;
+    }
+
+    public function setDistrictsIntroEn(?string $districtsIntroEn): self
+    {
+        $this->districtsIntroEn = $districtsIntroEn === '' ? null : $districtsIntroEn;
 
         return $this;
     }
