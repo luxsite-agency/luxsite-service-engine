@@ -65,17 +65,25 @@ final class BlogController extends AbstractController
         $site = $this->serviceSite($request);
         $city = $this->serviceCity($request);
         $perPage = max(0, (int) $this->getParameter('app.blog_per_page'));
-        $total = $this->posts->countPublishedBySite($site);
+        $total = $this->posts->countPublishedBySite($site, $request->getLocale());
         $pages = $perPage > 0 ? max(1, (int) ceil($total / $perPage)) : 1;
         if ($page > $pages) {
             throw $this->createNotFoundException('Такої сторінки блогу немає.');
         }
-        $altUrls = $page === 1 ? $this->altUrls('sv_blog') : $this->altUrls('sv_blog_page', ['page' => (string) $page]);
+        $params = function (string $l) use ($site, $page, $perPage): ?array {
+            $count = $this->posts->countPublishedBySite($site, $l);
+            if ($count === 0 || ($perPage > 0 && $page > (int) ceil($count / $perPage))) {
+                return null;
+            }
+
+            return $page === 1 ? [] : ['page' => (string) $page];
+        };
+        $altUrls = $this->altUrls($page === 1 ? 'sv_blog' : 'sv_blog_page', $params);
 
         return $this->render('services/blog/index.html.twig', [
             'site' => $site,
             'city' => $city,
-            'posts' => $this->posts->findPublishedBySitePage($site, $page, $perPage),
+            'posts' => $this->posts->findPublishedBySitePage($site, $page, $perPage, $request->getLocale()),
             'page' => $page,
             'pages' => $pages,
             'altUrls' => $altUrls,
@@ -97,11 +105,7 @@ final class BlogController extends AbstractController
             ?? throw $this->createNotFoundException('Пост не знайдено.');
 
         $city = $this->serviceCity($request);
-        $altUrls = $this->altUrls(
-            'sv_blog_post',
-            ['slug' => $post->slug('uk')],
-            ['slug' => $post->slug('ru')],
-        );
+        $altUrls = $this->altUrls('sv_blog_post', static fn (string $l): ?array => $post->existsIn($l) ? ['slug' => $post->slug($l)] : null);
 
         return $this->render('services/blog/show.html.twig', [
             'site' => $site,

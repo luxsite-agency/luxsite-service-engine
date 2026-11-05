@@ -153,7 +153,11 @@ final class CalculatorController extends AbstractController
         if ($mode === null) {
             throw $this->createNotFoundException('Калькулятор ще не наповнено.');
         }
-        $locale = $request->request->get('loc') === 'ru' ? 'ru' : 'uk';
+        $locales = $this->container->get(\App\ServiceSite\SiteLocales::class);
+        $locale = (string) $request->request->get('loc', $locales->default());
+        if (!\in_array($locale, $locales->enabled($site), true)) {
+            $locale = $locales->default();
+        }
         $fromHome = $request->request->get('from') === 'home';
         // калькулятор стоїть і на сторінках послуг: повертаємо людину туди, звідки
         // вона надіслала форму. Слаг звіряємо з БД, щоб не зробити відкритий редирект
