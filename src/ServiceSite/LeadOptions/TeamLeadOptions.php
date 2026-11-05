@@ -31,11 +31,13 @@ final class TeamLeadOptions implements LeadOptionSource
         $out = [];
         foreach ($this->team->findActiveByCity($city) as $m) {
             $label = [];
-            foreach (['uk', 'ru'] as $lang) {
+            foreach (['uk', 'ru', 'en'] as $lang) {
                 $name = trim((string) $m->loc('name', $lang));
                 $role = trim((string) $m->loc('role', $lang));
                 $label[$lang] = $role !== '' ? $name . ' (' . $role . ')' : $name;
             }
+            // без англійських полів команди en = uk
+            $label['en'] = $label['en'] !== '' ? $label['en'] : $label['uk'];
             $out[] = ['value' => (string) $m->getId(), 'label' => $label];
         }
 

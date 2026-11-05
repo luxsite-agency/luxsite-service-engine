@@ -156,7 +156,7 @@ final class LeadFields implements ResetInterface
      */
     public function forForm(string $locale, ?ServiceCity $city = null, array $preset = [], ?\DateTimeImmutable $today = null): array
     {
-        $lang = $locale === 'ru' ? 'ru' : 'uk';
+        $lang = \in_array($locale, ['ru', 'en'], true) ? $locale : 'uk';
         $today ??= new \DateTimeImmutable('today');
         $out = [];
         foreach ($this->fields as $f) {
@@ -371,7 +371,7 @@ final class LeadFields implements ResetInterface
         $seen = [];
         foreach ($raw as $o) {
             if (\is_scalar($o)) {
-                $label = ['uk' => trim((string) $o), 'ru' => trim((string) $o)];
+                $label = ['uk' => trim((string) $o), 'ru' => trim((string) $o), 'en' => trim((string) $o)];
                 $value = $label['uk'];
             } else {
                 $o = (array) $o;
@@ -391,16 +391,22 @@ final class LeadFields implements ResetInterface
         return $out;
     }
 
-    /** @return array{uk: string, ru: string} {uk, ru} з паку; ru порожнє = uk; рядок — однаковий для обох мов */
+    /**
+     * {uk, ru, en} з паку; ru і en порожні = uk; рядок — однаковий для всіх мов. Англомовний пак може задати лише en —
+     * тоді він же йде в uk (підсумок заявки для менеджера, перевірка «непорожній підпис»).
+     *
+     * @return array{uk: string, ru: string, en: string}
+     */
     private static function pair(mixed $v, string $default = ''): array
     {
         if (\is_scalar($v)) {
             $v = ['uk' => (string) $v];
         }
         $v = \is_array($v) ? $v : [];
-        $uk = trim((string) ($v['uk'] ?? '')) ?: $default;
+        $en = trim((string) ($v['en'] ?? ''));
+        $uk = trim((string) ($v['uk'] ?? '')) ?: ($en !== '' ? $en : $default);
         $ru = trim((string) ($v['ru'] ?? '')) ?: $uk;
 
-        return ['uk' => $uk, 'ru' => $ru];
+        return ['uk' => $uk, 'ru' => $ru, 'en' => $en !== '' ? $en : $uk];
     }
 }
