@@ -44,6 +44,7 @@ final class SitemapController extends AbstractController
         private readonly CatalogUrls $catalogUrls,
         private readonly CalculatorAvailability $calculator,
         private readonly ServicePageRepository $pages,
+        private readonly \App\ServiceSite\FixedPages $fixedPages,
     ) {
     }
 
@@ -65,6 +66,9 @@ final class SitemapController extends AbstractController
         $entries = [];
         // запис карти: URL сторінки мовами бренду (мова → URL) + lastmod; параметри, що різняться між мовами, — функцією від мови
         $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null) use (&$entries): void {
+            if (str_starts_with($route, 'sv_') && in_array(substr($route, 3), \App\ServiceSite\FixedPages::KEYS, true) && !$this->fixedPages->enabled(substr($route, 3))) {
+                return;
+            }
             $urls = $this->altUrls($route, $params);
             if ($urls !== []) {
                 $entries[] = ['urls' => $urls, 'lastmod' => $lastmod];
@@ -162,6 +166,21 @@ final class SitemapController extends AbstractController
         $response->setMaxAge(3600);
 
         return $response;
+    }
+
+    /**
+     * /favicon.ico від кореня (браузери й боти просять його без <link rel="icon">): 301 на app.theme.favicon_ico паку
+     * з ?v=; не задано в темі — 404, як і раніше.
+     */
+    #[Route(path: '/favicon.ico', name: 'sv_favicon', priority: 10)]
+    public function favicon(\App\ServiceSite\SiteTheme $theme): Response
+    {
+        $url = $theme->url('favicon_ico');
+        if ($url === null || str_starts_with($url, '/favicon.ico')) {
+            throw $this->createNotFoundException();
+        }
+
+        return $this->redirect($url, 301);
     }
 
     #[Route(path: '/robots.txt', name: 'sv_robots', priority: 10)]

@@ -38,6 +38,7 @@ parameters:
     # Довільні сторінки (адмінка → «Сторінки»: вакансії, ліцензії, будь-який текст) від кореня сайту: /<слаг>/ і
     # /<батько>/<слаг>/, ru — /ru/…; у sitemap, футері (позначка «У футері»), галерея зображень. false = вимкнено
     # (маршрут не спрацьовує, меню адмінки без пункту) — як на сайтах до v0.9.34.
+    app.fixed_pages: { faq: true, contacts: true, reviews: true, privacy: true, terms: true }
     app.pages: false
     # Російська версія сайту (/ru/…): full — як є (типово); noindex — ru ще без перекладу (тексти записів падають на uk):
     # кожна /ru/-сторінка «noindex, follow» (meta і X-Robots-Tag), без hreflang на обох мовах, sitemap лише з uk-адресами;
@@ -107,9 +108,11 @@ parameters:
     # Тема публічного сайту: задаються лише відмінні від дефолту ключі (повний перелік і дефолти —
     # App\ServiceSite\SiteTheme::DEFAULTS). Шляхи файлів — від кореня public/ (themes/<key>/…)
     app.theme: {}
-    # Юридична особа для JSON-LD бізнесу (LocalBusiness): legalName, founder, openingHours (машинний формат schema.org);
+    # JSON-LD бізнесу: юридичні дані, price_range (порожнє або Organization — без priceRange),
+    # address: {street, locality, region, postal_code, country} (street замінює адресу міста),
+    # area_served: рядок або список назв Place (порожнє — City); name_with_city: false — лише назва бренду.
     # порожньо = поле в розмітку не йде
-    app.schema: { legal_name: '', founder: '', opening_hours: '' }
+    app.schema: { legal_name: '', founder: '', opening_hours: '', price_range: '$$', address: {}, area_served: '', name_with_city: true }
     # 301-редіректи зі старого сайту (ключ = старий слаг першого рівня без слешів):
     #   { city: slug|null, item: slug-послуги|null, route: назва-маршруту|null, locale: uk|ru }
     # city/item — на сторінку послуги (null = головна) з урахуванням міста; route — на фіксований маршрут (sv_contacts).
