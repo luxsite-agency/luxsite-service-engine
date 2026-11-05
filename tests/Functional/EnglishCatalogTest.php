@@ -16,6 +16,8 @@ use App\Entity\ServicePage;
 use App\Entity\ServicePrice;
 use App\ServiceSite\Redirect\SiteLiveUrls;
 use App\Tests\Support\EnglishCatalogKernel;
+use App\Twig\ServiceSiteExtension;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class EnglishCatalogTest extends SeoTestCase
@@ -191,5 +193,24 @@ final class EnglishCatalogTest extends SeoTestCase
         $fields['ServicePage[slugEn]'] = 'english-only';
         $response = $this->http('POST', $url, self::nest($fields) + ['ea' => ['newForm' => ['btn' => 'saveAndReturn']]]);
         self::assertTrue($response->isRedirect(), 'English-only page can be saved without uk text');
+    }
+
+    public function testDistrictGroupsInPageLanguage(): void
+    {
+        $request = Request::create('https://' . $this->apex . '/');
+        $request->attributes->set('service_city', $this->city($this->apexCityId));
+        $request->setLocale('en');
+        $stack = static::getContainer()->get('request_stack');
+        $stack->push($request);
+        try {
+            $groups = static::getContainer()->get(ServiceSiteExtension::class)->districtGroups();
+        } finally {
+            $stack->pop();
+        }
+        $flat = array_map(static fn (array $g): array => [$g['name'], array_map(static fn (ServiceDistrict $d): string => (string) $d->loc('name', 'en'), $g['districts'])], $groups);
+        // район фікстури без англійської назви не потрапляє в меню англомовного сайту
+        self::assertCount(1, $flat);
+        self::assertSame('Brooklyn', $flat[0][0]);
+        self::assertEqualsCanonicalizing(['Brooklyn', 'Williamsburg'], $flat[0][1]);
     }
 }
