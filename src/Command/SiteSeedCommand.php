@@ -50,7 +50,7 @@ use Symfony\Component\Yaml\Yaml;
 #[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
 {
-    private const array LOC = ['Uk', 'Ru'];
+    private const array LOC = ['Uk', 'Ru', 'En'];
 
     /** @var array<string, int> */
     private array $report = [];
@@ -211,6 +211,7 @@ final class SiteSeedCommand
         $cat = $this->em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $cat === null;
         $cat ??= (new ServiceCategory())->setSite($site)->setSlugUk($d['slug']);
+        $this->slugEn($cat, $d);
         $this->loc($cat, $d, ['title' => 'title', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $cat->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['landing'])) {
@@ -236,6 +237,7 @@ final class SiteSeedCommand
         $new = $item === null;
         $item ??= (new ServiceItem())->setSite($site)->setSlugUk($d['slug']);
         $item->setCategory($cat);
+        $this->slugEn($item, $d);
         $this->loc($item, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'tab_title' => 'tabTitle',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
         $item->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
@@ -288,6 +290,7 @@ final class SiteSeedCommand
         $dist = $this->em->getRepository(ServiceDistrict::class)->findOneBy(['city' => $city, 'slugUk' => $d['slug']]);
         $new = $dist === null;
         $dist ??= (new ServiceDistrict())->setCity($city)->setSlugUk($d['slug']);
+        $this->slugEn($dist, $d);
         $this->loc($dist, $d, ['name' => 'name', 'title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'group' => 'group', 'sub_areas' => 'subAreas',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
         if (isset($d['primary'])) {
@@ -362,12 +365,13 @@ final class SiteSeedCommand
             $page->setSlugRu($d['slug_ru'] !== null ? (string) $d['slug_ru'] : null);
         }
         // body_uk/body_ru — синонім desc_* (так поле зветься в паках, що переносять сторінки зі старої CMS)
-        foreach (['uk', 'ru'] as $l) {
+        foreach (['uk', 'ru', 'en'] as $l) {
             if (\array_key_exists('body_' . $l, $d) && !\array_key_exists('desc_' . $l, $d)) {
                 $d['desc_' . $l] = $d['body_' . $l];
             }
             unset($d['body_' . $l]);
         }
+        $this->slugEn($page, $d);
         $this->loc($page, $d, ['title' => 'title', 'h1' => 'h1', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         if (\array_key_exists('template', $d)) {
             $page->setTemplate($d['template'] !== null ? (string) $d['template'] : null);
@@ -394,7 +398,19 @@ final class SiteSeedCommand
     }
 
     /**
-     * Локалізовані поля: ключ YAML `<key>_uk` / `<key>_ru` → setter `set<Prop>Uk` / `set<Prop>Ru`. Відсутній ключ не чіпає поле.
+     * `slug_en` (англомовне розгортання): порожньо або null — адреса з українського слагу. Відсутній ключ не чіпає поле.
+     *
+     * @param array<string, mixed> $d
+     */
+    private function slugEn(object $e, array $d): void
+    {
+        if (\array_key_exists('slug_en', $d) && method_exists($e, 'setSlugEn')) {
+            $e->setSlugEn($d['slug_en'] !== null && $d['slug_en'] !== '' ? (string) $d['slug_en'] : null);
+        }
+    }
+
+    /**
+     * Локалізовані поля: ключ YAML `<key>_uk` / `<key>_ru` / `<key>_en` → setter `set<Prop>Uk` / `…Ru` / `…En`. Відсутній ключ не чіпає поле.
      *
      * @param array<string, mixed>  $d
      * @param array<string, string> $map key → prop
