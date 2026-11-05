@@ -14,6 +14,7 @@ use App\ServiceSite\Applications;
 use App\ServiceSite\LeadFiles;
 use App\ServiceSite\LeadRateLimit;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -53,15 +54,15 @@ final class ApplicationController extends AbstractController
         }
         $city = $this->serviceCity($request);
         $back = $this->backUrl($request);
-        $locale = str_starts_with((string) parse_url($back, \PHP_URL_PATH), '/ru/') ? 'ru' : 'uk';
+        $locale = $this->container->get(SiteLocales::class)->ofPath((string) parse_url($back, \PHP_URL_PATH));
         $ru = $locale === 'ru';
 
         $max = ImageApiController::iniBytes((string) ini_get('post_max_size'));
         if ($request->request->count() === 0 && $max > 0 && (int) $request->server->get('CONTENT_LENGTH', 0) > $max) {
-            return $this->fail($back, $ru ? 'Файлы слишком большие, уменьшите их или отправьте без них.' : 'Файли завеликі, зменште їх або надішліть без них.');
+            return $this->fail($back, $locale === 'en' ? 'Files are too large. Reduce their size or submit without them.' : ($ru ? 'Файлы слишком большие, уменьшите их или отправьте без них.' : 'Файли завеликі, зменште їх або надішліть без них.'));
         }
         if (!$this->isCsrfTokenValid('sv_application', (string) $request->request->get('_token'))) {
-            return $this->fail($back, $ru ? 'Сессия устарела, попробуйте ещё раз.' : 'Сесія застаріла, спробуйте ще раз.');
+            return $this->fail($back, $locale === 'en' ? 'Your session has expired. Please try again.' : ($ru ? 'Сессия устарела, попробуйте ещё раз.' : 'Сесія застаріла, спробуйте ще раз.'));
         }
         if ((string) $request->request->get('website', '') !== '') {
             return $this->redirect($back);
@@ -78,7 +79,7 @@ final class ApplicationController extends AbstractController
             return $this->fail($back, $fileError);
         }
         if (!$this->rateLimit->isAccepted($request)) {
-            return $this->fail($back, $ru ? 'Слишком много отправок подряд — попробуйте позже.' : 'Забагато відправок поспіль — спробуйте пізніше.');
+            return $this->fail($back, $locale === 'en' ? 'Too many submissions. Please try again later.' : ($ru ? 'Слишком много отправок подряд — попробуйте позже.' : 'Забагато відправок поспіль — спробуйте пізніше.'));
         }
 
         $application = (new ServiceApplication())
@@ -94,7 +95,7 @@ final class ApplicationController extends AbstractController
         try {
             $stored = $store->store($uploads);
         } catch (\Throwable) {
-            return $this->fail($back, $ru ? 'Не удалось сохранить файлы, попробуйте ещё раз.' : 'Не вдалося зберегти файли, спробуйте ще раз.');
+            return $this->fail($back, $locale === 'en' ? 'Could not save the files. Please try again.' : ($ru ? 'Не удалось сохранить файлы, попробуйте ещё раз.' : 'Не вдалося зберегти файли, спробуйте ще раз.'));
         }
         foreach ($stored as $file) {
             $application->addFile($file);
@@ -130,6 +131,6 @@ final class ApplicationController extends AbstractController
             return $path . ($query ? '?' . $query : '');
         }
 
-        return $this->generateUrl('sv_home', ['_locale' => 'uk']);
+        return $this->generateUrl('sv_home', ['_locale' => $this->container->get(SiteLocales::class)->default()]);
     }
 }

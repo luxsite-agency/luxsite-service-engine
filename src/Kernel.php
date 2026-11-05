@@ -7,10 +7,13 @@ namespace App;
 
 use App\ServiceSite\CalculatorRoutes;
 use App\ServiceSite\CatalogUrls;
+use App\ServiceSite\LocalizedRoutes;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Symfony\Component\Routing\RouteCollection;
 
 class Kernel extends BaseKernel
 {
@@ -18,6 +21,7 @@ class Kernel extends BaseKernel
     use MicroKernelTrait {
         configureContainer as private configureContainerDefaults;
         configureRoutes as private configureRoutesDefaults;
+        loadRoutes as private loadRoutesDefaults;
     }
 
     /**
@@ -75,12 +79,25 @@ class Kernel extends BaseKernel
         if (!preg_match('/^[a-z0-9-]+$/', $blog)) {
             throw new \InvalidArgumentException(sprintf('app.blog_prefix: очікується сегмент [a-z0-9-] (blog, news…), отримано «%s».', $blog));
         }
-        if (\in_array($blog, array_diff(CatalogUrls::RESERVED_SEGMENTS, ['blog', 'news']), true)) {
+        if (\in_array($blog, [...array_diff(CatalogUrls::RESERVED_SEGMENTS, ['blog', 'news']), ...$this->container->getParameter('app.locales')], true)) {
             throw new \InvalidArgumentException(sprintf('app.blog_prefix: «%s» — зарезервований сегмент іншого розділу сайту.', $blog));
         }
         $routes->import($this->getConfigDir().'/routes/catalog/'.$scheme.'.yaml');
         // калькулятор: адреса з паку або типова за режимом (CalculatorRoutes через CalculatorRouteLoader); тут лише валідація параметра
         CalculatorRoutes::normalizePath($this->container->getParameter('app.calculator.path'));
         $routes->import('.', 'calculator');
+    }
+
+    /**
+     * Мови розгортання (app.locales): маршрути оголошені як uk без префікса + /ru/; інший набір мов переписує зібрану
+     * колекцію тут, після всіх імпортів (у configureRoutes її ще нема). При [uk, ru] — та сама колекція без змін.
+     * Деталі — App\ServiceSite\LocalizedRoutes.
+     */
+    public function loadRoutes(LoaderInterface $loader): RouteCollection
+    {
+        /** @var list<string> $locales */
+        $locales = $this->container->getParameter('app.locales');
+
+        return LocalizedRoutes::apply($this->loadRoutesDefaults($loader), $locales);
     }
 }

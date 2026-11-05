@@ -58,7 +58,7 @@ final class ServicePageController extends AbstractController
             throw $this->createNotFoundException('Сторінки в цьому місті нема.');
         }
 
-        $locale = $request->getLocale() === 'ru' ? 'ru' : 'uk';
+        $locale = $request->getLocale();
         $hubItems = [];
         if ($page->templateKind() === 'hub' && !$page->getItems()->isEmpty()) {
             $chosen = [];
@@ -85,7 +85,7 @@ final class ServicePageController extends AbstractController
             'hubItems' => $hubItems,
             'htmlSitemap' => $page->templateKind() === 'sitemap' ? $this->htmlSitemap->build($site, $city, $locale) : null,
             'pageNoindex' => $noindex,
-            'altUrls' => $this->altUrls('sv_page', ['path' => $page->path('uk')], ['path' => $page->path('ru')]),
+            'altUrls' => $this->altUrls('sv_page', static fn (string $l): array => ['path' => $page->path($l)]),
         ]);
         if ($noindex) {
             // заголовок — і для паку чи живої теми, що перекриває base.html.twig без pageNoindex
