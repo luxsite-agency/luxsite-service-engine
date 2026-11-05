@@ -2,7 +2,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
-{#- e['urls']: мова бренду → URL; xhtml:link лише коли мов більше однієї, x-default — мова без префікса #}
+{#- e['urls']: мова бренду → URL; xhtml:link лише коли мов більше однієї, x-default — мова без префікса;
+    hreflang у sitemap — код мови без регіону (uk, ru, en), як до мов розгортання: sitemap живих сайтів не змінюється #}
 {%- for e in entries %}
 {%- set urls = e['urls']|filter((u, l) => l != 'ru' or ru_mode == 'full') %}
 {%- for locale, loc in urls %}
@@ -12,7 +13,7 @@
         <lastmod>{{ e.lastmod|date('Y-m-d') }}</lastmod>
 {%- endif %}
 {%- if urls|length > 1 %}
-{% for l, u in urls %}        <xhtml:link rel="alternate" hreflang="{{ sv_locale_code(l, 'hreflang') }}" href="{{ u }}"/>
+{% for l, u in urls %}        <xhtml:link rel="alternate" hreflang="{{ l }}" href="{{ u }}"/>
 {% endfor %}        <xhtml:link rel="alternate" hreflang="x-default" href="{{ urls|first }}"/>
 {% endif %}    </url>
 {%- endfor %}
