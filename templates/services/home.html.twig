@@ -189,7 +189,7 @@
     <section class="block muted center">
         <h2>{{ 'home.reviews_title'|trans({}, 'servicesite') }}</h2>
         {% if reviewsAggregate %}
-        {% include 'services/partials/_rating_line.html.twig' with {agg: reviewsAggregate, all_url: path('sv_reviews')} only %}
+        {% include 'services/partials/_rating_line.html.twig' with {agg: reviewsAggregate, all_url: fixed_page_path('reviews')} only %}
         {% endif %}
         {% include 'services/partials/_reviews_row.html.twig' %}
     </section>
@@ -217,8 +217,8 @@
 
     {# на головній — перші app.home_faq_limit питань (0 = усі); повний список на /faq/ -#}
     {% include 'services/partials/_faq.html.twig' with {faq: homeFaq, centerTitle: true, muted: true} %}
-    {% if homeFaq is not empty and faqTotal|default(0) > homeFaq|length %}
-    <p class="center"><a class="more faq-all" href="{{ path('sv_faq') }}">{{ 'home.faq_all'|trans({}, 'servicesite') }}</a></p>
+    {% if homeFaq is not empty and faqTotal|default(0) > homeFaq|length and fixed_page_path('faq') %}
+    <p class="center"><a class="more faq-all" href="{{ fixed_page_path('faq') }}">{{ 'home.faq_all'|trans({}, 'servicesite') }}</a></p>
     {% endif %}
 
 {% endblock %}

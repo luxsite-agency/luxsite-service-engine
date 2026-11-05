@@ -26,7 +26,6 @@ twig:
         lead_events: '%app.lead_events%'
         home_lead_position: '%app.home_lead_position%'
         footer_catalog: '%app.footer_catalog%'
-        schema_business: '%app.schema%'
         # вхід через Google для відгуків: {% if google_oauth.configured %} — без кредів кнопку й форму не показуємо
         google_oauth: '@App\Security\GoogleOAuthConfig'
         # віджет відгуків gbp-manager: {token, base}; token порожній — віджета нема

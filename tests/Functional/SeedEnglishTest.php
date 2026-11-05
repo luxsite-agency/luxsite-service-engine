@@ -12,6 +12,7 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePage;
+use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
 use App\Tests\Support\EnglishCatalogKernel;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -43,6 +44,8 @@ final class SeedEnglishTest extends SeoTestCase
               - {slug: mistsevyi-$s, slug_en: local-$s, category: pereizd-$s, title_uk: 'Місцевий', title_en: 'Local moving', lead_en: 'Across town'}
             districts:
               - {city: main, slug: sauthempton-$s, slug_en: southampton-$s, name_uk: 'Саутгемптон', name_en: 'Southampton', group_en: 'Southampton Town'}
+            posts:
+              - {slug: novyna-$s, slug_en: news-$s, title_en: 'Moving news'}
             pages:
               - {slug: yak-tse-pratsiuie-$s, slug_en: how-it-works-$s, title_uk: 'Як це працює', title_en: 'How it works', body_en: '<p>Three steps.</p>'}
             YAML);
@@ -71,6 +74,8 @@ final class SeedEnglishTest extends SeoTestCase
         self::assertSame(["local-$s", 'Local moving', 'Across town'], [$item?->getSlugEn(), $item?->getTitleEn(), $item?->getLeadEn()]);
         $dist = $em->getRepository(ServiceDistrict::class)->findOneBy(['slugUk' => "sauthempton-$s"]);
         self::assertSame(["southampton-$s", 'Southampton', 'Southampton Town'], [$dist?->getSlugEn(), $dist?->getNameEn(), $dist?->getGroupEn()]);
+        $post = $em->getRepository(ServicePost::class)->findOneBy(['site' => $site, 'slugUk' => "novyna-$s"]);
+        self::assertSame(["news-$s", 'Moving news'], [$post?->getSlugEn(), $post?->getTitleEn()]);
         $page = $em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => "yak-tse-pratsiuie-$s"]);
         self::assertSame(["how-it-works-$s", 'How it works', '<p>Three steps.</p>'], [$page?->getSlugEn(), $page?->getTitleEn(), $page?->getDescEn()]);
     }

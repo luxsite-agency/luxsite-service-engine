@@ -25,6 +25,7 @@ final class PageController extends AbstractController
     use ServiceCityAware;
 
     public function __construct(
+        private readonly \App\ServiceSite\FixedPages $fixedPages,
         private readonly ServiceCityRepository $cityRepo,
         private readonly ServiceReviewRepository $reviews,
         private readonly \App\ServiceSite\ReviewsRating $reviewsRating,
@@ -63,6 +64,10 @@ final class PageController extends AbstractController
     )]
     public function faq(Request $request): Response
     {
+        if (!$this->fixedPages->enabled('faq')) {
+            $target = $this->fixedPages->path('faq');
+            return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
+        }
         return $this->render('services/page/faq.html.twig', [
             'site' => $this->serviceSite($request),
             'city' => $this->serviceCity($request),
@@ -99,6 +104,10 @@ final class PageController extends AbstractController
     )]
     public function contacts(Request $request): Response
     {
+        if (!$this->fixedPages->enabled('contacts')) {
+            $target = $this->fixedPages->path('contacts');
+            return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
+        }
         $city = $this->serviceCity($request);
 
         return $this->render('services/page/contacts.html.twig', [
@@ -117,6 +126,10 @@ final class PageController extends AbstractController
     )]
     public function reviews(Request $request): Response
     {
+        if (!$this->fixedPages->enabled('reviews')) {
+            $target = $this->fixedPages->path('reviews');
+            return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
+        }
         $city = $this->serviceCity($request);
 
         return $this->render('services/page/reviews.html.twig', [
@@ -140,6 +153,10 @@ final class PageController extends AbstractController
     )]
     public function privacy(Request $request): Response
     {
+        if (!$this->fixedPages->enabled('privacy')) {
+            $target = $this->fixedPages->path('privacy');
+            return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
+        }
         return $this->legal($request, 'privacy', 'sv_privacy');
     }
 
@@ -152,6 +169,10 @@ final class PageController extends AbstractController
     )]
     public function terms(Request $request): Response
     {
+        if (!$this->fixedPages->enabled('terms')) {
+            $target = $this->fixedPages->path('terms');
+            return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
+        }
         return $this->legal($request, 'terms', 'sv_terms');
     }
 
