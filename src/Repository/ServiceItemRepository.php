@@ -74,6 +74,11 @@ class ServiceItemRepository extends ServiceEntityRepository
      */
     public function findOneActiveBySlug(ServiceCategory $category, string $slug, string $locale): ?ServiceItem
     {
+        if ($locale === 'en') {
+            return $this->findOneBy(['category' => $category, 'slugEn' => $slug, 'active' => true])
+                ?? $this->findOneBy(['category' => $category, 'slugEn' => null, 'slugUk' => $slug, 'active' => true]);
+        }
+
         if ($locale === 'ru') {
             return $this->findOneBy(['category' => $category, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['category' => $category, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);
@@ -88,6 +93,11 @@ class ServiceItemRepository extends ServiceEntityRepository
      */
     public function findOneActiveBySiteAndSlug(ServiceSite $site, string $slug, string $locale): ?ServiceItem
     {
+        if ($locale === 'en') {
+            return $this->findOneBy(['site' => $site, 'slugEn' => $slug, 'active' => true])
+                ?? $this->findOneBy(['site' => $site, 'slugEn' => null, 'slugUk' => $slug, 'active' => true]);
+        }
+
         if ($locale === 'ru') {
             return $this->findOneBy(['site' => $site, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['site' => $site, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);

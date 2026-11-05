@@ -57,10 +57,16 @@ class ServiceWork implements TimestampableInterface
     private string $titleUk = '';
 
     #[ORM\Column(length: 160, nullable: true)]
+    private ?string $titleEn = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
     private ?string $titleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionUk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $captionEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionRu = null;
@@ -279,5 +285,29 @@ class ServiceWork implements TimestampableInterface
     public function __toString(): string
     {
         return $this->titleUk !== '' ? $this->titleUk : 'Робота';
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getCaptionEn(): ?string
+    {
+        return $this->captionEn;
+    }
+
+    public function setCaptionEn(?string $captionEn): self
+    {
+        $this->captionEn = $captionEn;
+
+        return $this;
     }
 }

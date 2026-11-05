@@ -13,7 +13,7 @@ namespace App\ServiceSite;
  * Виняток — SEO-поля metaTitle/metaDesc: порожнє ru = null, і шаблон підставляє свій дефолт мовою сторінки;
  * український title/description на /ru/ гірший за згенерований (10.2026, паритет із Joomla-джерелом).
  * en (22.10.2026) — без фолбеку: англійська сторінка не показує український текст; сутність без колонки *En
- * віддає null (англійські поля каталогу, районів і сторінок — окремий PR).
+ * віддає null. Порожній англійський слаг каталогу бере uk-слаг лише для адреси; статті вимагають власного en-слага.
  */
 trait LocalizedFieldsTrait
 {
@@ -27,8 +27,8 @@ trait LocalizedFieldsTrait
         $value = $this->locRaw($property, $locale);
 
         $empty = $value === null || $value === '' || $value === [];
-        // слаг — адреса, а не текст: без колонки *En англійська адреса бере українську (латинську) частину
-        if ($empty && $property === 'slug' && $locale !== 'uk' && !method_exists($this, 'getSlug' . self::locSuffix($locale))) {
+        // слаг — адреса, а не текст: порожній *En бере українську (латинську) частину
+        if ($empty && $property === 'slug' && $locale === 'en' && $this->englishSlugFallsBack()) {
             return $this->locRaw($property, 'uk');
         }
         if ($locale === 'ru' && $empty && $this->locFallsBack($property)) {
@@ -36,6 +36,12 @@ trait LocalizedFieldsTrait
         }
 
         return $value;
+    }
+
+    /** Catalog addresses may reuse uk; posts override this because an en post requires its own slug. */
+    protected function englishSlugFallsBack(): bool
+    {
+        return true;
     }
 
     /** Значення поля саме цієї локалі, без фолбеку ru→uk (для ланцюжка перевизначень: override.ru → base.ru → uk). */

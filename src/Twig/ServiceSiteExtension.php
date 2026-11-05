@@ -196,7 +196,7 @@ final class ServiceSiteExtension extends AbstractExtension
         if (method_exists($base, 'locRaw') && $filled($v = $base->locRaw($property, $locale))) {
             return $v;
         }
-        if ($locale !== 'uk' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
+        if ($locale === 'ru' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
             return $v;
         }
 

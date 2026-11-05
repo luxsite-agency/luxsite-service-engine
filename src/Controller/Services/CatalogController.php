@@ -224,7 +224,7 @@ final class CatalogController extends AbstractController
     {
         $apex = $this->cityRepo->findActiveApex($city->getSite());
         $itemAllowed = $apex === null || $apex->getId() === $city->getId() || $this->getParameter('app.catalog.faq_city_fallback');
-        foreach (array_unique([$locale, 'uk']) as $l) {
+        foreach ($locale === 'en' ? ['en'] : array_unique([$locale, 'uk']) as $l) {
             if ($override !== null && \is_array($v = $override->locRaw('faq', $l)) && $v !== []) {
                 return $v;
             }

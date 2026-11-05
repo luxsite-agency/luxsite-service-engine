@@ -12,10 +12,12 @@ use App\Doctrine\TimestampsTrait;
 use App\Repository\ServicePageRepository;
 use App\ServiceSite\ExtraFieldsTrait;
 use App\ServiceSite\LocalizedFieldsTrait;
+use App\Validator\CatalogNotBlank;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -31,6 +33,8 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Entity(repositoryClass: ServicePageRepository::class)]
 #[ORM\Table(name: 'service_page')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_uk', columns: ['site_id', 'slug_uk'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_en', columns: ['site_id', 'slug_en'])]
+#[UniqueEntity(fields: ['site', 'slugEn'], errorPath: 'slugEn', message: 'Слаг en уже використовується.')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_ru', columns: ['site_id', 'slug_ru'])]
 #[ORM\Index(columns: ['site_id', 'active', 'position'], name: 'idx_svc_page_site_active')]
 #[Vich\Uploadable]
@@ -87,17 +91,24 @@ class ServicePage implements TimestampableInterface
     private Collection $hiddenCities;
 
     #[ORM\Column(length: 160)]
-    #[Assert\NotBlank(message: 'Слаг uk обовʼязковий.')]
+    #[CatalogNotBlank(message: 'Слаг uk обовʼязковий.')]
     #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс (vakansii).')]
     private string $slugUk = '';
+
+    #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    private ?string $slugEn = null;
 
     #[ORM\Column(length: 160, nullable: true)]
     #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс (vakansii).')]
     private ?string $slugRu = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank(message: 'Заголовок uk обовʼязковий.')]
+    #[CatalogNotBlank(message: 'Заголовок uk обовʼязковий.')]
     private string $titleUk = '';
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
@@ -107,10 +118,16 @@ class ServicePage implements TimestampableInterface
     private ?string $leadUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -119,10 +136,16 @@ class ServicePage implements TimestampableInterface
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
@@ -130,6 +153,9 @@ class ServicePage implements TimestampableInterface
     /** H1, якщо має відрізнятися від заголовка (назва в меню, крихтах і списках коротша). Порожньо = заголовок. */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $h1Uk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $h1En = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $h1Ru = null;
@@ -494,6 +520,10 @@ class ServicePage implements TimestampableInterface
     /** H1 мовою сторінки: свій H1 > заголовок (обидва з фолбеком ru→uk) */
     public function h1(string $locale): string
     {
+        if ($locale === 'en') {
+            return (string) ($this->h1En ?: $this->titleEn);
+        }
+
         return (string) ($this->locRaw('h1', $locale) ?: $this->locRaw('title', $locale) ?: $this->loc('h1', $locale) ?: $this->titleUk);
     }
 
@@ -655,7 +685,7 @@ class ServicePage implements TimestampableInterface
         return $this;
     }
 
-    /** Слаг за локаллю з фолбеком ru→uk */
+    /** Слаг за локаллю: порожній ru/en → uk (лише адреса) */
     public function slug(string $locale): string
     {
         return (string) $this->loc('slug', $locale);
@@ -670,5 +700,89 @@ class ServicePage implements TimestampableInterface
     public function __toString(): string
     {
         return $this->parent !== null ? $this->parent->getTitleUk() . ' → ' . $this->titleUk : $this->titleUk;
+    }
+
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === null || trim($slugEn) === '' ? null : trim($slugEn);
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn;
+
+        return $this;
+    }
+
+    public function getH1En(): ?string
+    {
+        return $this->h1En;
+    }
+
+    public function setH1En(?string $h1En): self
+    {
+        $this->h1En = $h1En;
+
+        return $this;
     }
 }

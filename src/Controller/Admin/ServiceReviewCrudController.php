@@ -42,6 +42,8 @@ class ServiceReviewCrudController extends AbstractCrudController
         private readonly TranslatorInterface $translator,
         #[Autowire('%app.reviews.require_location%')]
         private readonly bool $requireLocation = false,
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
     ) {
     }
 
@@ -84,8 +86,11 @@ class ServiceReviewCrudController extends AbstractCrudController
         yield IdField::new('id')->onlyOnIndex();
         yield AssociationField::new('city', 'Місто')
             ->setHelp('Відгук показується на сайті цього міста.');
-        yield TextField::new('authorUk', 'Автор uk')
+        yield TextField::new('authorUk', 'Автор uk')->setRequired(!\in_array('en', $this->locales, true) || \in_array('uk', $this->locales, true))->setFormTypeOption('empty_data', '')
             ->setHelp('Тільки імʼя, без прізвища - так домовились із партнером.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('authorEn', 'Автор en')->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('authorRu', 'Автор ru')->hideOnIndex()
             ->setHelp('Порожньо = показується українське імʼя');
         yield TextField::new('location', 'Місто')
@@ -95,8 +100,11 @@ class ServiceReviewCrudController extends AbstractCrudController
             ->setHelp('1–5');
         yield DateField::new('reviewedAt', 'Дата відгуку')
             ->setHelp('Дата, яку видно під відгуком. Відгуки сортуються від нових до старих.');
-        yield TextareaField::new('textUk', 'Текст uk')->hideOnIndex()
+        yield TextareaField::new('textUk', 'Текст uk')->setRequired(!\in_array('en', $this->locales, true) || \in_array('uk', $this->locales, true))->setFormTypeOption('empty_data', '')->hideOnIndex()
             ->setHelp('Текст живої людини. ⚠️ Не переписувати і не «покращувати» - це чужі слова.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('textEn', 'Текст en')->hideOnIndex()->setRequired(false);
+        }
         yield TextareaField::new('textRu', 'Текст ru')->hideOnIndex()
             ->setHelp('Порожньо - показується український текст.');
         yield from $this->imageFields('/media/service_review');
