@@ -1,0 +1,12 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{% trans_default_domain 'partner' %}
+
+{% block content_title %}{{ 'home'|trans }} — {{ company }}{% endblock %}
+{% block main %}
+    <div class="row g-3 mb-4">
+        {% for label, count in {'new_count': new_count, 'accepted_count': accepted_count, 'month_count': month_count} %}
+            <div class="col-md-4"><div class="card p-3"><span>{{ label|trans }}</span><strong class="fs-2">{{ count }}</strong></div></div>
+        {% endfor %}
+    </div>
+    <a class="btn btn-primary" href="{{ ea_url().setDashboard('App\\Controller\\Partner\\PartnerDashboardController').setController('App\\Controller\\Partner\\PartnerLeadCrudController').setAction('index') }}">{{ 'leads'|trans }}</a>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+{% trans_default_domain 'partner' %}
+
+{% block content_title %}{{ 'billing'|trans }} — {{ report.month }}{% endblock %}
+{% block main %}
+    <form method="get" class="d-flex gap-2 mb-3">
+        <label for="billing-month">{{ 'month'|trans }}</label>
+        <input id="billing-month" class="form-control w-auto" type="month" name="month" value="{{ report.month }}">
+        <button class="btn btn-primary">{{ 'show'|trans }}</button>
+        <a class="btn btn-secondary" href="{{ path('partner_billing', {month: report.month, format: 'csv'}) }}">{{ 'download_csv'|trans }}</a>
+    </form>
+    <p>{{ 'assignment_count'|trans }}: <strong data-billing-count>{{ report.count }}</strong> · {{ 'total'|trans }}: <strong data-billing-total="{{ report.total }}">{{ (report.total / 100)|number_format(2, '.', ',') }} USD</strong></p>
+    <table class="table"><thead><tr><th>{{ 'status_label'|trans }}</th><th>{{ 'assignment_count'|trans }}</th><th>{{ 'total'|trans }} (USD)</th></tr></thead><tbody>
+        {% for status, summary in report.statuses %}
+            <tr><td>{{ ('status.' ~ status)|trans }}</td><td>{{ summary.count }}</td><td>{{ (summary.total / 100)|number_format(2, '.', ',') }}</td></tr>
+        {% endfor %}
+    </tbody></table>
+    <div class="table-responsive"><table class="table"><thead><tr>
+        <th>{{ 'assignment_id'|trans }}</th><th>{{ 'assigned_at'|trans }}</th><th>{{ 'zip_from'|trans }} → {{ 'zip_to'|trans }}</th><th>{{ 'status_label'|trans }}</th><th>{{ 'price'|trans }} (USD)</th><th>{{ 'billed'|trans }}</th>
+    </tr></thead><tbody>
+        {% for row in report.rows %}
+            <tr data-assignment-id="{{ row.assignment_id }}"><td>{{ row.assignment_id }}</td><td>{{ row.assigned_at }}</td><td>{{ row.zip_from }} → {{ row.zip_to }}</td><td>{{ ('status.' ~ row.status)|trans }}</td><td>{{ (row.price_cents / 100)|number_format(2, '.', ',') }}</td><td>{{ row.billed|trans }}</td></tr>
+        {% else %}<tr><td colspan="6">{{ 'no_assignments'|trans }}</td></tr>{% endfor %}
+    </tbody></table></div>
+{% endblock %}

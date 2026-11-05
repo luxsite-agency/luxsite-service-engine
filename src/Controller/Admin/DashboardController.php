@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 use function Symfony\Component\Translation\t;
 
-#[AdminDashboard(routePath: '/admin', routeName: 'admin')]
+#[AdminDashboard(routePath: '/admin', routeName: 'admin', deniedControllers: [\App\Controller\Partner\PartnerLeadCrudController::class])]
 class DashboardController extends AbstractDashboardController
 {
     public function __construct(

@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\ServiceSite\Partners;
 
+use App\Entity\ServiceLeadAssignment;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /** Конфігурація паку перевіряється до першої маршрутизації. */
@@ -18,13 +19,29 @@ final class PartnersConfig
     public readonly string $zipFromKey;
     public readonly string $zipToKey;
     public readonly \DateTimeZone $timezone;
+    public readonly string $cabinetLocale;
+    /** @var list<string> */
+    public readonly array $billingExcludes;
 
     /** @param array<string, mixed> $config */
     public function __construct(
         #[Autowire(param: 'app.partners')] array $config = [],
         #[Autowire(param: 'app.timezone')] string $timezone = 'Europe/Kyiv',
     ) {
-        $config += ['enabled' => false, 'share_max' => 3, 'unrouted_notify' => true, 'zip_from_key' => 'zip_from', 'zip_to_key' => 'zip_to'];
+        $config += ['enabled' => false, 'share_max' => 3, 'unrouted_notify' => true, 'zip_from_key' => 'zip_from', 'zip_to_key' => 'zip_to', 'cabinet_locale' => 'en', 'billing_excludes' => [ServiceLeadAssignment::STATUS_JUNK]];
+        if (!\is_string($config['cabinet_locale']) || !\in_array($config['cabinet_locale'], ['en', 'uk'], true)) {
+            throw new \InvalidArgumentException('app.partners.cabinet_locale: en або uk.');
+        }
+        if (!\is_array($config['billing_excludes']) || !array_is_list($config['billing_excludes'])) {
+            throw new \InvalidArgumentException('app.partners.billing_excludes: список статусів передач.');
+        }
+        foreach ($config['billing_excludes'] as $status) {
+            if (!\is_string($status) || !\in_array($status, ServiceLeadAssignment::STATUSES, true)) {
+                throw new \InvalidArgumentException('app.partners.billing_excludes: невідомий статус передачі.');
+            }
+        }
+        $this->cabinetLocale = $config['cabinet_locale'];
+        $this->billingExcludes = array_values(array_unique($config['billing_excludes']));
         if (!\is_bool($config['enabled']) || !\is_bool($config['unrouted_notify'])) {
             throw new \InvalidArgumentException('app.partners: enabled та unrouted_notify мають бути булевими.');
         }

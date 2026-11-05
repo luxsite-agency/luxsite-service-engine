@@ -1,0 +1,13 @@
+{% extends '@EasyAdmin/crud/detail.html.twig' %}
+
+{% block main %}
+    {{ parent() }}
+    <section class="content-panel p-3 mt-3">
+        <h2>Користувачі кабінету</h2>
+        <table class="table"><thead><tr><th>Email</th><th>Активний</th></tr></thead><tbody>
+            {% for user in cabinet_users %}<tr><td>{{ user.email }}</td><td>{{ user.active ? 'Так' : 'Ні' }}</td></tr>
+            {% else %}<tr><td colspan="2">Немає користувачів кабінету</td></tr>{% endfor %}
+        </tbody></table>
+        <p>Частка junk за 30 днів: <strong>{{ junk_percent|number_format(1, '.', '') }}%</strong> (передач: {{ junk_total }})</p>
+    </section>
+{% endblock %}

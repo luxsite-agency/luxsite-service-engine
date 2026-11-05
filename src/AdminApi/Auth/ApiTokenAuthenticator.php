@@ -68,6 +68,10 @@ final class ApiTokenAuthenticator extends AbstractAuthenticator implements Authe
             throw $this->failure($limiter->consume(), $ip, 'expired', $prefix, $token, 'Строк дії токена минув');
         }
         $user = $token->getUser();
+        // Навіть помилково виданий токен змішаного акаунта не відкриває API компаніям.
+        if (\in_array('ROLE_PARTNER', $user->getRoles(), true)) {
+            throw ApiTokenException::invalid('Кабінет компанії не має доступу до API адмінки');
+        }
 
         return new SelfValidatingPassport(new UserBadge($user->getUserIdentifier(), static fn () => $user), [new ApiTokenBadge($token)]);
     }

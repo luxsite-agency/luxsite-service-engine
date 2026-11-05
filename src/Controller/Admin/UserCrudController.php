@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\User;
+use App\ServiceSite\Partners\PartnersConfig;
+use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -36,6 +38,7 @@ class UserCrudController extends AbstractCrudController
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly \App\AdminApi\AdminApiTokens $tokens,
+        private readonly PartnersConfig $partners,
     ) {
     }
 
@@ -79,8 +82,11 @@ class UserCrudController extends AbstractCrudController
                 'Адмін (все)' => 'ROLE_ADMIN',
                 'Модератор (контент + заявки)' => 'ROLE_MODERATOR',
                 'Користувач' => 'ROLE_USER',
-            ])
+            ] + ($this->partners->enabled ? ['Компанія-партнер (кабінет)' => 'ROLE_PARTNER'] : []))
             ->allowMultipleChoices();
+        if ($this->partners->enabled) {
+            yield AssociationField::new('partner', 'Компанія')->setRequired(false)->setHelp('обов\'язково для ролі компанії');
+        }
         yield BooleanField::new('active', 'Активний');
     }
 

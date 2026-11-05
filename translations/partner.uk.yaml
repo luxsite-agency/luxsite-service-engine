@@ -1,0 +1,41 @@
+cabinet_title: Кабінет компанії
+home: Головна
+lead: Заявка
+leads: Заявки
+billing: Рахунок
+logout: Вийти
+new_count: Нові
+accepted_count: В роботі
+month_count: За цей місяць
+assignment_id: № передачі
+assigned_at: Дата передачі
+zip_from: ZIP звідки
+zip_to: ZIP куди
+customer_name: Ім’я клієнта
+phone: Телефон
+status_label: Статус
+price: Ціна
+status_note: Нотатка статусу
+status_at: Остання зміна статусу
+message: Повідомлення
+request_fields: Поля заявки
+consent_text: Текст згоди
+consent_at: Час згоди
+month: Місяць
+show: Показати
+download_csv: Завантажити CSV
+assignment_count: Кількість передач
+total: До сплати
+billed: У рахунку
+'yes': Так
+'no': Ні
+no_assignments: За цей місяць передач немає.
+status_new_forbidden: Оберіть інший статус; повернення до «Нові» заборонене.
+junk_note_required: У нотатці вкажіть причину статусу junk.
+status:
+    new: Нова
+    accepted: Прийнята
+    no_answer: Нема відповіді
+    junk: Спам
+    won: Успішна
+    lost: Втрачена

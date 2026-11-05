@@ -50,6 +50,7 @@ security:
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         - { path: ^/(api/admin|mcp), roles: ROLE_USER }
+        - { path: ^/partner, roles: ROLE_PARTNER }
         - { path: ^/admin, roles: ROLE_MODERATOR }
 
 when@test:
