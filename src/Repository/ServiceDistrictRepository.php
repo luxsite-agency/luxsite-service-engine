@@ -34,12 +34,12 @@ class ServiceDistrictRepository extends ServiceEntityRepository
      *
      * @return list<array{districts: ServiceDistrict[]}>
      */
-    public function findActiveByCityGrouped(ServiceCity $city): array
+    public function findActiveByCityGrouped(ServiceCity $city, string $locale = 'uk'): array
     {
         $grouped = [];
         $ungrouped = [];
         foreach ($this->findActiveByCity($city) as $district) {
-            $key = $district->getGroupUk();
+            $key = $locale === 'en' ? $district->getGroupEn() : $district->getGroupUk();
             if ($key === null) {
                 $ungrouped[] = $district;
             } else {
@@ -71,15 +71,15 @@ class ServiceDistrictRepository extends ServiceEntityRepository
      *
      * @return ServiceDistrict[]
      */
-    public function findInGroup(ServiceDistrict $district, int $limit = 12): array
+    public function findInGroup(ServiceDistrict $district, int $limit = 12, string $locale = 'uk'): array
     {
-        $group = $district->getGroupUk();
+        $group = $locale === 'en' ? $district->getGroupEn() : $district->getGroupUk();
         if ($group === null) {
             return [];
         }
 
         $all = $this->createQueryBuilder('d')
-            ->andWhere('d.city = :city AND d.active = 1 AND d.groupUk = :group AND d.id != :self')
+            ->andWhere('d.city = :city AND d.active = 1 AND d.' . ($locale === 'en' ? 'groupEn' : 'groupUk') . ' = :group AND d.id != :self')
             ->andWhere('d.isPrimary = 0')
             ->setParameter('city', $district->getCity())
             ->setParameter('group', $group)
@@ -134,6 +134,11 @@ class ServiceDistrictRepository extends ServiceEntityRepository
      */
     public function findOneActiveBySlug(ServiceCity $city, string $slug, string $locale): ?ServiceDistrict
     {
+        if ($locale === 'en') {
+            return $this->findOneBy(['city' => $city, 'slugEn' => $slug, 'active' => true])
+                ?? $this->findOneBy(['city' => $city, 'slugEn' => null, 'slugUk' => $slug, 'active' => true]);
+        }
+
         if ($locale === 'ru') {
             return $this->findOneBy(['city' => $city, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['city' => $city, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);

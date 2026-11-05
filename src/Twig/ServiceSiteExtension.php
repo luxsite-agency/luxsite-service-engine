@@ -11,7 +11,9 @@ use App\Entity\ServiceItem;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceCity;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\Entity\ServiceDistrict;
 use App\Repository\ServiceCityRepository;
+use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
@@ -62,7 +64,36 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
         private readonly ?SiteLocales $siteLocales = null,
+        private readonly ?ServiceDistrictRepository $districts = null,
     ) {
+    }
+
+    /**
+     * Активні райони поточного міста (атрибут запиту service_city), згруповані за `group` мовою сторінки: [{name, districts}].
+     * Порядок — position районів; група без назви (`name` = '') — ті, у кого групи нема. Район без назви цією мовою пропускається
+     * (англійська сторінка не показує українського тексту). Без міста — [].
+     *
+     * @return list<array{name: string, districts: list<ServiceDistrict>}>
+     */
+    public function districtGroups(?string $locale = null): array
+    {
+        $request = $this->requests->getCurrentRequest();
+        $city = $request?->attributes->get('service_city');
+        if (!$city instanceof ServiceCity || $this->districts === null) {
+            return [];
+        }
+        $locale ??= $request->getLocale();
+        $groups = [];
+        foreach ($this->districts->findActiveByCity($city) as $district) {
+            if (trim((string) $district->loc('name', $locale)) === '') {
+                continue;
+            }
+            $name = trim((string) $district->loc('group', $locale));
+            $groups[$name] ??= ['name' => $name, 'districts' => []];
+            $groups[$name]['districts'][] = $district;
+        }
+
+        return array_values($groups);
     }
 
     public function getFunctions(): array
@@ -74,6 +105,8 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('service_path', $this->servicePath(...)),
             new TwigFunction('city_switcher', $this->citySwitcher(...)),
             new TwigFunction('city_in', $this->cityIn(...)),
+            // райони поточного міста групами мовою сторінки — мегаменю «Локації», хаб, футер (05.11.2026)
+            new TwigFunction('sv_district_groups', $this->districtGroups(...)),
             new TwigFunction('ov', $this->ov(...)),
             new TwigFunction('item_text', $this->itemText(...)),
             new TwigFunction('footer_catalog', $this->footerCatalog(...)),
@@ -196,7 +229,7 @@ final class ServiceSiteExtension extends AbstractExtension
         if (method_exists($base, 'locRaw') && $filled($v = $base->locRaw($property, $locale))) {
             return $v;
         }
-        if ($locale !== 'uk' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
+        if ($locale === 'ru' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
             return $v;
         }
 

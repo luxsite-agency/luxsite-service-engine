@@ -16,6 +16,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -29,6 +30,8 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Entity(repositoryClass: ServiceItemRepository::class)]
 #[ORM\Table(name: 'service_item')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_item_site_slug_uk', columns: ['site_id', 'slug_uk'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_item_site_slug_en', columns: ['site_id', 'slug_en'])]
+#[UniqueEntity(fields: ['site', 'slugEn'], errorPath: 'slugEn', message: 'Слаг en уже використовується.')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_item_site_slug_ru', columns: ['site_id', 'slug_ru'])]
 #[ORM\Index(columns: ['category_id', 'active', 'position'], name: 'idx_svc_item_cat_active')]
 #[ORM\Index(columns: ['calc_type_id'], name: 'idx_item_calc_type')]
@@ -90,10 +93,17 @@ class ServiceItem implements TimestampableInterface
     private string $slugUk = '';
 
     #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    private ?string $slugEn = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
     #[ORM\Column(length: 255)]
     private string $titleUk = '';
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
@@ -103,10 +113,16 @@ class ServiceItem implements TimestampableInterface
     private ?string $leadUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -115,10 +131,16 @@ class ServiceItem implements TimestampableInterface
     private ?string $desc2Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2En = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Ru = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Uk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3En = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
@@ -128,11 +150,17 @@ class ServiceItem implements TimestampableInterface
     private ?string $tabTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $tabTitleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $tabTitleRu = null;
 
     /** Коротка назва для карток, меню й таблиць («Самоскиди» при H1 «Перевезення самоскидами»); порожньо = title */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $nameUk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $nameEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $nameRu = null;
@@ -141,10 +169,16 @@ class ServiceItem implements TimestampableInterface
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
@@ -156,6 +190,9 @@ class ServiceItem implements TimestampableInterface
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqUk = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqEn = null;
 
     /** @var list<array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
@@ -572,7 +609,7 @@ class ServiceItem implements TimestampableInterface
         return $this;
     }
 
-    /** Слаг за локаллю з фолбеком ru→uk */
+    /** Слаг за локаллю: порожній ru/en → uk (лише адреса) */
     public function slug(string $locale): string
     {
         return (string) $this->loc('slug', $locale);
@@ -685,5 +722,138 @@ class ServiceItem implements TimestampableInterface
     public function shortName(string $locale): string
     {
         return (string) ($this->loc('name', $locale) ?: $this->loc('title', $locale));
+    }
+
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === null || trim($slugEn) === '' ? null : trim($slugEn);
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getDesc2En(): ?string
+    {
+        return $this->desc2En;
+    }
+
+    public function setDesc2En(?string $desc2En): self
+    {
+        $this->desc2En = $desc2En;
+
+        return $this;
+    }
+
+    public function getDesc3En(): ?string
+    {
+        return $this->desc3En;
+    }
+
+    public function setDesc3En(?string $desc3En): self
+    {
+        $this->desc3En = $desc3En;
+
+        return $this;
+    }
+
+    public function getTabTitleEn(): ?string
+    {
+        return $this->tabTitleEn;
+    }
+
+    public function setTabTitleEn(?string $tabTitleEn): self
+    {
+        $this->tabTitleEn = $tabTitleEn;
+
+        return $this;
+    }
+
+    public function getNameEn(): ?string
+    {
+        return $this->nameEn;
+    }
+
+    public function setNameEn(?string $nameEn): self
+    {
+        $this->nameEn = $nameEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn;
+
+        return $this;
+    }
+
+    /** @return list<array{q: string, a: string}>|null */
+    public function getFaqEn(): ?array
+    {
+        return $this->faqEn;
+    }
+
+    public function setFaqEn(?array $faqEn): self
+    {
+        $this->faqEn = $faqEn;
+
+        return $this;
     }
 }

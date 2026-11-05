@@ -14,6 +14,7 @@ use App\ServiceSite\ExtraFieldsTrait;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 use Vich\UploaderBundle\Mapping\Attribute as Vich;
@@ -25,6 +26,8 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Entity(repositoryClass: ServiceCategoryRepository::class)]
 #[ORM\Table(name: 'service_category')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_uk', columns: ['site_id', 'slug_uk'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_en', columns: ['site_id', 'slug_en'])]
+#[UniqueEntity(fields: ['site', 'slugEn'], errorPath: 'slugEn', message: 'Слаг en уже використовується.')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_ru', columns: ['site_id', 'slug_ru'])]
 #[Vich\Uploadable]
 class ServiceCategory implements TimestampableInterface
@@ -50,10 +53,17 @@ class ServiceCategory implements TimestampableInterface
     private string $slugUk = '';
 
     #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    private ?string $slugEn = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
     #[ORM\Column(length: 255)]
     private string $titleUk = '';
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
@@ -61,6 +71,9 @@ class ServiceCategory implements TimestampableInterface
     /** Лід (вступ під H1), простий текст або короткий HTML; порожньо = нема */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadRu = null;
@@ -73,6 +86,9 @@ class ServiceCategory implements TimestampableInterface
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqUk = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqEn = null;
+
     /** @var list<array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
@@ -81,10 +97,16 @@ class ServiceCategory implements TimestampableInterface
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Uk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2En = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Ru = null;
@@ -93,16 +115,25 @@ class ServiceCategory implements TimestampableInterface
     private ?string $desc3Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3En = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
@@ -400,7 +431,7 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
-    /** Слаг за локаллю з фолбеком ru→uk */
+    /** Слаг за локаллю: порожній ru/en → uk (лише адреса) */
     public function slug(string $locale): string
     {
         return (string) $this->loc('slug', $locale);
@@ -483,6 +514,115 @@ class ServiceCategory implements TimestampableInterface
     public function setFaqRu(?array $faqRu): self
     {
         $this->faqRu = $faqRu;
+
+        return $this;
+    }
+
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === null || trim($slugEn) === '' ? null : trim($slugEn);
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn;
+
+        return $this;
+    }
+
+    /** @return list<array{q: string, a: string}>|null */
+    public function getFaqEn(): ?array
+    {
+        return $this->faqEn;
+    }
+
+    public function setFaqEn(?array $faqEn): self
+    {
+        $this->faqEn = $faqEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getDesc2En(): ?string
+    {
+        return $this->desc2En;
+    }
+
+    public function setDesc2En(?string $desc2En): self
+    {
+        $this->desc2En = $desc2En;
+
+        return $this;
+    }
+
+    public function getDesc3En(): ?string
+    {
+        return $this->desc3En;
+    }
+
+    public function setDesc3En(?string $desc3En): self
+    {
+        $this->desc3En = $desc3En;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn;
 
         return $this;
     }

@@ -20,8 +20,8 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 trait RootSlugConstraintsTrait
 {
     /**
-     * Обмеження для поля slugUk ('uk') чи slugRu ('ru'). Запис береться з кореня форми: на момент валідації
-     * поля форми вже записані в нього, тож порожній slugRu перевіряється як uk-слаг на /ru/… (так генерується адреса).
+     * Обмеження для поля slugUk ('uk'), slugRu ('ru') чи slugEn ('en'). Запис береться з кореня форми: на момент валідації
+     * поля форми вже записані в нього, тож порожній slugRu/slugEn перевіряється як uk-слаг на /ru/… (так генерується адреса).
      *
      * @return list<Callback>
      */

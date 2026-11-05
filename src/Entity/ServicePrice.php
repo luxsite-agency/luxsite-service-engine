@@ -58,10 +58,16 @@ class ServicePrice implements CalcOption, TimestampableInterface
     private string $nameUk = '';
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $nameEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $nameRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -77,6 +83,9 @@ class ServicePrice implements CalcOption, TimestampableInterface
     /** Довільний текст замість числа («За домовленістю») */
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $priceTextUk = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $priceTextEn = null;
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $priceTextRu = null;
@@ -98,6 +107,9 @@ class ServicePrice implements CalcOption, TimestampableInterface
     /** Одиниця виміру для кількості («м²», «шт», «посадкове місце») */
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $unitUk = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $unitEn = null;
 
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $unitRu = null;
@@ -330,5 +342,53 @@ class ServicePrice implements CalcOption, TimestampableInterface
     public function __toString(): string
     {
         return $this->nameUk;
+    }
+
+    public function getNameEn(): ?string
+    {
+        return $this->nameEn;
+    }
+
+    public function setNameEn(?string $nameEn): self
+    {
+        $this->nameEn = $nameEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getPriceTextEn(): ?string
+    {
+        return $this->priceTextEn;
+    }
+
+    public function setPriceTextEn(?string $priceTextEn): self
+    {
+        $this->priceTextEn = $priceTextEn;
+
+        return $this;
+    }
+
+    public function getUnitEn(): ?string
+    {
+        return $this->unitEn;
+    }
+
+    public function setUnitEn(?string $unitEn): self
+    {
+        $this->unitEn = $unitEn;
+
+        return $this;
     }
 }

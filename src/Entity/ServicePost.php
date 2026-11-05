@@ -512,6 +512,12 @@ class ServicePost implements TimestampableInterface
         return trim((string) $this->loc('slug', $locale)) !== '' && trim((string) $this->loc('title', $locale)) !== '';
     }
 
+    /** Keep the post locale predicate identical to ServicePostRepository::localeCondition(). */
+    protected function englishSlugFallsBack(): bool
+    {
+        return false;
+    }
+
     /** Стаття має хоч одну мову (адмінка, студія) */
     #[Assert\Callback]
     public function validateHasLanguage(\Symfony\Component\Validator\Context\ExecutionContextInterface $context): void
