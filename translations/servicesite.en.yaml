@@ -100,6 +100,9 @@ lead.name: Name
 lead.message: What needs to be done?
 lead.submit: Send
 lead.files: 'Photos or PDF documents (optional, up to %count% files, %mb% MB each)'
+lead.select_placeholder: '- choose -'
+lead.consent: 'I agree to the processing of my personal data in accordance with the {policy}'
+lead.consent_policy: Privacy Policy
 application.files: 'Files (CV, diploma — PDF, DOC, photos)'
 application.consent: 'I consent to the processing of my personal data'
 
