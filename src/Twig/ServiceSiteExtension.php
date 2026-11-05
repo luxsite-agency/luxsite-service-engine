@@ -21,6 +21,7 @@ use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
 use App\ServiceSite\LeadConsent;
 use App\ServiceSite\LeadFields;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -34,7 +35,7 @@ use Twig\TwigFunction;
  */
 final class ServiceSiteExtension extends AbstractExtension
 {
-    /** @var array<int, bool> memo на запит: меню рендериться двічі (шапка + підвал) */
+    /** @var array<string, bool> memo на запит: сайт + мова, меню рендериться двічі (шапка + підвал) */
     private array $hasBlog = [];
 
     /** @var array<int, int> memo на запит: активних міст сайту (title і H1 відгуків) */
@@ -64,6 +65,7 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly bool $pagesEnabled = false,
         private readonly ?LeadFields $leadFields = null,
         private readonly ?LeadConsent $leadConsent = null,
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -86,6 +88,12 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('custom_fields', $this->customFieldsOf(...)),
             new TwigFunction('lead_fields', $this->leadFieldsFor(...)),
             new TwigFunction('lead_consent', $this->leadConsentFor(...)),
+            // мови розгортання й бренду (app.locales, ServiceSite.locales; 22.10.2026) — замість зашитих uk/ru
+            new TwigFunction('sv_locale', fn (): string => $this->locales()->current()),
+            new TwigFunction('sv_locales', fn (?ServiceSite $site = null): array => $this->locales()->enabled($site)),
+            new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
+            new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
+            new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
         ];
     }
 
@@ -194,7 +202,7 @@ final class ServiceSiteExtension extends AbstractExtension
         if (method_exists($base, 'locRaw') && $filled($v = $base->locRaw($property, $locale))) {
             return $v;
         }
-        if ($locale !== 'uk' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
+        if ($locale === 'ru' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
             return $v;
         }
 
@@ -211,6 +219,9 @@ final class ServiceSiteExtension extends AbstractExtension
     public function cityIn(ServiceCity $city, string $locale, ?string $after = null): string
     {
         $name = trim((string) ($city->loc('nameLoc', $locale) ?? $city->name($locale)));
+        if ($locale === 'en') {
+            return 'in';
+        }
         if ($locale !== 'uk') {
             return preg_match('/^(В[^аеёиоуыэюяАЕЁИОУЫЭЮЯ]|Ф[^аеёиоуыэюя]|Льв|Мн)/u', $name) === 1 ? 'во' : 'в';
         }
@@ -241,7 +252,9 @@ final class ServiceSiteExtension extends AbstractExtension
 
     public function siteHasBlog(ServiceSite $site): bool
     {
-        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site) > 0;
+        $locale = $this->locales()->current();
+
+        return $this->hasBlog[$site->getId() . ':' . $locale] ??= $this->posts->countPublishedBySite($site, $locale) > 0;
     }
 
     /**
@@ -318,7 +331,7 @@ final class ServiceSiteExtension extends AbstractExtension
             return null;
         }
         $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
-        $value = $this->pageMeta[$route][$field . '_' . ($request->getLocale() === 'ru' ? 'ru' : 'uk')] ?? null;
+        $value = $this->pageMeta[$route][$field . '_' . $this->locales()->current()] ?? null;
 
         return \is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
@@ -327,5 +340,10 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    private function locales(): SiteLocales
+    {
+        return $this->siteLocales ?? new SiteLocales($this->requests);
     }
 }

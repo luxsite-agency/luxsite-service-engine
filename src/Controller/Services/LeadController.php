@@ -20,6 +20,7 @@ use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -69,18 +70,18 @@ final class LeadController extends AbstractController
         $city = $this->serviceCity($request);
         $back = $this->backUrl($request);
         // /lead нелокалізований, тож локаль беремо зі сторінки-джерела, не з request
-        $locale = str_starts_with((string) parse_url($back, PHP_URL_PATH), '/ru/') ? 'ru' : 'uk';
+        $locale = $this->container->get(SiteLocales::class)->ofPath((string) parse_url($back, PHP_URL_PATH));
 
         // тіло понад post_max_size PHP мовчки викидає разом із $_POST (і токеном) — кажемо про розмір, а не «сесія застаріла»
         $max = ImageApiController::iniBytes((string) ini_get('post_max_size'));
         if ($request->request->count() === 0 && $max > 0 && (int) $request->server->get('CONTENT_LENGTH', 0) > $max) {
-            $this->addFlash('lead_error', $locale === 'ru' ? 'Файлы слишком большие, уменьшите их или отправьте без них.' : 'Файли завеликі, зменште їх або надішліть без них.');
+            $this->addFlash('lead_error', $locale === 'en' ? 'Files are too large. Reduce their size or submit without them.' : ($locale === 'ru' ? 'Файлы слишком большие, уменьшите их или отправьте без них.' : 'Файли завеликі, зменште їх або надішліть без них.'));
 
             return $this->redirect($back);
         }
 
         if (!$this->isCsrfTokenValid('sv_lead', (string) $request->request->get('_token'))) {
-            $this->addFlash('lead_error', 'Сесія застаріла, спробуйте ще раз.');
+            $this->addFlash('lead_error', $locale === 'en' ? 'Your session has expired. Please try again.' : 'Сесія застаріла, спробуйте ще раз.');
 
             return $this->redirect($back);
         }
@@ -97,7 +98,7 @@ final class LeadController extends AbstractController
         $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15
             || mb_strlen($name) > 128 || mb_strlen($message) > 3000) {
-            $this->addFlash('lead_error', 'Перевірте номер телефону.');
+            $this->addFlash('lead_error', $locale === 'en' ? 'Please check your phone number.' : 'Перевірте номер телефону.');
 
             return $this->redirect($back);
         }
@@ -149,7 +150,7 @@ final class LeadController extends AbstractController
         }
 
         if (!$this->rateLimit->isAccepted($request)) {
-            $this->addFlash('lead_error', 'Забагато заявок поспіль - спробуйте пізніше або подзвоніть нам.');
+            $this->addFlash('lead_error', $locale === 'en' ? 'Too many requests. Please try again later or call us.' : 'Забагато заявок поспіль - спробуйте пізніше або подзвоніть нам.');
 
             return $this->redirect($back);
         }
@@ -176,7 +177,7 @@ final class LeadController extends AbstractController
         try {
             $stored = $this->files->store($uploads);
         } catch (\Throwable $e) {
-            $this->addFlash('lead_error', $locale === 'ru' ? 'Не удалось сохранить файлы, попробуйте ещё раз или отправьте без них.' : 'Не вдалося зберегти файли, спробуйте ще раз або надішліть без них.');
+            $this->addFlash('lead_error', $locale === 'en' ? 'Could not save the files. Please try again or submit without them.' : ($locale === 'ru' ? 'Не удалось сохранить файлы, попробуйте ещё раз или отправьте без них.' : 'Не вдалося зберегти файли, спробуйте ще раз або надішліть без них.'));
 
             return $this->redirect($back);
         }
@@ -233,6 +234,6 @@ final class LeadController extends AbstractController
             return $path . ($query ? '?' . $query : '');
         }
 
-        return $this->generateUrl('sv_home', ['_locale' => 'uk']);
+        return $this->generateUrl('sv_home', ['_locale' => $this->container->get(SiteLocales::class)->default()]);
     }
 }

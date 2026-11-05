@@ -13,6 +13,8 @@ use App\Repository\ServiceDistrictRepository;
 use App\ServiceSite\LocalizedFieldsTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Район міста (сторінка /districts/<slug>/) — скоупиться по місту.
@@ -21,6 +23,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: ServiceDistrictRepository::class)]
 #[ORM\Table(name: 'service_district')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_uk', columns: ['city_id', 'slug_uk'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_en', columns: ['city_id', 'slug_en'])]
+#[UniqueEntity(fields: ['city', 'slugEn'], errorPath: 'slugEn', message: 'Слаг en уже використовується.')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_ru', columns: ['city_id', 'slug_ru'])]
 class ServiceDistrict implements TimestampableInterface
 {
@@ -44,11 +48,18 @@ class ServiceDistrict implements TimestampableInterface
     private string $slugUk = '';
 
     #[ORM\Column(length: 64, nullable: true)]
+    #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    private ?string $slugEn = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
     private ?string $slugRu = null;
 
     /** Група в акордеоні «Де ми працюємо» (адмінрайон: «Оболонський район») */
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $groupUk = null;
+
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $groupEn = null;
 
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $groupRu = null;
@@ -58,10 +69,16 @@ class ServiceDistrict implements TimestampableInterface
     private string $nameUk = '';
 
     #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameEn = null;
+
+    #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleUk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
@@ -70,10 +87,16 @@ class ServiceDistrict implements TimestampableInterface
     private ?string $leadUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -82,10 +105,16 @@ class ServiceDistrict implements TimestampableInterface
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
@@ -97,6 +126,9 @@ class ServiceDistrict implements TimestampableInterface
     /** Вулиці/мікрорайони для акордеона (розділені новим рядком) */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $subAreasUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $subAreasEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $subAreasRu = null;
@@ -129,6 +161,9 @@ class ServiceDistrict implements TimestampableInterface
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqUk = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqEn = null;
 
     /** @var array<int, array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
@@ -415,7 +450,7 @@ class ServiceDistrict implements TimestampableInterface
         return $this;
     }
 
-    /** Слаг за локаллю з фолбеком ru→uk */
+    /** Слаг за локаллю: порожній ru/en → uk (лише адреса) */
     public function slug(string $locale): string
     {
         return (string) $this->loc('slug', $locale);
@@ -487,5 +522,126 @@ class ServiceDistrict implements TimestampableInterface
     public function __toString(): string
     {
         return $this->nameUk;
+    }
+
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === null || trim($slugEn) === '' ? null : trim($slugEn);
+
+        return $this;
+    }
+
+    public function getGroupEn(): ?string
+    {
+        return $this->groupEn;
+    }
+
+    public function setGroupEn(?string $groupEn): self
+    {
+        $this->groupEn = $groupEn;
+
+        return $this;
+    }
+
+    public function getNameEn(): ?string
+    {
+        return $this->nameEn;
+    }
+
+    public function setNameEn(?string $nameEn): self
+    {
+        $this->nameEn = $nameEn;
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn;
+
+        return $this;
+    }
+
+    public function getSubAreasEn(): ?string
+    {
+        return $this->subAreasEn;
+    }
+
+    public function setSubAreasEn(?string $subAreasEn): self
+    {
+        $this->subAreasEn = $subAreasEn;
+
+        return $this;
+    }
+
+    /** @return list<array{q: string, a: string}>|null */
+    public function getFaqEn(): ?array
+    {
+        return $this->faqEn;
+    }
+
+    public function setFaqEn(?array $faqEn): self
+    {
+        $this->faqEn = $faqEn;
+
+        return $this;
     }
 }

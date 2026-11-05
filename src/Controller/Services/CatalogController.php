@@ -124,7 +124,7 @@ final class CatalogController extends AbstractController
             'override' => $this->categoryTexts->findOneByCategoryAndCity($cat, $city),
             'items' => $items,
             'pageNoindex' => $cat->isNoindex(),
-            'altUrls' => $this->altUrls('sv_category', ['category' => $cat->slug('uk')], ['category' => $cat->slug('ru')]),
+            'altUrls' => $this->altUrls('sv_category', static fn (string $l): array => ['category' => $cat->slug($l)]),
         ]));
     }
 
@@ -198,11 +198,7 @@ final class CatalogController extends AbstractController
                 static fn ($i) => $i->getId() !== $item->getId(),
             )),
             'pageNoindex' => $item->isNoindex(),
-            'altUrls' => $this->altUrls(
-                'sv_service',
-                $this->catalogUrls->itemParams($item, 'uk'),
-                $this->catalogUrls->itemParams($item, 'ru'),
-            ),
+            'altUrls' => $this->altUrls('sv_service', fn (string $l): array => $this->catalogUrls->itemParams($item, $l)),
         ]));
     }
 
@@ -228,7 +224,7 @@ final class CatalogController extends AbstractController
     {
         $apex = $this->cityRepo->findActiveApex($city->getSite());
         $itemAllowed = $apex === null || $apex->getId() === $city->getId() || $this->getParameter('app.catalog.faq_city_fallback');
-        foreach (array_unique([$locale, 'uk']) as $l) {
+        foreach ($locale === 'en' ? ['en'] : array_unique([$locale, 'uk']) as $l) {
             if ($override !== null && \is_array($v = $override->locRaw('faq', $l)) && $v !== []) {
                 return $v;
             }

@@ -16,6 +16,9 @@ twig:
         catalog_url_scheme: '%app.catalog.url_scheme%'
         # російська версія: full — як є; noindex — /ru/ поза індексом, без hreflang; off — /ru/ 404, без перемикача мов
         ru_mode: '%app.ru_mode%'
+        # країна (ISO 3166-1) і валюта (ISO 4217) для schema.org — app.schema_country, app.currency паку
+        schema_country: '%app.schema_country%'
+        currency_code: '%app.currency%'
         site_verification: '%app.site_verification%'
         clarity_id: '%app.clarity_id%'
         viber_plus: '%app.viber_plus%'

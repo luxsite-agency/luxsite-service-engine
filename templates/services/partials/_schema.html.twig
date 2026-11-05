@@ -51,7 +51,7 @@
         '@id': host ~ '/#business',
         'name': site.name ~ ' - ' ~ city.name(locale),
         'url': url,
-        'address': {'@type': 'PostalAddress', 'addressLocality': city.name(locale), 'addressCountry': 'UA'},
+        'address': {'@type': 'PostalAddress', 'addressLocality': city.name(locale), 'addressCountry': schema_country},
         'areaServed': {'@type': 'City', 'name': city.name(locale)},
         'priceRange': '$$',
     } %}

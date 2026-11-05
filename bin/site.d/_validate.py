@@ -208,6 +208,10 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
         err(f"{where}: app.catalog.url_scheme має бути flat|nested|root|slug")
     if "app.pages" in pp and not isinstance(pp.get("app.pages"), bool):
         err(f"{where}: app.pages — true|false")
+    if "app.schema_country" in pp and not re.fullmatch(r"[A-Z]{2}", str(pp.get("app.schema_country"))):
+        err(f"{where}: app.schema_country — код країни ISO 3166-1, дві великі літери (UA, US)")
+    if "app.currency" in pp and not re.fullmatch(r"[A-Z]{3}", str(pp.get("app.currency"))):
+        err(f"{where}: app.currency — код валюти ISO 4217, три великі літери (UAH, USD)")
     if "app.ru_mode" in pp and pp.get("app.ru_mode") not in ("full", "noindex", "off"):
         err(f"{where}: app.ru_mode має бути full|noindex|off")
     blog = pp.get("app.blog_prefix")
