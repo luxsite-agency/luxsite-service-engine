@@ -115,9 +115,15 @@ class ServiceCityCrudController extends AbstractCrudController
             ->setHelp('Показується у футері. Кілька адрес - кожна з нового рядка; у розмітку Google іде лише перший рядок. Порожньо - адреси на сайті немає.');
         yield TextareaField::new('addressRu', 'Адреса (ru)')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - на ru-сторінках буде українська.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('addressEn', 'Адреса (en)')->hideOnIndex()->setColumns(6);
+        }
         yield TextareaField::new('aboutWhereUk', '«Про нас»: де працюємо (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Абзац під заголовком «Де ми працюємо» на сторінці «Про нас»: райони й передмістя цього міста. Порожньо - розділу не буде.');
         yield TextareaField::new('aboutWhereRu', '«Про нас»: де працюємо (ru)')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('aboutWhereEn', '«Про нас»: де працюємо (en)')->hideOnIndex()->setColumns(6);
+        }
         yield TextEditorField::new('aboutUk', '«Про нас» для міста (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Повний текст сторінки «Про нас» лише для цього міста (можна з маркером <!--city-where-->). Порожньо = спільний текст бренду.');
         yield TextEditorField::new('aboutRu', '«Про нас» для міста (ru)')->hideOnIndex()->setColumns(6);
@@ -125,6 +131,9 @@ class ServiceCityCrudController extends AbstractCrudController
             ->setHelp('Один рядок лише для цього міста, напр. «Мінімальний виклик — від 1500 грн»: під таблицями цін на головній і сторінці послуги, біля підсумку калькулятора й під заголовком форми заявки. Порожньо - рядка нема.');
         yield TextField::new('priceNoteRu', 'Умова про ціни для міста (ru)')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - на ru-сторінках буде українська.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('priceNoteEn', 'Умова про ціни для міста (en)')->hideOnIndex()->setColumns(6);
+        }
         yield TextField::new('mapEmbedUrl', 'Карта: посилання для вставки')->hideOnIndex()->setColumns(12)
             ->setHelp('Google Maps: «Поділитися → Вставити карту», скопіювати адресу з src="…". Порожньо - блок карти на контактах не показуємо');
         yield TextField::new('mapLinkUrl', 'Карта: посилання на листинг')->hideOnIndex()->setColumns(12)
@@ -161,6 +170,9 @@ class ServiceCityCrudController extends AbstractCrudController
             ->setHelp('Вступний текст на сторінці переліку районів.');
         yield TextEditorField::new('districtsIntroRu', 'Інтро районів ru')->hideOnIndex()->setColumns(6);
 
+        if (\in_array('en', $this->locales, true)) {
+            yield TextEditorField::new('districtsIntroEn', 'Інтро районів en')->hideOnIndex()->setColumns(6);
+        }
         yield FormField::addTab('FAQ', 'fa fa-circle-question');
         yield CollectionField::new('faqUk', 'FAQ uk')->hideOnIndex()->setColumns(6)
             ->setEntryType(ServiceFaqItemType::class)
