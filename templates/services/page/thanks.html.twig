@@ -11,6 +11,7 @@
     {# конверсія: подія летить у dataLayer, звідти GTM робить ціль GA4. Перелік подій — app.lead_events паку
        (дефолт [generate_lead]; чужий контейнер може чекати form_submit) — усі з тими самими полями.
        src=dup - повторна відправка того самого номера: конверцію вдруге не рахуємо;
+       src=ok - захист форм визнав заявку спамом (LeadSpamGuard): та сама подяка, але без подій і конверсій;
        src=app-<форма> - анкета (app.applications): не заявка клієнта, лише подія application_submit, без конверсій -#}
     {% set _src = app.request.query.get('src') ?? '' %}
     {% set _app = _src starts with 'app-' and _src|length > 4 ? _src|slice(4, 32) : null %}
@@ -19,7 +20,7 @@
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({event: 'application_submit', form: {{ _app|json_encode|raw }}, city: {{ city.name('uk')|json_encode|raw }}, site_host: {{ app.request.host|json_encode|raw }}});
     </script>
-    {% elseif _src != 'dup' %}
+    {% elseif _src != 'dup' and _src != 'ok' %}
     <script>
         window.dataLayer = window.dataLayer || [];
         {% for _ev in lead_events %}

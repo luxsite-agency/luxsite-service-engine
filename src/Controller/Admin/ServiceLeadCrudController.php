@@ -8,10 +8,19 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServiceLead;
+use App\ServiceSite\LeadDispatcher;
+use Doctrine\ORM\EntityManagerInterface;
+use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
+use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Filter\NullFilter;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGeneratorInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
@@ -20,11 +29,14 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Черга заявок: read-mostly — створюються фронт-формою, в адмінці лише
- * перегляд і позначка «оброблено».
+ * Черга заявок: read-mostly — створюються фронт-формою, в адмінці лише перегляд і позначка «оброблено».
+ * Спам (LeadSpamGuard, spam_reason) лежить тут же з бейджем і фільтром «Спам»; дія «Не спам» знімає позначку й відправляє
+ * заявку листом і в CRM тим самим шляхом, що звичайну (LeadDispatcher).
  */
 #[IsGranted('ROLE_MODERATOR')]
 class ServiceLeadCrudController extends AbstractCrudController
@@ -34,6 +46,14 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: телефон - головне в заявці */
     private const INDEX_PRIMARY = 'phone';
+
+    private const NOT_SPAM_CSRF = 'lead-not-spam';
+
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly LeadDispatcher $dispatcher,
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -51,10 +71,69 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     public function configureActions(Actions $actions): Actions
     {
+        // «Не спам»: лише в записів зі spam_reason; посилання з CSRF-токеном (дія змінює дані й шле лист/CRM)
+        $notSpam = Action::new('notSpam', 'Не спам', 'fa fa-check')
+            ->linkToUrl(fn (ServiceLead $lead): string => $this->container->get(AdminUrlGeneratorInterface::class)->unsetAll()
+                ->setController(self::class)->setAction('notSpam')->setEntityId($lead->getId())
+                ->set('_t', $this->container->get('security.csrf.token_manager')->getToken(self::NOT_SPAM_CSRF)->getValue())->generateUrl())
+            ->displayIf(static fn (ServiceLead $lead): bool => $lead->isSpam())
+            ->setHtmlAttributes(['title' => 'Зняти позначку спаму й відправити заявку менеджерам (лист, CRM)']);
+
         // перегляд заявки (detail) — там файли посиланнями; редагування лишається для позначки «Оброблено»
         return $this->addCancelAction($actions)
             ->add(Crud::PAGE_INDEX, Action::DETAIL)
+            ->add(Crud::PAGE_INDEX, $notSpam)
+            ->add(Crud::PAGE_DETAIL, $notSpam)
             ->disable(Action::NEW);
+    }
+
+    public function configureFilters(Filters $filters): Filters
+    {
+        return $filters
+            ->add(EntityFilter::new('city', 'Місто'))
+            ->add(NullFilter::new('spamReason', 'Спам')->setChoiceLabels('Ні — звичайні заявки', 'Так — лише спам'))
+            ->add(BooleanFilter::new('processed', 'Оброблено'));
+    }
+
+    /**
+     * «Не спам»: хибне спрацювання захисту. Знімає spam_reason і відправляє заявку листом і в CRM тим самим шляхом, що
+     * звичайну (LeadDispatcher); app:crm:sync далі теж її бачить.
+     *
+     * @param AdminContext<ServiceLead> $context
+     */
+    #[AdminRoute(path: '/{entityId}/not-spam', name: 'not_spam')]
+    public function notSpam(AdminContext $context, Request $request): Response
+    {
+        $lead = $context->getEntity()->getInstance();
+        if (!$lead instanceof ServiceLead) {
+            throw $this->createNotFoundException();
+        }
+        $back = $this->container->get(AdminUrlGeneratorInterface::class)->unsetAll()->setController(self::class)->setAction(Action::INDEX)->generateUrl();
+        if (!$this->isCsrfTokenValid(self::NOT_SPAM_CSRF, (string) $request->query->get('_t', ''))) {
+            $this->addFlash('danger', 'Недійсний CSRF-токен, спробуйте ще раз');
+
+            return $this->redirect($back);
+        }
+        if (!$lead->isSpam()) {
+            $this->addFlash('info', sprintf('Заявка #%d і так не спам.', $lead->getId()));
+
+            return $this->redirect($back);
+        }
+
+        $reason = (string) $lead->getSpamReason();
+        $lead->setSpamReason(null);
+        $this->em->flush();
+        $city = $lead->getCity();
+        $inCrm = $this->dispatcher->dispatch($lead, 'Заявка', $city?->getHost() ?? '');
+        $this->addFlash('success', sprintf(
+            'Заявка #%d (%s) більше не спам (було: %s): лист менеджерам надіслано%s.',
+            $lead->getId(),
+            htmlspecialchars($lead->getPhone(), \ENT_QUOTES),
+            htmlspecialchars($reason, \ENT_QUOTES),
+            $inCrm ? ', у CRM відправлено' : ($lead->getCrmError() !== null ? ', CRM: ' . htmlspecialchars((string) $lead->getCrmError(), \ENT_QUOTES) : ''),
+        ));
+
+        return $this->redirect($back);
     }
 
     public function configureFields(string $pageName): iterable
@@ -79,6 +158,12 @@ class ServiceLeadCrudController extends AbstractCrudController
             );
         yield TextField::new('service', 'Послуга')
             ->setHelp('Послуга з кнопки «Замовити», з якої надіслали форму (поле service). Порожньо — форма без послуги.');
+        yield TextField::new('spamReason', 'Спам')->setTemplatePath('admin/lead/field/spam.html.twig')->setFormTypeOption('disabled', true)
+            ->setHelp(
+                'Захист форм визнав заявку спамом: причина — honeypot, too-fast (швидше за 3 с), time-token (підроблена мітка), '
+                . 'junk/url (SQL, теги, посилання), latin-only (без кирилиці), phone (короткий номер чи чужа країна), turnstile. '
+                . 'Лист і CRM не надсилались, конверсія не рахувалась. Хибне спрацювання — дія «Не спам»: відправить як звичайну.'
+            );
         yield TextField::new('context', 'Звідки')->hideOnIndex()
             ->setHelp('Яка саме форма чи блок сторінки (поле context): шапка, картка ціни, доставка…');
         yield IntegerField::new('filesCount', 'Файли')->onlyOnIndex()
