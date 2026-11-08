@@ -14,6 +14,7 @@ setting:
     index: 'Настройки сайта «%site%»'
   sites: Сайт
   help:
+    pack_default: 'Сейчас из пака: %value%.'
     index: 'Ключи и коды, которые клиент вводит сам: вход через Google, аналитика, верификация, свои HTML-коды. Действуют на сайте сразу после сохранения. Счётчик отдельного города — в «Города сервисов» (имеет приоритет над GTM сайта, см. таблицу ниже).'
     html_raw: '%help% Сохраняется и выводится как есть, без экранирования.'
     secret_disabled_missing: 'На сервере нет ключа шифрования SETTINGS_SECRET_KEY — секрет сохранить нельзя. Ключ дописывает bin/site deploy (или bin/console app:secrets:keygen → shared/.env.local).'
@@ -32,11 +33,14 @@ setting:
   value:
     'on': да
     'off': нет
+    default: как в паке
+    default_is: 'как в паке (сейчас: %value%)'
   status:
     not_set: не задано
     set: задано
     invalid: 'не выводится: неверный формат'
     invalid_title: Ожидается значение в формате, как в подсказке поля
+  hreflang_unknown_locale: 'Язык «%locales%» не из языков сайта (%allowed%) — строка не применится. Оставьте только языки сайта.'
   invalid_format: 'Неверный формат — см. подсказку под полем. Можно вставить весь код от Google, Meta или Microsoft: идентификатор извлечётся сам.'
   secret_state:
     missing: не задано
@@ -51,7 +55,7 @@ setting:
   group:
     google: Вход через Google
     analytics: Аналитика
-    seo: Верификация
+    seo: SEO
     html: HTML-коды
     site: Админка
   key:
@@ -94,6 +98,12 @@ setting:
       bing_site_verification:
         label: Bing Webmaster — код верификации
         help: Значение content мета-тега msvalidate.01 (можно вставить тег целиком).
+      hreflang_single:
+        label: hreflang для одноязычного сайта
+        help: 'Да — каждая страница одноязычного сайта ссылается сама на себя (тег link rel=alternate hreflang) с кодами языка и x-default, так же в sitemap.xml. Нет — hreflang только если языков сайта два и больше. «Как в паке» — действует app.hreflang_single пака. Изменение видно на сайте сразу, sitemap.xml — до часа (кэш).'
+      hreflang_codes:
+        label: Коды hreflang по языку
+        help: 'Строка на язык сайта: «язык: коды через пробел». Пример для англоязычного сайта с привязкой к США и Великобритании — en: en-US en-GB; украиноязычного — uk: uk-UA; русскоязычного на весь мир — ru: ru. Коды — BCP 47 (en, en-US, es-419); x-default не пишите, его движок ставит сам. Язык без строки берётся из пака. Неверный формат — не сохранится.'
     html:
       head:
         label: Свой код в заголовке страницы (head)

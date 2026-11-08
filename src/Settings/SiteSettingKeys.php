@@ -23,6 +23,10 @@ final class SiteSettingKeys
     public const string TYPE_HTML = 'html';
     /** Секрет: у БД — конверт SecretBox, в адмінці — маска й заміна без показу старого; SiteSettings::get() віддає маску. */
     public const string TYPE_SECRET = 'secret';
+    /** Так / ні / не задано: порожньо — діє параметр паку (не «ні»), '1' / '0' — перекриття з адмінки. */
+    public const string TYPE_BOOL_DEFAULT = 'bool_default';
+    /** Кілька рядків тексту (не HTML): у формі — textarea, на сайт не виводиться сирим. */
+    public const string TYPE_LINES = 'lines';
 
     public const string ADMIN_TITLE = 'site.admin_title';
     public const string GOOGLE_SIGN_IN_ENABLED = 'google.sign_in_enabled';
@@ -37,6 +41,10 @@ final class SiteSettingKeys
     public const string CONSENT_BANNER = 'analytics.consent_banner';
     public const string GOOGLE_SITE_VERIFICATION = 'seo.google_site_verification';
     public const string BING_SITE_VERIFICATION = 'seo.bing_site_verification';
+    /** hreflang і для одномовного сайту (з 08.11.2026); не задано — app.hreflang_single паку */
+    public const string HREFLANG_SINGLE = 'seo.hreflang_single';
+    /** коди hreflang за мовою сайту «en: en-US en-GB» (рядок на мову); не задано — app.locale_codes[…].hreflang паку → рушій */
+    public const string HREFLANG_CODES = 'seo.hreflang_codes';
     public const string HTML_HEAD = 'html.head';
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
@@ -58,6 +66,8 @@ final class SiteSettingKeys
         self::CONSENT_BANNER => ['type' => self::TYPE_BOOL, 'group' => 'analytics'],
         self::GOOGLE_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::BING_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
+        self::HREFLANG_SINGLE => ['type' => self::TYPE_BOOL_DEFAULT, 'group' => 'seo'],
+        self::HREFLANG_CODES => ['type' => self::TYPE_LINES, 'group' => 'seo'],
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],
@@ -80,7 +90,14 @@ final class SiteSettingKeys
         self::GOOGLE_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::BING_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::ADMIN_TITLE => '/^[^\r\n<>]{1,64}$/u',
+        self::HREFLANG_SINGLE => '/^[01]$/',
     ];
+
+    /**
+     * Код hreflang — тег мови BCP 47 у звичному для hreflang вигляді: мова (en), +письмо (zh-Hant), +регіон (en-US, es-419).
+     * x-default сюди не проходить: його рушій ставить сам (перша мова сайту).
+     */
+    private const string HREFLANG_TAG = '/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$/';
 
     /** @return list<string> */
     public static function all(): array
@@ -139,7 +156,13 @@ final class SiteSettingKeys
     public static function isValidValue(string $code, ?string $value): bool
     {
         $value = trim((string) $value);
-        if ('' === $value || !isset(self::PATTERNS[$code])) {
+        if ('' === $value) {
+            return true;
+        }
+        if (self::HREFLANG_CODES === $code) {
+            return null !== self::parseHreflangCodes($value);
+        }
+        if (!isset(self::PATTERNS[$code])) {
             return true;
         }
 
@@ -155,6 +178,55 @@ final class SiteSettingKeys
         }
 
         return $value;
+    }
+
+    /**
+     * «en: en-US en-GB» (рядки або «;») → [мова => [коди]]; null — формат не той: рядок без «мова:», код не BCP 47
+     * (або x-default), мова двічі, порожній список кодів. Регістр нормалізується (en-us → en-US).
+     *
+     * @return array<string, list<string>>|null
+     */
+    public static function parseHreflangCodes(?string $value): ?array
+    {
+        $out = [];
+        foreach (preg_split('/[\r\n;]+/', (string) $value) ?: [] as $line) {
+            $line = trim($line);
+            if ('' === $line) {
+                continue;
+            }
+            if (1 !== preg_match('/^([A-Za-z]{2,3})\s*:\s*(.+)$/', $line, $m)) {
+                return null;
+            }
+            $lang = strtolower($m[1]);
+            if (isset($out[$lang])) {
+                return null;
+            }
+            $codes = [];
+            foreach (preg_split('/[\s,]+/', trim($m[2]), -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $tag) {
+                $tag = self::canonicalTag($tag);
+                if (1 !== preg_match(self::HREFLANG_TAG, $tag)) {
+                    return null;
+                }
+                $codes[] = $tag;
+            }
+            if ([] === $codes) {
+                return null;
+            }
+            $out[$lang] = array_values(array_unique($codes));
+        }
+
+        return [] === $out ? null : $out;
+    }
+
+    /** en-us → en-US, zh-hant-tw → zh-Hant-TW, es-419 як є. */
+    private static function canonicalTag(string $tag): string
+    {
+        $parts = explode('-', $tag);
+        foreach ($parts as $i => $p) {
+            $parts[$i] = 0 === $i ? strtolower($p) : (4 === \strlen($p) ? ucfirst(strtolower($p)) : strtoupper($p));
+        }
+
+        return implode('-', $parts);
     }
 
     /**
@@ -174,6 +246,19 @@ final class SiteSettingKeys
         $value = trim($raw);
         if ('' === $value) {
             return null;
+        }
+        if (self::TYPE_BOOL_DEFAULT === $type) {
+            $b = filter_var($value, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE);
+
+            return null === $b ? $value : ($b ? '1' : '0');
+        }
+        if (self::HREFLANG_CODES === $code) {
+            $parsed = self::parseHreflangCodes($value);
+            if (null === $parsed) {
+                return $value;
+            }
+
+            return implode("\n", array_map(static fn (string $l, array $c): string => $l . ': ' . implode(' ', $c), array_keys($parsed), $parsed));
         }
         $extract = static fn (string $pattern, int $group = 1): ?string => 1 === preg_match($pattern, $value, $m) ? $m[$group] : null;
 

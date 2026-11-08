@@ -52,6 +52,24 @@ final class SiteSettingKeysTest extends TestCase
         self::assertSame('GTM-AB12CD3', K::validValue(K::GTM_CONTAINER_ID, ' GTM-AB12CD3 '));
     }
 
+    public function testHreflangFormats(): void
+    {
+        self::assertSame(['en' => ['en-US', 'en-GB']], K::parseHreflangCodes('en: en-US en-GB'));
+        self::assertSame(['uk' => ['uk-UA'], 'ru' => ['ru']], K::parseHreflangCodes("uk: uk-ua\r\n\nru:ru"));
+        self::assertSame(['es' => ['es-419'], 'zh' => ['zh-Hant-TW']], K::parseHreflangCodes('es: es-419; zh: zh-hant-tw'));
+        foreach (['', 'en-US', 'en: x-default', 'en: en_US', 'en:', 'en: en-USA', "en: en\nen: en-US", 'english: en'] as $bad) {
+            self::assertNull(K::parseHreflangCodes($bad), $bad);
+        }
+        self::assertTrue(K::isValidValue(K::HREFLANG_CODES, 'en: en-US en-GB'));
+        self::assertFalse(K::isValidValue(K::HREFLANG_CODES, 'en: x-default'));
+        self::assertSame("en: en-US en-GB\nuk: uk-UA", K::normalize(K::HREFLANG_CODES, ' EN: en-us, en-gb ; uk: UK-ua '));
+        self::assertSame('1', K::normalize(K::HREFLANG_SINGLE, 'yes'));
+        self::assertSame('0', K::normalize(K::HREFLANG_SINGLE, 'off'));
+        self::assertNull(K::normalize(K::HREFLANG_SINGLE, ' '));
+        self::assertFalse(K::isValidValue(K::HREFLANG_SINGLE, 'maybe'));
+        self::assertSame(K::TYPE_BOOL_DEFAULT, K::type(K::HREFLANG_SINGLE));
+    }
+
     public function testRegistry(): void
     {
         self::assertTrue(K::isSecret(K::GOOGLE_CLIENT_SECRET));

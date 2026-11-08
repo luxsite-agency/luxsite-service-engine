@@ -62,6 +62,14 @@ final class SiteSettings implements ResetInterface
         return \in_array(mb_strtolower(trim((string) $this->get($site, $code))), ['1', 'true', 'yes', 'on'], true);
     }
 
+    /** Так / ні / не задано (TYPE_BOOL_DEFAULT): null — значення нема або воно невалідне, тоді діє параметр паку. */
+    public function boolOrNull(ServiceSite $site, string $code): ?bool
+    {
+        $v = $this->valid($site, $code);
+
+        return null === $v ? null : '1' === $v;
+    }
+
     /** Відкритий секрет; null — не задано, нема ключа шифрування або конверт не розшифрувати (secretState()). */
     public function secret(ServiceSite $site, string $code): ?string
     {

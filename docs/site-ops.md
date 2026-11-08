@@ -288,7 +288,8 @@ server: { host: <ssh-аліас>, user: www-data, runtime: docker, proxy: edge, 
 | | Microsoft Clarity (`analytics.clarity_id`) | тег Clarity | адмінка > `app.clarity_id` паку |
 | | Meta Pixel (`analytics.fb_pixel_id`) | PageView, Lead на `/thank-you/` | якщо піксель у GTM — поле порожнє |
 | | Банер згоди на cookie (`analytics.consent_banner`) | Consent Mode v2 (`denied` до згоди), Clarity/Pixel лише після «Прийняти», cookie `sv_consent` 180 днів | вимкнено = як раніше |
-| Верифікація | Google Search Console, Bing (`seo.*`) | `<meta>` у `<head>` усіх хостів | GSC: адмінка > `app.site_verification` паку |
+| SEO | Google Search Console, Bing (`seo.*_site_verification`) | `<meta>` у `<head>` усіх хостів | GSC: адмінка > `app.site_verification` паку |
+| SEO | hreflang для одномовного сайту (`seo.hreflang_single`: як у паку / так / ні), коди за мовою (`seo.hreflang_codes`: `en: en-US en-GB`) | `<link rel="alternate" hreflang>` у `<head>` і `xhtml:link` у sitemap.xml | адмінка > `app.hreflang_single` / `app.locale_codes` паку > рушій |
 | HTML-коди | `<head>`, початок і кінець `<body>` (`html.*`) | сирий HTML на всіх сторінках | лише адміністратор |
 | Адмінка | Назва адмінки (`site.admin_title`) | бічне меню, дашборд, сторінка входу | адмінка > назва сайту хоста адмінки > «Сервісні сайти» |
 

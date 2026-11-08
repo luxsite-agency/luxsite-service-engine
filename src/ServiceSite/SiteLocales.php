@@ -9,6 +9,8 @@ namespace App\ServiceSite;
 
 use App\Entity\ServiceSite;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\Settings\SiteSettingKeys;
+use App\Settings\SiteSettings;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -44,6 +46,8 @@ final class SiteLocales
         /** app.hreflang_single: hreflang і для одномовного бренду (сторінка посилається сама на себе + x-default) */
         #[Autowire('%app.hreflang_single%')]
         private readonly bool $hreflangSingle = false,
+        /** налаштування сайту в адмінці (seo.hreflang_*): перекривають пак без деплою; null — лише пак (unit-тести, CLI) */
+        private readonly ?SiteSettings $settings = null,
     ) {
     }
 
@@ -143,8 +147,10 @@ final class SiteLocales
     /**
      * Посилання hreflang сторінки — одне джерело для <head> і sitemap.xml. $urls — мова → URL цієї сторінки,
      * $order — мови бренду в потрібному порядку (порожньо — порядок $urls). Перша мова — x-default.
-     * Код береться з app.locale_codes[<мова>].hreflang і може містити кілька кодів через пробіл ('en-US en-GB') —
-     * тоді на кожен код окреме посилання на той самий URL. Одна мова — порожньо, якщо не ввімкнено app.hreflang_single.
+     * Код мови може містити кілька кодів ('en-US en-GB') — тоді на кожен окреме посилання на той самий URL.
+     * Одна мова — порожньо, якщо hreflang для одномовного сайту не ввімкнено.
+     * Пріоритет (08.11.2026): налаштування сайту в адмінці (seo.hreflang_single, seo.hreflang_codes) > пак
+     * (app.hreflang_single, app.locale_codes) > рушій. Невалідне значення в адмінці ігнорується (як і на інших ключах).
      *
      * @param array<string, string> $urls
      * @param list<string>          $order
@@ -154,18 +160,34 @@ final class SiteLocales
     public function hreflangs(array $urls, array $order = []): array
     {
         $langs = $order === [] ? array_keys($urls) : array_values(array_filter($order, static fn (string $l): bool => isset($urls[$l])));
-        if ($langs === [] || (\count($langs) < 2 && !$this->hreflangSingle)) {
+        $site = null === $this->settings ? null : $this->currentSite();
+        $single = (null === $site ? null : $this->settings->boolOrNull($site, SiteSettingKeys::HREFLANG_SINGLE)) ?? $this->hreflangSingle;
+        if ($langs === [] || (\count($langs) < 2 && !$single)) {
             return [];
         }
+        $override = null === $site ? [] : (SiteSettingKeys::parseHreflangCodes($this->settings->valid($site, SiteSettingKeys::HREFLANG_CODES)) ?? []);
         $out = [];
         foreach ($langs as $l) {
-            foreach (preg_split('/\s+/', trim($this->code($l, 'hreflang')), -1, \PREG_SPLIT_NO_EMPTY) ?: [$l] as $code) {
+            $codes = $override[$l] ?? (preg_split('/\s+/', trim($this->code($l, 'hreflang')), -1, \PREG_SPLIT_NO_EMPTY) ?: [$l]);
+            foreach ($codes as $code) {
                 $out[] = ['hreflang' => $code, 'href' => $urls[$l]];
             }
         }
         $out[] = ['hreflang' => 'x-default', 'href' => $urls[$langs[0]]];
 
         return $out;
+    }
+
+    /** Коди hreflang паку/рушія для мов розгортання — дефолт поля seo.hreflang_codes в адмінці: «en: en-US en-GB; uk: uk-UA». */
+    public function packHreflangSummary(): string
+    {
+        return implode('; ', array_map(fn (string $l): string => $l . ': ' . trim((string) preg_replace('/\s+/', ' ', $this->code($l, 'hreflang'))), $this->locales));
+    }
+
+    /** app.hreflang_single паку (дефолт для seo.hreflang_single) */
+    public function packHreflangSingle(): bool
+    {
+        return $this->hreflangSingle;
     }
 
     /** Бренд головного запиту (атрибут ServiceHostSubscriber); null — адмін-хост, CLI, хост без тенанта */
