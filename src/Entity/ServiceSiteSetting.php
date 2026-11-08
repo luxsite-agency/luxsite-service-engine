@@ -9,6 +9,7 @@ namespace App\Entity;
 
 use App\Settings\SecretBox;
 use App\Settings\SiteSettingKeys;
+use App\Validator\HreflangLocales;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -20,6 +21,7 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
  * (HTML-коди публікуються сирими, доступ лише ROLE_ADMIN); секрет — лише конверт SecretBox.
  */
 #[ORM\Entity]
+#[HreflangLocales]
 #[ORM\Table(name: 'service_site_setting')]
 #[ORM\UniqueConstraint(name: 'uniq_site_setting_code', columns: ['site_id', 'code'])]
 class ServiceSiteSetting

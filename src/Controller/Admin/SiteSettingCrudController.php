@@ -17,6 +17,7 @@ use App\Settings\AdminBranding;
 use App\Settings\GoogleSignInPanel;
 use App\Settings\SecretBox;
 use App\Settings\SecretState;
+use App\ServiceSite\SiteLocales;
 use App\Settings\SiteSettingKeys;
 use App\Settings\SiteSettings;
 use App\Settings\SiteTagResolver;
@@ -33,6 +34,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
 use EasyCorp\Bundle\EasyAdminBundle\Dto\SearchDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
@@ -80,6 +82,7 @@ final class SiteSettingCrudController extends AbstractCrudController
         private readonly AdminBranding $branding,
         private readonly LeadCrmConnector $crm,
         private readonly TranslatorInterface $translator,
+        private readonly SiteLocales $locales,
         #[Autowire(service: 'monolog.logger.security_audit')]
         private readonly LoggerInterface $audit,
         #[Autowire('%kernel.secret%')]
@@ -134,6 +137,11 @@ final class SiteSettingCrudController extends AbstractCrudController
         // значення — текстом (екранування Twig), обрізане; секрет — маска, перемикач — так/ні
         yield TextField::new('valueText', t('setting.field.value', [], 'admin'))->onlyOnIndex()->setSortable(false)
             ->formatValue(static function ($v, ?ServiceSiteSetting $s) use ($tr): string {
+                if (null !== $s && SiteSettingKeys::TYPE_BOOL_DEFAULT === SiteSettingKeys::type($s->getCode())) {
+                    $v = trim((string) $s->getValue());
+
+                    return $tr->trans('' === $v ? 'setting.value.default' : ('1' === $v ? 'setting.value.on' : 'setting.value.off'), [], 'admin');
+                }
                 if (null !== $s && SiteSettingKeys::TYPE_BOOL === SiteSettingKeys::type($s->getCode())) {
                     return $tr->trans(\in_array(mb_strtolower(trim((string) $s->getValue())), ['1', 'true', 'yes', 'on'], true) ? 'setting.value.on' : 'setting.value.off', [], 'admin');
                 }
@@ -369,6 +377,25 @@ final class SiteSettingCrudController extends AbstractCrudController
                         'getter' => static fn (ServiceSiteSetting $s): bool => \in_array(mb_strtolower(trim((string) $s->getValue())), ['1', 'true', 'yes', 'on'], true),
                         'setter' => static fn (ServiceSiteSetting $s, ?bool $v) => $s->setValue($v ? '1' : '0'),
                     ]);
+                break;
+            case SiteSettingKeys::TYPE_BOOL_DEFAULT:
+                // три стани: «як у паку» (порожньо) / так / ні — перемикач не відрізнив би «не задано» від «ні»
+                $pack = SiteSettingKeys::HREFLANG_SINGLE === $code ? ($this->locales->packHreflangSingle() ? 'setting.value.on' : 'setting.value.off') : 'setting.value.off';
+                yield ChoiceField::new('value', $label)->setHelp($help)->renderExpanded()
+                    ->setChoices([
+                        $this->translator->trans('setting.value.default_is', ['%value%' => $this->translator->trans($pack, [], 'admin')], 'admin') => 'pack',
+                        $this->translator->trans('setting.value.on', [], 'admin') => '1',
+                        $this->translator->trans('setting.value.off', [], 'admin') => '0',
+                    ])
+                    ->setFormTypeOptions([
+                        'getter' => static fn (ServiceSiteSetting $s): string => match (trim((string) $s->getValue())) { '1' => '1', '0' => '0', default => 'pack' },
+                        'setter' => static fn (ServiceSiteSetting $s, ?string $v) => $s->setValue('pack' === $v ? null : $v),
+                    ]);
+                break;
+            case SiteSettingKeys::TYPE_LINES:
+                $extra = SiteSettingKeys::HREFLANG_CODES === $code ? $this->translator->trans('setting.help.pack_default', ['%value%' => $this->locales->packHreflangSummary()], 'admin') : '';
+                yield TextareaField::new('value', $label)->setHelp(trim($this->translator->trans(SiteSettingKeys::helpKey($code), [], 'admin') . ' ' . $extra))->setNumOfRows(4)->setRequired(false)
+                    ->setFormTypeOption('attr', ['spellcheck' => 'false', 'style' => 'font-family: monospace']);
                 break;
             case SiteSettingKeys::TYPE_HTML:
                 yield TextareaField::new('value', $label)->setHelp(t('setting.help.html_raw', ['%help%' => $this->translator->trans(SiteSettingKeys::helpKey($code), [], 'admin')], 'admin'))->setNumOfRows(12)

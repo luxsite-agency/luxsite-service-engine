@@ -79,4 +79,15 @@ final class HreflangSingleTest extends HttpKernelTestCase
         self::assertSame(404, $r->getStatusCode());
         self::assertStringNotContainsString('hreflang="uk-UA"', (string) $r->getContent(), '404 — без hreflang');
     }
+
+    /** Адмінка перекриває пак: app.hreflang_single: true, але «ні» в налаштуваннях сайту — hreflang нема (і в sitemap). */
+    public function testAdminSettingOverridesPackSingle(): void
+    {
+        $site = $this->em()->find(ServiceSite::class, $this->siteId) ?? self::fail('сайт');
+        self::getContainer()->get(\App\Settings\SiteSettings::class)->set($site, \App\Settings\SiteSettingKeys::HREFLANG_SINGLE, '0');
+        $this->em()->clear();
+        $base = 'https://' . $this->host;
+        self::assertStringNotContainsString('rel="alternate" hreflang=', (string) $this->http('GET', $base . '/blog/persha/')->getContent());
+        self::assertStringNotContainsString('xhtml:link', (string) $this->http('GET', $base . '/sitemap.xml')->getContent());
+    }
 }

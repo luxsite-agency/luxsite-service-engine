@@ -15,6 +15,7 @@ setting:
     index: 'Налаштування сайту «%site%»'
   sites: Сайт
   help:
+    pack_default: 'Зараз з паку: %value%.'
     index: 'Ключі й коди, які клієнт вводить сам: вхід через Google, аналітика, верифікація, свої HTML-коди. Діють на сайті одразу після збереження. Лічильник окремого міста — у «Міста сервісів» (має пріоритет над GTM сайту, див. таблицю нижче).'
     html_raw: '%help% Зберігається й виводиться як є, без екранування.'
     secret_disabled_missing: 'На сервері нема ключа шифрування SETTINGS_SECRET_KEY — секрет зберегти не можна. Ключ дописує bin/site deploy (або bin/console app:secrets:keygen → shared/.env.local).'
@@ -33,11 +34,14 @@ setting:
   value:
     'on': так
     'off': ні
+    default: як у паку
+    default_is: 'як у паку (зараз: %value%)'
   status:
     not_set: не задано
     set: задано
     invalid: 'не виводиться: невірний формат'
     invalid_title: Очікується значення у форматі, як у підказці поля
+  hreflang_unknown_locale: 'Мова «%locales%» не з мов сайту (%allowed%) — рядок не застосується. Залиште лише мови сайту.'
   invalid_format: 'Невірний формат — див. підказку під полем. Можна вставити цілий код від Google, Meta чи Microsoft: ідентифікатор дістанеться сам.'
   secret_state:
     missing: не задано
@@ -52,7 +56,7 @@ setting:
   group:
     google: Вхід через Google
     analytics: Аналітика
-    seo: Верифікація
+    seo: SEO
     html: HTML-коди
     site: Адмінка
   key:
@@ -95,6 +99,12 @@ setting:
       bing_site_verification:
         label: Bing Webmaster — код верифікації
         help: Значення content мета-тегу msvalidate.01 (можна вставити тег цілком).
+      hreflang_single:
+        label: hreflang для одномовного сайту
+        help: 'Так — кожна сторінка одномовного сайту посилається сама на себе (тег link rel=alternate hreflang) з кодами мови й x-default, так само в sitemap.xml. Ні — hreflang лише якщо мов сайту дві й більше. «Як у паку» — діє app.hreflang_single паку. Зміна видна на сайті одразу, sitemap.xml — до години (кеш).'
+      hreflang_codes:
+        label: Коди hreflang за мовою
+        help: 'Рядок на мову сайту: «мова: коди через пробіл». Приклад для англомовного сайту з прив''язкою до США й Великобританії — en: en-US en-GB; україномовного — uk: uk-UA; російськомовного на весь світ — ru: ru. Коди — BCP 47 (en, en-US, es-419); x-default не пишіть, його рушій ставить сам. Мову без рядка бере з паку. Невірний формат — не збережеться.'
     html:
       head:
         label: Свій код у заголовку сторінки (head)

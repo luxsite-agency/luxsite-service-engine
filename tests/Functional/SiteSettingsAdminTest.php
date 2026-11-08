@@ -205,6 +205,58 @@ final class SiteSettingsAdminTest extends HttpKernelTestCase
         self::assertStringNotContainsString($this->adminEmail, $log, 'email — лише HMAC');
     }
 
+    /** hreflang з адмінки (08.11.2026): формат і мови перевіряються, «як у паку» = порожньо, кодування нормалізується. */
+    public function testHreflangSettingsAreValidatedInAdmin(): void
+    {
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        $codes = $this->editUrl(K::HREFLANG_CODES);
+        self::assertStringContainsString('uk: uk-UA', (string) $this->http('GET', $codes)->getContent(), 'підказка показує дефолт паку');
+        foreach (['uk: x-default', 'uk-UA', 'uk: uk_UA', 'en: en-US', "uk: uk-UA\nuk: uk"] as $bad) {
+            self::assertSame(422, $this->submit($codes, ['ServiceSiteSetting[value]' => $bad])->getStatusCode(), 'не зберігається: ' . $bad);
+            self::assertNull($this->stored(K::HREFLANG_CODES), $bad);
+        }
+        self::assertTrue($this->submit($codes, ['ServiceSiteSetting[value]' => "UK: uk-ua uk; ru: ru"])->isRedirect());
+        self::assertSame("uk: uk-UA uk\nru: ru", $this->stored(K::HREFLANG_CODES), 'регістр і роздільники нормалізовано');
+
+        $single = $this->editUrl(K::HREFLANG_SINGLE);
+        $form = (string) $this->http('GET', $single)->getContent();
+        self::assertStringContainsString('value="pack" checked', $form, 'не задано — «як у паку»');
+        self::assertTrue($this->submit($single, ['ServiceSiteSetting[value]' => '1'])->isRedirect());
+        self::assertSame('1', $this->stored(K::HREFLANG_SINGLE));
+        self::assertTrue($this->submit($single, ['ServiceSiteSetting[value]' => '0'])->isRedirect());
+        self::assertSame('0', $this->stored(K::HREFLANG_SINGLE), '«ні» — не те саме, що «не задано»');
+        self::assertTrue($this->submit($single, ['ServiceSiteSetting[value]' => 'pack'])->isRedirect());
+        self::assertNull($this->stored(K::HREFLANG_SINGLE));
+    }
+
+    /** Налаштування hreflang доходять до <head> і sitemap.xml без деплою; невалідне в БД — ігнорується; без них — як пак (тут дефолт рушія). */
+    public function testHreflangSettingsReachHeadAndSitemap(): void
+    {
+        $em = $this->em();
+        $site = $em->find(ServiceSite::class, $this->siteId) ?? self::fail('сайт');
+        $site->setLocales(['uk']);
+        $em->flush();
+        $em->clear();
+        $home = 'https://' . $this->apex . '/';
+        $hl = fn (): array => preg_match_all('~<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">~', (string) $this->http('GET', $home)->getContent(), $m) ? array_map(null, $m[1], $m[2]) : [];
+        self::assertSame([], $hl(), 'без налаштувань і без app.hreflang_single — як було');
+
+        $this->set([K::HREFLANG_SINGLE => '1']);
+        self::assertSame([['uk-UA', $home], ['x-default', $home]], $hl(), 'адмінка вмикає hreflang для одномовного сайту');
+
+        $this->set([K::HREFLANG_CODES => 'uk: uk-UA uk']);
+        self::assertSame([['uk-UA', $home], ['uk', $home], ['x-default', $home]], $hl(), 'коди з адмінки перекривають app.locale_codes');
+        $xml = (string) $this->http('GET', 'https://' . $this->apex . '/sitemap.xml')->getContent();
+        self::assertStringContainsString('<xhtml:link rel="alternate" hreflang="uk" href="' . $home . '"/>', $xml, 'sitemap — ті самі коди');
+        self::assertStringContainsString('<xhtml:link rel="alternate" hreflang="x-default" href="' . $home . '"/>', $xml);
+
+        // невалідне значення, що потрапило в БД повз форму (правило змінилось) — сайт його не бере, діє пак
+        $this->set([K::HREFLANG_CODES => 'uk: x-default', K::HREFLANG_SINGLE => 'maybe']);
+        self::assertSame([], $hl(), 'невалідне «так/ні» — діє пак (вимкнено), невалідні коди — ігнор');
+        $this->set([K::HREFLANG_SINGLE => '1']);
+        self::assertSame([['uk-UA', $home], ['x-default', $home]], $hl(), 'невалідні коди — коди паку');
+    }
+
     public function testSecretIsEncryptedMaskedAndClearable(): void
     {
         $this->login($this->adminHost, $this->adminEmail, $this->password);
