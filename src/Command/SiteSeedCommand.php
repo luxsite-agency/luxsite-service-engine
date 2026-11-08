@@ -7,12 +7,15 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\ServiceAuthor;
 use App\Entity\ServiceCategory;
 use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePage;
 use App\Entity\ServicePost;
+use App\Entity\ServicePostCategory;
+use App\Entity\ServicePostTag;
 use App\Entity\ServicePrice;
 use App\Entity\ServiceReview;
 use App\Entity\ServiceSite;
@@ -42,7 +45,11 @@ use Symfony\Component\Yaml\Yaml;
  *   districts: [{city, slug, name_uk, name_ru?, title_uk?, lead_uk?, desc_uk?, group_uk?, sub_areas_uk?, primary?, min_price?, faq_uk?}]
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
  *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
- *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
+ *   authors: [{slug, name, role_uk?, bio_uk?, position?}]                 - автори статей (картка автора в блозі)
+ *   post_categories: [{slug, title_uk, desc_uk?, meta_title_uk?, meta_desc_uk?, position?}]  - рубрики блогу (плашки)
+ *   post_tags: [{slug, title_uk}]
+ *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD,
+ *            category?: slug рубрики, author?: slug автора, tags?: [slug], featured?: bool}]
  *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
  *            footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
  */
@@ -106,8 +113,20 @@ final class SiteSeedCommand
         foreach ($data['team'] ?? [] as $i => $t) {
             $this->team($this->cityOf($cities, $t['city']), $t, $i);
         }
+        $authors = [];
+        foreach ($data['authors'] ?? [] as $i => $a) {
+            $authors[$a['slug']] = $this->author($site, $a, $i);
+        }
+        $postCategories = [];
+        foreach ($data['post_categories'] ?? [] as $i => $c) {
+            $postCategories[$c['slug']] = $this->postCategory($site, $c, $i);
+        }
+        $postTags = [];
+        foreach ($data['post_tags'] ?? [] as $t) {
+            $postTags[$t['slug']] = $this->postTag($site, $t);
+        }
         foreach ($data['posts'] ?? [] as $p) {
-            $this->post($site, $p);
+            $this->post($site, $p, $postCategories, $authors, $postTags);
         }
         // сторінки: спершу всі (батько може йти в файлі після дочірньої), потім зв'язки з батьками
         $pages = [];
@@ -318,7 +337,13 @@ final class SiteSeedCommand
     }
 
     /** @param array<string, mixed> $d */
-    private function post(ServiceSite $site, array $d): void
+    /**
+     * @param array<string, mixed>               $d
+     * @param array<string, ServicePostCategory> $categories
+     * @param array<string, ServiceAuthor>       $authors
+     * @param array<string, ServicePostTag>      $tags
+     */
+    private function post(ServiceSite $site, array $d, array $categories = [], array $authors = [], array $tags = []): void
     {
         $post = $this->em->getRepository(ServicePost::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $post === null;
@@ -326,8 +351,68 @@ final class SiteSeedCommand
         $this->loc($post, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $post->setPublishedAt($this->date($d['published'] ?? 'now'));
         $post->setActive(true);
+        if (isset($d['category'])) {
+            $post->setCategory($categories[$d['category']] ?? $this->em->getRepository(ServicePostCategory::class)->findOneBy(['site' => $site, 'slugUk' => $d['category']])
+                ?? throw new \RuntimeException('posts: нема рубрики ' . $d['category']));
+        }
+        if (isset($d['author'])) {
+            $post->setAuthor($authors[$d['author']] ?? $this->em->getRepository(ServiceAuthor::class)->findOneBy(['site' => $site, 'slug' => $d['author']])
+                ?? throw new \RuntimeException('posts: нема автора ' . $d['author']));
+        }
+        if (isset($d['featured'])) {
+            $post->setFeatured((bool) $d['featured']);
+        }
+        foreach ($d['tags'] ?? [] as $slug) {
+            $post->addTag($tags[$slug] ?? $this->em->getRepository(ServicePostTag::class)->findOneBy(['site' => $site, 'slugUk' => $slug])
+                ?? throw new \RuntimeException('posts: нема тега ' . $slug));
+        }
         $this->em->persist($post);
         $this->count('post', $new);
+    }
+
+    /** Автор статей: збіг за slug у межах сайту. @param array<string, mixed> $d */
+    private function author(ServiceSite $site, array $d, int $i): ServiceAuthor
+    {
+        $author = $this->em->getRepository(ServiceAuthor::class)->findOneBy(['site' => $site, 'slug' => $d['slug']]);
+        $new = $author === null;
+        $author ??= (new ServiceAuthor())->setSite($site)->setSlug($d['slug']);
+        $author->setName((string) $d['name']);
+        $this->loc($author, $d, ['role' => 'role', 'bio' => 'bio']);
+        $author->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
+        $author->setActive((bool) ($d['active'] ?? true));
+        $this->em->persist($author);
+        $this->count('author', $new);
+
+        return $author;
+    }
+
+    /** Рубрика блогу: збіг за slug у межах сайту. @param array<string, mixed> $d */
+    private function postCategory(ServiceSite $site, array $d, int $i): ServicePostCategory
+    {
+        $cat = $this->em->getRepository(ServicePostCategory::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
+        $new = $cat === null;
+        $cat ??= (new ServicePostCategory())->setSite($site)->setSlugUk($d['slug']);
+        $this->loc($cat, $d, ['title' => 'title', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        $cat->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
+        $cat->setActive((bool) ($d['active'] ?? true));
+        $this->em->persist($cat);
+        $this->count('post_category', $new);
+
+        return $cat;
+    }
+
+    /** Тег статей: збіг за slug у межах сайту. @param array<string, mixed> $d */
+    private function postTag(ServiceSite $site, array $d): ServicePostTag
+    {
+        $tag = $this->em->getRepository(ServicePostTag::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
+        $new = $tag === null;
+        $tag ??= (new ServicePostTag())->setSite($site)->setSlugUk($d['slug']);
+        $this->loc($tag, $d, ['title' => 'title']);
+        $tag->setActive((bool) ($d['active'] ?? true));
+        $this->em->persist($tag);
+        $this->count('post_tag', $new);
+
+        return $tag;
     }
 
     /**
