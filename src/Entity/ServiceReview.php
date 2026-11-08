@@ -60,11 +60,17 @@ class ServiceReview implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $authorRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $authorDe = null;
+
     #[ORM\Column(type: Types::TEXT)]
     private string $textUk = '';
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $textRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $textDe = null;
 
     /** Звідки автор («Київ», «Львівська обл.») — підпис під іменем; порожньо = нема */
     #[ORM\Column(length: 120, nullable: true)]
@@ -168,6 +174,18 @@ class ServiceReview implements TimestampableInterface
         return $this;
     }
 
+    public function getAuthorDe(): ?string
+    {
+        return $this->authorDe;
+    }
+
+    public function setAuthorDe(?string $authorDe): self
+    {
+        $this->authorDe = $authorDe;
+
+        return $this;
+    }
+
     public function getTextUk(): string
     {
         return $this->textUk;
@@ -188,6 +206,18 @@ class ServiceReview implements TimestampableInterface
     public function setTextRu(?string $textRu): self
     {
         $this->textRu = $textRu;
+
+        return $this;
+    }
+
+    public function getTextDe(): ?string
+    {
+        return $this->textDe;
+    }
+
+    public function setTextDe(?string $textDe): self
+    {
+        $this->textDe = $textDe;
 
         return $this;
     }

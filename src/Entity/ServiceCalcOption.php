@@ -44,6 +44,9 @@ class ServiceCalcOption implements CalcOption, TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameDe = null;
+
     /** Ціна, грн: фіксована або за одиницю (залежно від perUnit) */
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
     private string $price = '0.00';
@@ -58,6 +61,9 @@ class ServiceCalcOption implements CalcOption, TimestampableInterface
 
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $unitRu = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $unitDe = null;
 
     /** Максимальна кількість у степері */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 30])]
@@ -110,6 +116,18 @@ class ServiceCalcOption implements CalcOption, TimestampableInterface
         return $this;
     }
 
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
+
+        return $this;
+    }
+
     public function getPrice(): string
     {
         return $this->price;
@@ -154,6 +172,18 @@ class ServiceCalcOption implements CalcOption, TimestampableInterface
     public function setUnitRu(?string $unitRu): self
     {
         $this->unitRu = $unitRu;
+
+        return $this;
+    }
+
+    public function getUnitDe(): ?string
+    {
+        return $this->unitDe;
+    }
+
+    public function setUnitDe(?string $unitDe): self
+    {
+        $this->unitDe = $unitDe;
 
         return $this;
     }

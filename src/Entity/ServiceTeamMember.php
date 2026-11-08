@@ -45,6 +45,9 @@ class ServiceTeamMember implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameDe = null;
+
     /** Роль/спеціалізація («Електромонтажник, стаж 12 років») */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $roleUk = null;
@@ -52,11 +55,17 @@ class ServiceTeamMember implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $roleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $roleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[Assert\Image(maxSize: '10M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxWidth: 8000, maxHeight: 8000, mimeTypesMessage: 'Дозволено лише JPG/PNG/WebP.')]
     #[Vich\UploadableField(mapping: 'service_team_media', fileNameProperty: 'imageName')]
@@ -115,6 +124,18 @@ class ServiceTeamMember implements TimestampableInterface
         return $this;
     }
 
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
+
+        return $this;
+    }
+
     public function getRoleUk(): ?string
     {
         return $this->roleUk;
@@ -139,6 +160,18 @@ class ServiceTeamMember implements TimestampableInterface
         return $this;
     }
 
+    public function getRoleDe(): ?string
+    {
+        return $this->roleDe;
+    }
+
+    public function setRoleDe(?string $roleDe): self
+    {
+        $this->roleDe = $roleDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -159,6 +192,18 @@ class ServiceTeamMember implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }

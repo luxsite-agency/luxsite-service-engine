@@ -26,6 +26,7 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Table(name: 'service_category')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_cat_site_slug_de', columns: ['site_id', 'slug_de'])]
 #[Vich\Uploadable]
 class ServiceCategory implements TimestampableInterface
 {
@@ -52,11 +53,17 @@ class ServiceCategory implements TimestampableInterface
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $slugDe = null;
+
     #[ORM\Column(length: 255)]
     private string $titleUk = '';
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     /** Лід (вступ під H1), простий текст або короткий HTML; порожньо = нема */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -64,6 +71,9 @@ class ServiceCategory implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadDe = null;
 
     /**
      * FAQ сторінки категорії: [{q, a}, ...] (як у послуги)
@@ -77,11 +87,17 @@ class ServiceCategory implements TimestampableInterface
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
 
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Uk = null;
@@ -90,10 +106,16 @@ class ServiceCategory implements TimestampableInterface
     private ?string $desc2Ru = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2De = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3De = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
@@ -101,11 +123,17 @@ class ServiceCategory implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     /** Порядок у списках/меню */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
@@ -185,6 +213,18 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $this->slugDe = $slugDe;
+
+        return $this;
+    }
+
     public function getTitleUk(): string
     {
         return $this->titleUk;
@@ -205,6 +245,18 @@ class ServiceCategory implements TimestampableInterface
     public function setTitleRu(?string $titleRu): self
     {
         $this->titleRu = $titleRu;
+
+        return $this;
+    }
+
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
 
         return $this;
     }
@@ -233,6 +285,18 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
+
+        return $this;
+    }
+
     public function getDesc2Uk(): ?string
     {
         return $this->desc2Uk;
@@ -253,6 +317,18 @@ class ServiceCategory implements TimestampableInterface
     public function setDesc2Ru(?string $desc2Ru): self
     {
         $this->desc2Ru = $desc2Ru;
+
+        return $this;
+    }
+
+    public function getDesc2De(): ?string
+    {
+        return $this->desc2De;
+    }
+
+    public function setDesc2De(?string $desc2De): self
+    {
+        $this->desc2De = $desc2De;
 
         return $this;
     }
@@ -281,6 +357,18 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getDesc3De(): ?string
+    {
+        return $this->desc3De;
+    }
+
+    public function setDesc3De(?string $desc3De): self
+    {
+        $this->desc3De = $desc3De;
+
+        return $this;
+    }
+
     public function getMetaTitleUk(): ?string
     {
         return $this->metaTitleUk;
@@ -305,6 +393,18 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaDescUk(): ?string
     {
         return $this->metaDescUk;
@@ -325,6 +425,18 @@ class ServiceCategory implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
 
         return $this;
     }
@@ -440,6 +552,18 @@ class ServiceCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getLeadDe(): ?string
+    {
+        return $this->leadDe;
+    }
+
+    public function setLeadDe(?string $leadDe): self
+    {
+        $this->leadDe = $leadDe;
+
+        return $this;
+    }
+
     /** @return list<array{q: string, a: string}>|null */
     public function getFaqUk(): ?array
     {
@@ -464,6 +588,18 @@ class ServiceCategory implements TimestampableInterface
     public function setFaqRu(?array $faqRu): self
     {
         $this->faqRu = $faqRu;
+
+        return $this;
+    }
+
+    public function getFaqDe(): ?array
+    {
+        return $this->faqDe;
+    }
+
+    public function setFaqDe(?array $faqDe): self
+    {
+        $this->faqDe = $faqDe;
 
         return $this;
     }

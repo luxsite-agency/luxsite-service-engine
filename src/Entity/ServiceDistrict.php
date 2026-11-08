@@ -22,6 +22,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'service_district')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_uk', columns: ['city_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_ru', columns: ['city_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_district_city_slug_de', columns: ['city_id', 'slug_de'])]
 class ServiceDistrict implements TimestampableInterface
 {
     use LocalizedFieldsTrait;
@@ -46,12 +47,18 @@ class ServiceDistrict implements TimestampableInterface
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $slugRu = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $slugDe = null;
+
     /** Група в акордеоні «Де ми працюємо» (адмінрайон: «Оболонський район») */
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $groupUk = null;
 
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $groupRu = null;
+
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $groupDe = null;
 
     /** Назва району (H1: «Оболонь») */
     #[ORM\Column(length: 128)]
@@ -60,11 +67,17 @@ class ServiceDistrict implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameDe = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadUk = null;
@@ -73,10 +86,16 @@ class ServiceDistrict implements TimestampableInterface
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
@@ -84,11 +103,17 @@ class ServiceDistrict implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     /** Мінімальна вартість виїзду в цьому районі, грн (JSON-LD PropertyValue) */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
@@ -100,6 +125,9 @@ class ServiceDistrict implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $subAreasRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $subAreasDe = null;
 
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $position = 0;
@@ -133,6 +161,9 @@ class ServiceDistrict implements TimestampableInterface
     /** @var array<int, array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqDe = null;
 
     public function getId(): ?int
     {
@@ -187,6 +218,18 @@ class ServiceDistrict implements TimestampableInterface
         return $this;
     }
 
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $this->slugDe = $slugDe;
+
+        return $this;
+    }
+
     public function getGroupUk(): ?string
     {
         return $this->groupUk;
@@ -207,6 +250,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setGroupRu(?string $groupRu): self
     {
         $this->groupRu = $groupRu;
+
+        return $this;
+    }
+
+    public function getGroupDe(): ?string
+    {
+        return $this->groupDe;
+    }
+
+    public function setGroupDe(?string $groupDe): self
+    {
+        $this->groupDe = $groupDe;
 
         return $this;
     }
@@ -235,6 +290,18 @@ class ServiceDistrict implements TimestampableInterface
         return $this;
     }
 
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
+
+        return $this;
+    }
+
     public function getTitleUk(): ?string
     {
         return $this->titleUk;
@@ -255,6 +322,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setTitleRu(?string $titleRu): self
     {
         $this->titleRu = $titleRu;
+
+        return $this;
+    }
+
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
 
         return $this;
     }
@@ -283,6 +362,18 @@ class ServiceDistrict implements TimestampableInterface
         return $this;
     }
 
+    public function getLeadDe(): ?string
+    {
+        return $this->leadDe;
+    }
+
+    public function setLeadDe(?string $leadDe): self
+    {
+        $this->leadDe = $leadDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -303,6 +394,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -331,6 +434,18 @@ class ServiceDistrict implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaDescUk(): ?string
     {
         return $this->metaDescUk;
@@ -351,6 +466,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
 
         return $this;
     }
@@ -387,6 +514,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setSubAreasRu(?string $subAreasRu): self
     {
         $this->subAreasRu = $subAreasRu;
+
+        return $this;
+    }
+
+    public function getSubAreasDe(): ?string
+    {
+        return $this->subAreasDe;
+    }
+
+    public function setSubAreasDe(?string $subAreasDe): self
+    {
+        $this->subAreasDe = $subAreasDe;
 
         return $this;
     }
@@ -455,6 +594,18 @@ class ServiceDistrict implements TimestampableInterface
     public function setFaqRu(?array $faqRu): self
     {
         $this->faqRu = $faqRu;
+
+        return $this;
+    }
+
+    public function getFaqDe(): ?array
+    {
+        return $this->faqDe;
+    }
+
+    public function setFaqDe(?array $faqDe): self
+    {
+        $this->faqDe = $faqDe;
 
         return $this;
     }

@@ -23,6 +23,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -43,6 +44,19 @@ class ServiceCalcFactorCrudController extends AbstractCrudController
         'День тижня' => 'weekend',
     ];
 
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServiceCalcFactor::class;
@@ -54,7 +68,7 @@ class ServiceCalcFactorCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Коефіцієнт')
             ->setEntityLabelInPlural('Калькулятор: коефіцієнти')
             ->setDefaultSort(['site' => 'ASC', 'groupCode' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['nameUk', 'nameRu'])
+            ->setSearchFields(['nameUk', 'nameRu', 'nameDe'])
             ->setPaginatorPageSize(60)
             ->setEntityPermission('ROLE_MODERATOR');
     }
@@ -94,6 +108,10 @@ class ServiceCalcFactorCrudController extends AbstractCrudController
         yield TextField::new('nameUk', 'Назва uk')->setColumns(6)
             ->setHtmlAttributes($this->hint('Текст кнопки в калькуляторі українською.'));
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield NumberField::new('multiplier', 'Множник')
             ->setNumDecimals(2)->setColumns(4)
             ->setHelp('1.00 = без надбавки, 1.25 = +25% до вартості')

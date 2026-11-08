@@ -32,13 +32,16 @@ class ServiceCategoryRepository extends ServiceEntityRepository
      * Пошук по слагу колонки поточної локалі (per-мовні слаги).
      * Для ru порожній slugRu означає «використовується uk-слаг» (так генерує
      * URL LocalizedFieldsTrait::loc і обіцяє адмінка) — тому другий крок
-     * шукає uk-слаг серед записів без ru-слага, інакше ru-посилання були б 404.
+     * шукає uk-слаг серед записів без ru-слага, інакше ru-посилання були б 404. de — лише slugDe, без фолбеку.
      */
     public function findOneActiveBySlug(ServiceSite $site, string $slug, string $locale): ?ServiceCategory
     {
         if ($locale === 'ru') {
             return $this->findOneBy(['site' => $site, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['site' => $site, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);
+        }
+        if ($locale === 'de') {
+            return $this->findOneBy(['site' => $site, 'slugDe' => $slug, 'active' => true]);
         }
 
         return $this->findOneBy(['site' => $site, 'slugUk' => $slug, 'active' => true]);

@@ -53,6 +53,9 @@ class ServicePageImage implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $captionDe = null;
+
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $position = 0;
 
@@ -130,6 +133,18 @@ class ServicePageImage implements TimestampableInterface
     public function setCaptionRu(?string $captionRu): self
     {
         $this->captionRu = $captionRu;
+
+        return $this;
+    }
+
+    public function getCaptionDe(): ?string
+    {
+        return $this->captionDe;
+    }
+
+    public function setCaptionDe(?string $captionDe): self
+    {
+        $this->captionDe = $captionDe;
 
         return $this;
     }

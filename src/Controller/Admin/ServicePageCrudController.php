@@ -29,6 +29,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
@@ -47,7 +48,16 @@ class ServicePageCrudController extends AbstractCrudController
     public function __construct(
         private readonly CustomFields $customFields,
         private readonly RootSlugs $rootSlugs,
+        // app.locales — мови розгортання
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
     ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
     }
 
     /** У списку виноситься наперед: заголовок сторінки, а не сайт */
@@ -64,7 +74,7 @@ class ServicePageCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Сторінка')
             ->setEntityLabelInPlural('Сторінки')
             ->setDefaultSort(['site' => 'ASC', 'parent' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'slugUk', 'slugRu'])
+            ->setSearchFields(['titleUk', 'titleRu', 'titleDe', 'slugUk', 'slugRu', 'slugDe'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -120,6 +130,10 @@ class ServicePageCrudController extends AbstractCrudController
             ->setHelp('H1 сторінки і назва в списках, футері, хлібних крихтах.');
         yield TextField::new('titleRu', 'Заголовок ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - показується український заголовок.');
+        if ($this->has('de')) {
+            yield TextField::new('titleDe', 'Заголовок de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('slugUk', 'Слаг uk')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'))
             ->setHelp('Частина адреси латиницею: licenzii-i-sertifikaty → /licenzii-i-sertifikaty/. ⚠️ Зміна ламає посилання, які вже є в Google. '
@@ -127,6 +141,11 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('ru'))
             ->setHelp('Порожньо = український слаг: /ru/<слаг uk>/.');
+        if ($this->has('de')) {
+            yield TextField::new('slugDe', 'Слаг de')->hideOnIndex()->setColumns(6)
+                ->setFormTypeOption('constraints', $this->rootSlugConstraints('de'))
+                ->setHelp('Німецька');
+        }
         yield TextField::new('slugUk', 'Адреса')->onlyOnIndex()
             ->formatValue(static fn ($v, ?ServicePage $p) => $p !== null ? '/' . $p->path('uk') . '/' : '');
         yield FormField::addFieldset('Показ');
@@ -146,9 +165,17 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextareaField::new('leadUk', 'Вступ uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Абзац під заголовком; він же опис у списку дочірніх і meta description, якщо свого нема.');
         yield TextareaField::new('leadRu', 'Вступ ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('leadDe', 'Вступ de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
             ->setHelp('Основний текст сторінки.');
         yield TextEditorField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
+        if ($this->has('de')) {
+            yield TextEditorField::new('descDe', 'Текст de')->hideOnIndex()->setColumns(12)
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addTab('Галерея', 'fa fa-images');
         yield CollectionField::new('images', 'Зображення')->hideOnIndex()->setColumns(12)
@@ -168,9 +195,17 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6)
             ->setHelp('До ~60 символів; порожньо = «Заголовок - назва сайту».');
         yield TextField::new('metaTitleRu', 'Meta title ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('metaTitleDe', 'Meta title de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів; порожньо = вступ.');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('metaDescDe', 'Meta description de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         yield TextField::new('titleRu', 'ru')->onlyOnIndex()
             ->formatValue(static fn ($v) => $v !== null && $v !== '' ? '✓' : '—');

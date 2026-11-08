@@ -21,6 +21,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\NumberField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -31,6 +32,19 @@ class ServiceCalcTypeCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва типу, а не сайт */
     private const INDEX_PRIMARY = 'nameUk';
+
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -48,7 +62,7 @@ class ServiceCalcTypeCrudController extends AbstractCrudController
                 у розділі «Ціни по містах», інакше зміна поїде на всі чотири сайти.')
             ->setHelp('edit', 'Зміна тут торкнеться всіх міст, де немає власного рядка
                 в «Цінах по містах».')
-            ->setSearchFields(['nameUk', 'nameRu'])
+            ->setSearchFields(['nameUk', 'nameRu', 'nameDe'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -79,9 +93,17 @@ class ServiceCalcTypeCrudController extends AbstractCrudController
         yield TextField::new('nameUk', 'Назва uk')->setColumns(6)
             ->setHtmlAttributes($this->hint('Назва кнопки вибору в калькуляторі: «Генеральне прибирання».'));
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('descUk', 'Підпис uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Короткий склад робіт під назвою («пил, підлога, санвузол, кухня»)');
         yield TextField::new('descRu', 'Підпис ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('descDe', 'Підпис de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Ціна');
         yield NumberField::new('pricePerSqm', 'Базова ціна за м², грн')
             ->setNumDecimals(2)->setColumns(6)

@@ -55,10 +55,16 @@ class ServiceItemCity implements TimestampableInterface
     private ?string $titleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
@@ -67,10 +73,16 @@ class ServiceItemCity implements TimestampableInterface
     private ?string $metaDescRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Ru = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2De = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Uk = null;
@@ -78,11 +90,17 @@ class ServiceItemCity implements TimestampableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3De = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $tabTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $tabTitleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $tabTitleDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadUk = null;
@@ -91,10 +109,16 @@ class ServiceItemCity implements TimestampableInterface
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     /** @var array<int, array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
@@ -103,6 +127,9 @@ class ServiceItemCity implements TimestampableInterface
     /** @var array<int, array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqDe = null;
 
     public function getId(): ?int
     {
@@ -157,6 +184,18 @@ class ServiceItemCity implements TimestampableInterface
         return $this;
     }
 
+    public function getLeadDe(): ?string
+    {
+        return $this->leadDe;
+    }
+
+    public function setLeadDe(?string $leadDe): self
+    {
+        $this->leadDe = $leadDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -177,6 +216,18 @@ class ServiceItemCity implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -203,6 +254,18 @@ class ServiceItemCity implements TimestampableInterface
     public function setFaqRu(?array $faqRu): self
     {
         $this->faqRu = $faqRu;
+
+        return $this;
+    }
+
+    public function getFaqDe(): ?array
+    {
+        return $this->faqDe;
+    }
+
+    public function setFaqDe(?array $faqDe): self
+    {
+        $this->faqDe = $faqDe;
 
         return $this;
     }
@@ -236,6 +299,18 @@ class ServiceItemCity implements TimestampableInterface
         return $this;
     }
 
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
+
+        return $this;
+    }
+
     public function getMetaTitleUk(): ?string
     {
         return $this->metaTitleUk;
@@ -256,6 +331,18 @@ class ServiceItemCity implements TimestampableInterface
     public function setMetaTitleRu(?string $metaTitleRu): self
     {
         $this->metaTitleRu = $metaTitleRu;
+
+        return $this;
+    }
+
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
 
         return $this;
     }
@@ -284,6 +371,18 @@ class ServiceItemCity implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
+
+        return $this;
+    }
+
     public function getDesc2Uk(): ?string
     {
         return $this->desc2Uk;
@@ -304,6 +403,18 @@ class ServiceItemCity implements TimestampableInterface
     public function setDesc2Ru(?string $desc2Ru): self
     {
         $this->desc2Ru = $desc2Ru;
+
+        return $this;
+    }
+
+    public function getDesc2De(): ?string
+    {
+        return $this->desc2De;
+    }
+
+    public function setDesc2De(?string $desc2De): self
+    {
+        $this->desc2De = $desc2De;
 
         return $this;
     }
@@ -332,6 +443,18 @@ class ServiceItemCity implements TimestampableInterface
         return $this;
     }
 
+    public function getDesc3De(): ?string
+    {
+        return $this->desc3De;
+    }
+
+    public function setDesc3De(?string $desc3De): self
+    {
+        $this->desc3De = $desc3De;
+
+        return $this;
+    }
+
     public function getTabTitleUk(): ?string
     {
         return $this->tabTitleUk;
@@ -352,6 +475,18 @@ class ServiceItemCity implements TimestampableInterface
     public function setTabTitleRu(?string $tabTitleRu): self
     {
         $this->tabTitleRu = $tabTitleRu;
+
+        return $this;
+    }
+
+    public function getTabTitleDe(): ?string
+    {
+        return $this->tabTitleDe;
+    }
+
+    public function setTabTitleDe(?string $tabTitleDe): self
+    {
+        $this->tabTitleDe = $tabTitleDe;
 
         return $this;
     }

@@ -40,6 +40,12 @@ class ServiceSiteCrudController extends AbstractCrudController
     ) {
     }
 
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServiceSite::class;
@@ -77,6 +83,10 @@ class ServiceSiteCrudController extends AbstractCrudController
             ->setHelp('Для текстів на кшталт «Відгуки клієнтів про компанію …». Порожньо — параметр паку app.brand_name, далі «Назва». Загальне слово беріть у лапки: «Електрики».');
         yield TextField::new('brandNameRu', 'Коротка назва бренду ru')->hideOnIndex()
             ->setHelp('Порожньо — як uk.');
+        if ($this->has('de')) {
+            yield TextField::new('brandNameDe', 'Коротка назва бренду de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
         yield TextField::new('slug', 'Slug')
             ->setHelp('Латинський ідентифікатор ніші; dev-хост = <slug>.localhost. Міняти обережно.');
         yield TextField::new('apexDomain', 'Апекс-домен')
@@ -108,16 +118,32 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield FormField::addFieldset('Сторінка «Про нас»');
         yield TextField::new('aboutTitleUk', 'Заголовок uk')->hideOnIndex();
         yield TextField::new('aboutTitleRu', 'Заголовок ru')->hideOnIndex();
+        if ($this->has('de')) {
+            yield TextField::new('aboutTitleDe', 'Заголовок de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('aboutUk', 'Текст uk')->hideOnIndex();
         yield TextEditorField::new('aboutRu', 'Текст ru')->hideOnIndex();
+        if ($this->has('de')) {
+            yield TextEditorField::new('aboutDe', 'Текст de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addFieldset('Юридичні сторінки');
         yield TextEditorField::new('privacyUk', 'Політика конфіденційності uk')->hideOnIndex()
             ->setHelp('Порожньо - на /privacy-policy/ показується типовий текст рушія');
         yield TextEditorField::new('privacyRu', 'Політика конфіденційності ru')->hideOnIndex();
+        if ($this->has('de')) {
+            yield TextEditorField::new('privacyDe', 'Політика конфіденційності de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('termsUk', 'Умови надання послуг uk')->hideOnIndex()
             ->setHelp('Порожньо - на /terms-of-service/ показується типовий текст рушія');
         yield TextEditorField::new('termsRu', 'Умови надання послуг ru')->hideOnIndex();
+        if ($this->has('de')) {
+            yield TextEditorField::new('termsDe', 'Умови надання послуг de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
 
         if (\in_array('en', $this->locales, true)) {
             yield FormField::addFieldset('English');

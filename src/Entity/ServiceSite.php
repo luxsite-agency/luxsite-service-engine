@@ -64,6 +64,9 @@ class ServiceSite implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $brandNameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $brandNameDe = null;
+
     /**
      * Підтип LocalBusiness для JSON-LD (Electrician, Plumber, HouseCleaning...).
      * Платформа мультинішева — тип схеми не хардкодиться в шаблонах.
@@ -121,11 +124,17 @@ class ServiceSite implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $aboutTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $aboutTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $aboutUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $aboutRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutDe = null;
 
     // - Юридичні сторінки (спільні на всі міста бренду) -
 
@@ -136,10 +145,16 @@ class ServiceSite implements TimestampableInterface
     private ?string $privacyRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $privacyDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $termsUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $termsRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $termsDe = null;
 
     // англійська версія (22.10.2026): без фолбеку на uk
     #[ORM\Column(length: 128, nullable: true)]
@@ -195,10 +210,24 @@ class ServiceSite implements TimestampableInterface
         return $this;
     }
 
-    /** Коротка назва бренду з адмінки мовою сторінки (ru → uk) або null — тоді вирішує site_brand(). */
+    public function getBrandNameDe(): ?string
+    {
+        return $this->brandNameDe;
+    }
+
+    public function setBrandNameDe(?string $brandNameDe): self
+    {
+        $this->brandNameDe = null !== $brandNameDe && '' !== trim($brandNameDe) ? trim($brandNameDe) : null;
+
+        return $this;
+    }
+
+    /** Коротка назва бренду з адмінки мовою сторінки (порожнє поле мови → uk) або null — тоді вирішує site_brand(). */
     public function brandName(string $locale): ?string
     {
-        return 'ru' === $locale ? ($this->brandNameRu ?? $this->brandNameUk) : $this->brandNameUk;
+        $own = $this->locRaw('brandName', $locale);
+
+        return \is_string($own) && $own !== '' ? $own : $this->brandNameUk;
     }
 
     public function getSlug(): string
@@ -405,6 +434,18 @@ class ServiceSite implements TimestampableInterface
         return $this;
     }
 
+    public function getAboutTitleDe(): ?string
+    {
+        return $this->aboutTitleDe;
+    }
+
+    public function setAboutTitleDe(?string $aboutTitleDe): self
+    {
+        $this->aboutTitleDe = $aboutTitleDe;
+
+        return $this;
+    }
+
     public function getAboutUk(): ?string
     {
         return $this->aboutUk;
@@ -425,6 +466,18 @@ class ServiceSite implements TimestampableInterface
     public function setAboutRu(?string $aboutRu): self
     {
         $this->aboutRu = $aboutRu;
+
+        return $this;
+    }
+
+    public function getAboutDe(): ?string
+    {
+        return $this->aboutDe;
+    }
+
+    public function setAboutDe(?string $aboutDe): self
+    {
+        $this->aboutDe = $aboutDe;
 
         return $this;
     }
@@ -453,6 +506,18 @@ class ServiceSite implements TimestampableInterface
         return $this;
     }
 
+    public function getPrivacyDe(): ?string
+    {
+        return $this->privacyDe;
+    }
+
+    public function setPrivacyDe(?string $privacyDe): self
+    {
+        $this->privacyDe = $privacyDe;
+
+        return $this;
+    }
+
     public function getTermsUk(): ?string
     {
         return $this->termsUk;
@@ -473,6 +538,18 @@ class ServiceSite implements TimestampableInterface
     public function setTermsRu(?string $termsRu): self
     {
         $this->termsRu = $termsRu;
+
+        return $this;
+    }
+
+    public function getTermsDe(): ?string
+    {
+        return $this->termsDe;
+    }
+
+    public function setTermsDe(?string $termsDe): self
+    {
+        $this->termsDe = $termsDe;
 
         return $this;
     }

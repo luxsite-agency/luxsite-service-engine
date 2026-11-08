@@ -48,10 +48,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $titleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
@@ -60,10 +66,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $metaDescRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Uk = null;
@@ -72,10 +84,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $desc2Ru = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2De = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3De = null;
 
     public function getId(): ?int
     {
@@ -130,6 +148,18 @@ class ServiceCategoryCity implements TimestampableInterface
         return $this;
     }
 
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
+
+        return $this;
+    }
+
     public function getMetaTitleUk(): ?string
     {
         return $this->metaTitleUk;
@@ -150,6 +180,18 @@ class ServiceCategoryCity implements TimestampableInterface
     public function setMetaTitleRu(?string $metaTitleRu): self
     {
         $this->metaTitleRu = $metaTitleRu;
+
+        return $this;
+    }
+
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
 
         return $this;
     }
@@ -178,6 +220,18 @@ class ServiceCategoryCity implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -198,6 +252,18 @@ class ServiceCategoryCity implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -226,6 +292,18 @@ class ServiceCategoryCity implements TimestampableInterface
         return $this;
     }
 
+    public function getDesc2De(): ?string
+    {
+        return $this->desc2De;
+    }
+
+    public function setDesc2De(?string $desc2De): self
+    {
+        $this->desc2De = $desc2De;
+
+        return $this;
+    }
+
     public function getDesc3Uk(): ?string
     {
         return $this->desc3Uk;
@@ -246,6 +324,18 @@ class ServiceCategoryCity implements TimestampableInterface
     public function setDesc3Ru(?string $desc3Ru): self
     {
         $this->desc3Ru = $desc3Ru;
+
+        return $this;
+    }
+
+    public function getDesc3De(): ?string
+    {
+        return $this->desc3De;
+    }
+
+    public function setDesc3De(?string $desc3De): self
+    {
+        $this->desc3De = $desc3De;
 
         return $this;
     }

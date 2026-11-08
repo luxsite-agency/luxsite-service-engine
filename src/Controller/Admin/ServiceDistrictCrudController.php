@@ -23,6 +23,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -33,6 +34,19 @@ class ServiceDistrictCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва району, а не місто */
     private const INDEX_PRIMARY = 'nameUk';
+
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -45,7 +59,7 @@ class ServiceDistrictCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Район')
             ->setEntityLabelInPlural('Райони')
             ->setDefaultSort(['city' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['nameUk', 'nameRu', 'slugUk', 'slugRu', 'groupUk'])
+            ->setSearchFields(['nameUk', 'nameRu', 'nameDe', 'slugUk', 'slugRu', 'slugDe', 'groupUk'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -79,13 +93,25 @@ class ServiceDistrictCrudController extends AbstractCrudController
         yield TextField::new('nameUk', 'Назва uk')->setColumns(6)
             ->setHelp('Назва району, як її говорять місцеві: «Поділ», «Холодна Гора».');
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('slugUk', 'Слаг uk')->setColumns(6)
             ->setHelp('Частина адреси латиницею. ⚠️ Зміна ламає посилання, які вже проіндексовані.');
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо = використовується український слаг');
+        if ($this->has('de')) {
+            yield TextField::new('slugDe', 'Слаг de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('groupUk', 'Група (адмінрайон) uk')->setColumns(6)
             ->setHelp('Заголовок в акордеоні «Де ми працюємо», напр. «Оболонський район»; порожньо = група «Інші райони»');
         yield TextField::new('groupRu', 'Група (адмінрайон) ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('groupDe', 'Група (адмінрайон) de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('minPrice', 'Мін. виїзд, грн')->hideOnIndex()->setColumns(4)
             ->setHelp('Ціна «від», яку видно в шапці сторінки району. Порожньо - блок не показується.');
@@ -104,28 +130,56 @@ class ServiceDistrictCrudController extends AbstractCrudController
         yield ArrayField::new('faqUk', 'FAQ uk')->hideOnIndex()
             ->setHelp('Масив {q, a}; дає блок питань і FAQPage-розмітку');
         yield ArrayField::new('faqRu', 'FAQ ru')->hideOnIndex();
+        if ($this->has('de')) {
+            yield ArrayField::new('faqDe', 'FAQ de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addTab('Тексти', 'fa fa-align-left');
         yield TextField::new('titleUk', 'Заголовок uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Заголовок H1. Порожньо - збирається автоматично з назви району.');
         yield TextField::new('titleRu', 'Заголовок ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('titleDe', 'Заголовок de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('leadUk', 'Лід uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Один-два рядки під заголовком, жирним.');
         yield TextareaField::new('leadRu', 'Лід ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('leadDe', 'Лід de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Основний текст сторінки району.');
         yield TextEditorField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextEditorField::new('descDe', 'Опис de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('subAreasUk', 'Вулиці/мікрорайони uk')->hideOnIndex()->setColumns(6)
             ->setHelp('По одному на рядок - для акордеона районів');
         yield TextareaField::new('subAreasRu', 'Вулиці/мікрорайони ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('subAreasDe', 'Вулиці/мікрорайони de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addTab('SEO', 'fa fa-magnifying-glass');
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6)
             ->setHelp('До ~60 символів');
         yield TextField::new('metaTitleRu', 'Meta title ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('metaTitleDe', 'Meta title de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('metaDescDe', 'Meta description de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         yield TextField::new('nameRu', 'ru')->onlyOnIndex()
             ->formatValue(static fn ($v) => $v !== null && $v !== '' ? '✓' : '—');

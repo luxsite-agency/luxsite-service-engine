@@ -14,13 +14,14 @@ namespace App\ServiceSite;
  * український title/description на /ru/ гірший за згенерований (10.2026, паритет із Joomla-джерелом).
  * en (22.10.2026) — без фолбеку: англійська сторінка не показує український текст; сутність без колонки *En
  * (каталог, райони) віддає null.
+ * de (08.11.2026) — як en: без фолбеку, порожнє німецьке поле = null; колонки *De є в усіх локалізованих сутностях.
  */
 trait LocalizedFieldsTrait
 {
     /** Поля без фолбеку ru→uk */
     private const LOC_NO_FALLBACK = ['metaTitle', 'metaDesc'];
     /** Суфікс властивості за мовою; невідома мова — як uk (так було до en) */
-    private const LOC_SUFFIX = ['uk' => 'Uk', 'ru' => 'Ru', 'en' => 'En'];
+    private const LOC_SUFFIX = ['uk' => 'Uk', 'ru' => 'Ru', 'en' => 'En', 'de' => 'De'];
 
     public function loc(string $property, string $locale): mixed
     {
