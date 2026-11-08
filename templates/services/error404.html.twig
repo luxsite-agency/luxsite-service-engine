@@ -9,7 +9,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ isRu ? 'Страница не найдена (404)' : (_l == 'en' ? 'Page not found (404)' : 'Сторінку не знайдено (404)') }}</title>
+    <title>{{ isRu ? 'Страница не найдена (404)' : (_l == 'en' ? 'Page not found (404)' : (_l == 'de' ? 'Seite nicht gefunden (404)' : 'Сторінку не знайдено (404)')) }}</title>
     <style>
         body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
                min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -37,6 +37,10 @@
         <p class="msg">This page doesn’t exist</p>
         <p class="sub">The link may be outdated, or there is a typo in the address.</p>
         <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/en/' }}">Back to home</a>
+    {% elseif _l == 'de' %}
+        <p class="msg">Diese Seite gibt es nicht</p>
+        <p class="sub">Der Link ist möglicherweise veraltet oder die Adresse enthält einen Tippfehler.</p>
+        <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/de/' }}">Zur Startseite</a>
     {% else %}
         <p class="msg">Такої сторінки немає</p>
         <p class="sub">Можливо, посилання застаріло або в адресі одрук.</p>

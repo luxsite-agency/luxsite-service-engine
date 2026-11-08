@@ -38,6 +38,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[AsDoctrineListener(event: Events::postFlush)]
 final class AutoRedirects
 {
+    /** Мови зі своїми адресами записів: uk, ru (порожній slugRu = uk) і de (без фолбеку; без slugDe адреси de нема) */
+    private const LOCALES = ['uk', 'ru', 'de'];
+
     /** @var array<int, array{0: object, 1: array{uk: string, ru: string}|null, 2: list<array{0: ServiceItem, 1: array{uk: string, ru: string}}>}> null — вставка */
     private array $changed = [];
 
@@ -64,17 +67,19 @@ final class AutoRedirects
                 continue;
             }
             $set = $uow->getEntityChangeSet($entity);
-            if (!\array_key_exists('slugUk', $set) && !\array_key_exists('slugRu', $set)) {
+            if (!\array_key_exists('slugUk', $set) && !\array_key_exists('slugRu', $set) && !\array_key_exists('slugDe', $set)) {
                 continue;
             }
             $oldUk = (string) ($set['slugUk'][0] ?? $entity->getSlugUk());
             $oldRu = \array_key_exists('slugRu', $set) ? $set['slugRu'][0] : $entity->getSlugRu();
-            $old = ['uk' => $oldUk, 'ru' => \is_string($oldRu) && $oldRu !== '' ? $oldRu : $oldUk];
+            $oldDe = \array_key_exists('slugDe', $set) ? $set['slugDe'][0] : $entity->getSlugDe();
+            // de без фолбеку: порожній старий слаг = адреси de не було, редирект не потрібен
+            $old = ['uk' => $oldUk, 'ru' => \is_string($oldRu) && $oldRu !== '' ? $oldRu : $oldUk, 'de' => \is_string($oldDe) ? $oldDe : ''];
             $items = [];
             if ($entity instanceof ServiceCategory && $this->catalogUrls->isNested()) {
                 // послуги категорії переїжджають разом з нею; їхні slug беремо як є (якщо змінюються в тому ж flush — своїм записом)
                 foreach ($em->getRepository(ServiceItem::class)->findBy(['category' => $entity]) as $item) {
-                    $items[] = [$item, ['uk' => $item->slug('uk'), 'ru' => $item->slug('ru')]];
+                    $items[] = [$item, ['uk' => $item->slug('uk'), 'ru' => $item->slug('ru'), 'de' => $item->slug('de')]];
                 }
             }
             $this->changed[spl_object_id($entity)] ??= [$entity, $old, $items];
@@ -98,20 +103,23 @@ final class AutoRedirects
             }
             $key = $site->getId() . ':' . ($city?->getId() ?? 0);
             $batches[$key] ??= [$site, $city, [], []];
-            foreach (['uk', 'ru'] as $locale) {
+            foreach (self::LOCALES as $locale) {
                 $new = $this->path($entity, $locale, null);
                 if ($new === null) {
                     continue;
                 }
                 if ($old === null) {
                     $batches[$key][3][] = $new;
-                } elseif (($oldPath = $this->path($entity, $locale, $old[$locale])) !== null && $oldPath !== $new) {
+                } elseif ($old[$locale] !== '' && ($oldPath = $this->path($entity, $locale, $old[$locale])) !== null && $oldPath !== $new) {
                     $batches[$key][2][] = [$oldPath, $new];
                 }
             }
             if ($old !== null && $entity instanceof ServiceCategory) {
                 foreach ($items as [$item, $itemSlugs]) {
-                    foreach (['uk', 'ru'] as $locale) {
+                    foreach (self::LOCALES as $locale) {
+                        if ($old[$locale] === '') {
+                            continue;
+                        }
                         $new = $this->itemPath($item, $locale, $entity->slug($locale), $item->slug($locale));
                         $oldPath = $this->itemPath($item, $locale, $old[$locale], $itemSlugs[$locale]);
                         if ($new !== null && $oldPath !== null && $oldPath !== $new) {

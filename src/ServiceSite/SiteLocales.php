@@ -25,6 +25,8 @@ final class SiteLocales
 {
     /** Поле коду в app.locale_codes */
     public const CODE_KINDS = ['hreflang', 'og', 'schema', 'label'];
+    /** Мови зі своїми колонками слагів у каталозі, районах і сторінках (slugRu, slugDe); en (сателіти) ходить uk-слагами */
+    public const OWN_SLUGS = ['ru', 'de'];
 
     /**
      * @param list<string> $locales app.locales
@@ -135,6 +137,15 @@ final class SiteLocales
         }
 
         return (string) ($this->codes[$locale][$kind] ?? ($kind === 'label' ? strtoupper($locale) : $locale));
+    }
+
+    /**
+     * Мова, якою шукати слаг каталогу/району/сторінки для мови адреси: ru і de — своя колонка, решта (uk, en, невідома) — uk.
+     * Замінює зашите `=== 'ru' ? 'ru' : 'uk'` (08.11.2026): для [uk, ru] і [en] значення ті самі.
+     */
+    public static function slugLocale(mixed $locale): string
+    {
+        return \is_string($locale) && \in_array($locale, self::OWN_SLUGS, true) ? $locale : 'uk';
     }
 
     /** Бренд головного запиту (атрибут ServiceHostSubscriber); null — адмін-хост, CLI, хост без тенанта */

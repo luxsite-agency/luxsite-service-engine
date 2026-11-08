@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ isRu ? 'Произошла ошибка' : (_l == 'en' ? 'Something went wrong' : 'Сталася помилка') }}</title>
+    <title>{{ isRu ? 'Произошла ошибка' : (_l == 'en' ? 'Something went wrong' : (_l == 'de' ? 'Ein Fehler ist aufgetreten' : 'Сталася помилка')) }}</title>
     <style>
         body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f7f8fa; color: #24334f;
                min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -31,6 +31,10 @@
         <h1>Something went wrong</h1>
         <p class="sub">We already know about the problem. Please reload the page in a minute.</p>
         <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/en/' }}">Back to home</a>
+    {% elseif _l == 'de' %}
+        <h1>Etwas ist schiefgelaufen</h1>
+        <p class="sub">Wir wissen bereits von dem Problem. Bitte laden Sie die Seite in einer Minute neu.</p>
+        <a class="btn" href="{{ _l == sv_default_locale() ? '/' : '/de/' }}">Zur Startseite</a>
     {% else %}
         <h1>Щось пішло не так</h1>
         <p class="sub">Ми вже знаємо про проблему. Оновіть сторінку за хвилину.</p>

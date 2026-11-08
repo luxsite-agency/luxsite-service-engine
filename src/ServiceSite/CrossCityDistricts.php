@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\Request;
 final class CrossCityDistricts
 {
     private const DEV_SUFFIX = '.localhost';
-    public const PATH_RE = '~^/(ru/)?districts/([^/]+)/?$~';
+    public const PATH_RE = '~^/((?:ru|de)/)?districts/([^/]+)/?$~';
 
     /** @param array<string, mixed> $clean */
     public function __construct(
@@ -47,7 +47,7 @@ final class CrossCityDistricts
         if (!$this->enabled() || !preg_match(self::PATH_RE, $path, $m)) {
             return null;
         }
-        $locale = $m[1] !== '' ? 'ru' : 'uk';
+        $locale = $m[1] !== '' ? rtrim($m[1], '/') : 'uk';
         $slug = $m[2];
         if ($this->districts->findOneActiveBySlug($city, $slug, $locale) !== null) {
             return null; // свій район — звичайна сторінка (або лише слеш)
@@ -58,7 +58,7 @@ final class CrossCityDistricts
             }
 
             return $request->getScheme() . '://' . $this->hostFor($other, $site, $request)
-                . ($locale === 'ru' ? '/ru' : '') . '/districts/' . $slug . '/';
+                . ($locale === 'uk' ? '' : '/' . $locale) . '/districts/' . $slug . '/';
         }
 
         return null;

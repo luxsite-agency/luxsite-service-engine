@@ -65,6 +65,7 @@ parameters:
         uk: { hreflang: uk-UA, og: uk_UA, schema: uk-UA, label: UA }
         ru: { hreflang: ru-UA, og: ru_UA, schema: ru-UA, label: RU }
         en: { hreflang: en, og: en_US, schema: en, label: EN }
+        de: { hreflang: de, og: de_DE, schema: de, label: DE }
     # Калькулятор (docs/site-pack.md «Калькулятор»): режим auto = «за площею», якщо в сайту є типи прибирання (service_calc_type),
     # інакше «за прайсом» — позиції прайсу міста з in_calculator=1 (стандарт рушія з 24.10.2026); area|pricelist — примусово; off — нема.
     app.calculator.mode: auto

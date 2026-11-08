@@ -18,6 +18,7 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\Repository\ServicePostTagRepository;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
@@ -83,7 +84,7 @@ final class SiteLiveUrls implements LiveUrls
             $this->router->setContext($previous);
         }
         $route = (string) ($match['_canonical_route'] ?? $match['_route'] ?? '');
-        $locale = ($match['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = SiteLocales::slugLocale($match['_locale'] ?? 'uk');
         // статті, рубрики й теги контентного сайту бувають англійською (каталог і райони — ні): для них — справжня мова адреси
         $contentLocale = (string) ($match['_locale'] ?? $locale);
 

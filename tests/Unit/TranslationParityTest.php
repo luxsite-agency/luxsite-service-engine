@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Переклади сайту servicesite.{uk,ru,en}.yaml мають однакові ключі; en — ще й ті самі параметри (%site%, %city%…) і порожні значення, що uk.
+ * Переклади сайту servicesite.{uk,ru,en,de}.yaml мають однакові ключі; en і de — ще й ті самі параметри (%site%, %city%…) і порожні значення, що uk.
  * Глобальний фолбек перекладача — uk, тож ключ, якого бракує в en, показав би англійському сайту український текст.
  */
 final class TranslationParityTest extends TestCase
@@ -20,7 +20,7 @@ final class TranslationParityTest extends TestCase
     {
         $dir = \dirname(__DIR__, 2) . '/translations';
         $uk = $this->flat(Yaml::parseFile($dir . '/servicesite.uk.yaml'));
-        foreach (['ru', 'en'] as $locale) {
+        foreach (['ru', 'en', 'de'] as $locale) {
             $other = $this->flat(Yaml::parseFile($dir . '/servicesite.' . $locale . '.yaml'));
             self::assertSame([], array_values(array_diff(array_keys($uk), array_keys($other))), "ключі, яких бракує в $locale");
             self::assertSame([], array_values(array_diff(array_keys($other), array_keys($uk))), "зайві ключі в $locale");

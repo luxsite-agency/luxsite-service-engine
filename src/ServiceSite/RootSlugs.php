@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Хто живе в корені сайту (/<слаг>/, /ru/<слаг>/) і чи не збігаються слаги.
+ * Хто живе в корені сайту (/<слаг>/, /ru/<слаг>/, /de/<слаг>/) і чи не збігаються слаги.
  *
  * Корінь ділять: фіксовані розділи (CatalogUrls::reservedSegments — /about/, /services/, префікс блогу…), сторінки
  * app.pages (ServicePage; дочірні — /<батько>/<слаг>/), категорії (схеми root і slug) і послуги (схема slug).
@@ -65,7 +65,7 @@ final class RootSlugs implements ResetInterface
         if (!$site instanceof ServiceSite) {
             return false;
         }
-        $locale = ($params['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = SiteLocales::slugLocale($params['_locale'] ?? 'uk');
 
         return match ($kind) {
             'item' => $this->item($site, (string) ($params['slug'] ?? ''), $locale) !== null,
@@ -197,12 +197,12 @@ final class RootSlugs implements ResetInterface
             return null;
         }
         /** @var ServicePage|ServiceCategory|ServiceItem $record */
-        $slug = self::effectiveSlug($record->getSlugUk(), $record->getSlugRu(), $locale);
+        $slug = self::effectiveSlug($record->getSlugUk(), $record->getSlugRu(), $locale, $record->getSlugDe());
         if ($slug === '') {
             return null;
         }
         $address = $record instanceof ServicePage && $record->getParent() !== null
-            ? self::effectiveSlug($record->getParent()->getSlugUk(), $record->getParent()->getSlugRu(), $locale) . '/' . $slug
+            ? self::effectiveSlug($record->getParent()->getSlugUk(), $record->getParent()->getSlugRu(), $locale, $record->getParent()->getSlugDe()) . '/' . $slug
             : $slug;
 
         return ['kind' => $kind, 'id' => $record->getId(), 'title' => $record->getTitleUk(), 'locale' => $locale, 'address' => $address];
@@ -228,21 +228,21 @@ final class RootSlugs implements ResetInterface
         $out = [];
         foreach ($sources as $kind => $class) {
             $qb = $this->em->createQueryBuilder()
-                ->select('e.id, e.slugUk, e.slugRu, e.titleUk')
+                ->select('e.id, e.slugUk, e.slugRu, e.slugDe, e.titleUk')
                 ->from($class, 'e')
                 ->where('e.site = :site')->setParameter('site', $site)
                 ->orderBy('e.id', 'ASC');
             if ($kind === 'page') {
-                $qb->addSelect('parent.slugUk AS parentUk, parent.slugRu AS parentRu')->leftJoin('e.parent', 'parent');
+                $qb->addSelect('parent.slugUk AS parentUk, parent.slugRu AS parentRu, parent.slugDe AS parentDe')->leftJoin('e.parent', 'parent');
             }
             foreach ($qb->getQuery()->getArrayResult() as $row) {
-                foreach ($onlyLocale !== null ? [$onlyLocale] : ['uk', 'ru'] as $locale) {
-                    $slug = self::effectiveSlug((string) $row['slugUk'], $row['slugRu'], $locale);
+                foreach ($onlyLocale !== null ? [$onlyLocale] : ['uk', ...SiteLocales::OWN_SLUGS] as $locale) {
+                    $slug = self::effectiveSlug((string) $row['slugUk'], $row['slugRu'], $locale, $row['slugDe']);
                     if ($slug === '') {
                         continue;
                     }
                     if (($row['parentUk'] ?? null) !== null) {
-                        $slug = self::effectiveSlug((string) $row['parentUk'], $row['parentRu'], $locale) . '/' . $slug;
+                        $slug = self::effectiveSlug((string) $row['parentUk'], $row['parentRu'], $locale, $row['parentDe']) . '/' . $slug;
                     }
                     $out[] = ['kind' => $kind, 'id' => (int) $row['id'], 'title' => (string) $row['titleUk'], 'locale' => $locale, 'address' => $slug];
                 }
@@ -252,15 +252,19 @@ final class RootSlugs implements ResetInterface
         return $out;
     }
 
-    /** Слаг адреси в мові: ru порожній = uk (як генерує LocalizedFieldsTrait::loc і шукають репозиторії) */
-    private static function effectiveSlug(string $uk, ?string $ru, string $locale): string
+    /** Слаг адреси в мові: ru порожній = uk (як генерує LocalizedFieldsTrait::loc і шукають репозиторії); de — лише свій, порожній = адреси нема */
+    private static function effectiveSlug(string $uk, ?string $ru, string $locale, ?string $de = null): string
     {
+        if ($locale === 'de') {
+            return mb_strtolower(trim((string) $de, '/ '));
+        }
+
         return mb_strtolower(trim($locale === 'ru' && $ru !== null && trim($ru) !== '' ? $ru : $uk, '/ '));
     }
 
     private static function url(string $locale, string $address): string
     {
-        return ($locale === 'ru' ? '/ru/' : '/') . $address . '/';
+        return ($locale === 'uk' ? '/' : '/' . $locale . '/') . $address . '/';
     }
 
     /** @param array{kind: string, id: ?int, title: string} $e */
