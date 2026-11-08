@@ -15,6 +15,8 @@ parameters:
     app.analytics_defer: true
     # події dataLayer після заявки (/thanks); чужий GTM із ціллю на іншій події — додати її: [generate_lead, form_submit]
     app.lead_events: [generate_lead]
+    # захист форм від спаму (docs/site-pack.md «Форми заявок»): лише змінені ключі; типово — як у рушії
+    # app.lead_spam: { phone_country_codes: ['380', '0'], turnstile: { site_key: '' } }
     # форма заявки на головній: after_works (типово) | after_hero (лід-магніт одразу під першим екраном)
     app.home_lead_position: after_works
     # повний каталог у футері (категорії + всі послуги колонками); заголовок — footer.catalog_title у перекладах

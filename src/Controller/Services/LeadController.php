@@ -12,9 +12,10 @@ use App\ServiceSite\LeadAttribution;
 use App\ServiceSite\LeadFiles;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
-use App\ServiceSite\LeadNotifier;
-use App\ServiceSite\Crm\LeadCrmConnector;
+use App\ServiceSite\LeadDispatcher;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
+use App\ServiceSite\LeadSpamRecorder;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,24 +27,23 @@ use Symfony\Component\Routing\Attribute\Route;
  * Заявка з форми (телефон + ім'я + повідомлення; необов'язково — послуга service, контекст context і файли files[] з
  * app.lead_files, форма multipart/form-data). Виправляє типовий борг
  * Joomla-сайтів: персистенція в БД, маршрутизація на email МІСТА (не хардкод),
- * rate limit + honeypot + CSRF. Мейл шле LeadNotifier (best effort: заявка
- * вже в БД, падіння SMTP її не втрачає).
+ * rate limit + CSRF + LeadSpamGuard (honeypot, мітка часу, сміття в полях; правила — app.lead_spam). Спам зберігається
+ * зі spam_reason (LeadSpamRecorder) і на подяку веде без конверсії; звичайна заявка йде листом і в CRM (LeadDispatcher,
+ * best effort: заявка вже в БД, падіння SMTP її не втрачає).
  */
 final class LeadController extends AbstractController
 {
     use ServiceCityAware;
 
-    /** Вікно, у якому заявка з тим самим номером у місті вважається дублем, с. */
-    public const DUPLICATE_WINDOW = 600;
-
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ServiceLeadRepository $leads,
-        private readonly LeadNotifier $notifier,
+        private readonly LeadDispatcher $dispatcher,
         private readonly LeadAttribution $attribution,
-        private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
         private readonly LeadFiles $files,
+        private readonly LeadSpamGuard $spamGuard,
+        private readonly LeadSpamRecorder $spam,
     ) {
     }
 
@@ -75,9 +75,12 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
-            return $this->redirect($back);
+        // honeypot, мітка часу показу форми, сміття в полях (SQL-проби сканерів), телефон, Turnstile - див. LeadSpamGuard.
+        // Запис зберігається зі spam_reason (без пошти й CRM), людина бачить подяку без події конверсії
+        if (null !== $reason = $this->spamGuard->blockReason($request, $locale)) {
+            $this->spam->record($request, $city, $reason, 'lead', $back, $locale);
+
+            return $this->spamResponse($reason, $back, $locale);
         }
 
         $phone = trim((string) $request->request->get('phone', ''));
@@ -87,9 +90,8 @@ final class LeadController extends AbstractController
         $service = self::line($request->request->get('service', ''));
         $context = self::line($request->request->get('context', ''));
 
-        $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
-        if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15
-            || mb_strlen($name) > 128 || mb_strlen($message) > 3000) {
+        // мінімум цифр у номері перевіряє LeadSpamGuard (app.lead_spam.phone_min_digits)
+        if (\strlen(preg_replace('/\D/', '', $phone) ?? '') > 15 || mb_strlen($name) > 128 || mb_strlen($message) > 3000) {
             $this->addFlash('lead_error', 'Перевірте номер телефону.');
 
             return $this->redirect($back);
@@ -106,8 +108,8 @@ final class LeadController extends AbstractController
         // Подвійне натискання / повторна відправка: та сама людина вже лишила заявку
         // в цьому місті щойно. Другу не створюємо, лист і CRM не дублюємо, людину ведемо
         // на подяку (src=dup - без повторної конверсії в GA4). Перевірка ДО rate limit,
-        // щоб дубль не з'їдав ліміт (перенесено з першого сайту на рушії).
-        if ($this->leads->findRecentDuplicate($city, $phone, self::DUPLICATE_WINDOW) !== null) {
+        // щоб дубль не з'їдав ліміт (перенесено з першого сайту на рушії). Вікно — app.lead_spam.dedup_seconds.
+        if ($this->leads->findRecentDuplicate($city, $phone, $this->spamGuard->dedupSeconds()) !== null) {
             return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'dup']);
         }
 
@@ -145,9 +147,8 @@ final class LeadController extends AbstractController
             throw $e;
         }
 
-        $this->notifier->notify($lead, 'Заявка', $request->getHost());
-        // CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
-        $this->crm->push($lead);
+        // лист менеджерам міста і CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
+        $this->dispatcher->dispatch($lead, 'Заявка', $request->getHost());
 
         // успіх веде на сенкю-сторінку (ціль конверсії), помилки лишаються флешами на формі;
         // src = тип форми (form | magnet — лід-магніт головної) → lead_type у dataLayer, щоб GA4 бачив, звідки заявка
@@ -158,6 +159,22 @@ final class LeadController extends AbstractController
         }
 
         return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => \in_array($type, ['form', 'magnet'], true) ? $type : 'form']);
+    }
+
+    /**
+     * Відповідь на спрацювання захисту. Людина з автозаповненням чи застарілою вкладкою (too-fast, time-old) або з коротким
+     * номером (phone:short) бачить помилку й повторює - повтор проходить. Решта (бот) - звичайна подяка без події конверсії
+     * (src=ok: /thank-you/ не шле app.lead_events), щоб не підбирали обхід.
+     */
+    private function spamResponse(string $reason, string $back, string $locale): Response
+    {
+        if (LeadSpamGuard::isRetryReason($reason)) {
+            $this->addFlash('lead_error', str_starts_with($reason, 'phone') ? 'Перевірте номер телефону.' : 'Не вдалося надіслати, спробуйте ще раз.');
+
+            return $this->redirect($back);
+        }
+
+        return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'ok']);
     }
 
     /** Короткий рядок з форми: без тегів і переносів, до 255; порожній — null */

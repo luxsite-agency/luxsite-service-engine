@@ -98,6 +98,7 @@ live (токен) > пак > рушій.
 | `app.catalog.url_scheme` | `flat` | `flat` = `/services/<послуга>/`; `nested` = `/services/<категорія>/<послуга>/` + сторінки категорій; `root` = `/<категорія>/<послуга>/` від кореня (як у сайтів з Joomla; фіксовані сторінки мають пріоритет, невідомий `/<x>/` — legacy-редирект або 404); `slug` = послуга `/<послуга>/` і категорія `/<категорія>/` від кореня одним сегментом (старі CMS, де кожна сторінка жила на `/<слаг>/`; невідомий `/<x>/` — legacy-редирект або 404, не категорія; див. «Адреси від кореня» нижче). Послуга під чужою категорією — 301 на справжню адресу (nested/root). Маршрути — `config/routes/catalog/<scheme>.yaml`, вибір у `Kernel::configureRoutes`. У коді посилання на послугу — лише `service_path(item, locale)` (Twig) / `CatalogUrls::itemParams()` (PHP). |
 | `app.site_verification` | `''` | `<meta name="google-site-verification">` у `<head>`. |
 | `app.lead_events` | `[generate_lead]` | події dataLayer на `/thanks` після заявки (усі з `lead_type`, `city`, `site_host`; з полями форми `service`/`context` — ще `lead_service`, `lead_context`); чужий GTM з ціллю на `form_submit` — `[generate_lead, form_submit]`. |
+| `app.lead_spam` | `{min_seconds: 3, max_age_hours: 24, max_urls: 3, latin_only: true, phone_min_digits: 9, phone_country_codes: [], ip_per_hour: 5, dedup_seconds: 600, turnstile: {site_key: '', secret_env: TURNSTILE_SECRET}}` | Захист форм заявок від спаму — див. «Форми заявок: захист від ботів» нижче. Пак задає лише змінені ключі (`{phone_country_codes: ['380', '0']}`). |
 | `app.lead_files` | `{enabled: false, max_files: 5, max_file_mb: 10, max_total_mb: 25, mime: [image/jpeg, image/png, image/webp, image/gif, image/heic, image/heif, application/pdf], retention_days: 0}` | Файли в заявці — див. «Форма заявки: послуга, контекст, файли» нижче. Пак задає лише змінені ключі (`{enabled: true}`). |
 | `app.analytics_defer` | `false` | `true` = GTM/gtag і Clarity стартують після `window.load` + 800 мс або на першу взаємодію (прапорець проти подвійного старту; пасивні візити рахуються таймером). Знімає ~310 КБ з ланцюжка LCP (PSI mobile 69–75 → 89–94). Для нових паків `site-template` ставить `true`. Після вмикання на проді — `/analytics-healthcheck` (page_view без взаємодії через 10 с). |
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
@@ -400,6 +401,54 @@ parameters:
 `docker-compose.local.yml`: проєкт `service-engine`, nginx на `8113`, MySQL на `33113` (БД/юзер/пароль `service_engine`).
 Dev-хости: `<slug>.localhost:8113` (апекс-місто сайту), `<city>.<slug>.localhost:8113`, адмінка `service-sites.localhost:8113`.
 Пак підключається тими самими трьома копіюваннями, що й на проді.
+
+## Форми заявок: захист від ботів (`app.lead_spam`, стандарт рушія з 08.11.2026)
+
+`/lead` і `/calculator/lead` перевіряють CSRF, ліміт з IP (`LeadRateLimit`) і правила `LeadSpamGuard`. Усі правила — у
+параметрі `app.lead_spam` (дефолти — `config/services.yaml` і `LeadSpamGuard::DEFAULTS`; пак перекриває лише потрібні ключі):
+
+| ключ | типово | правило; як вимкнути |
+|---|---|---|
+| `min_seconds` | `3` | мітка часу показу форми `_ft` (підписана, Twig `lead_form_ts()`): заповнено швидше — `too-fast`; людина бачить «спробуйте ще раз», повтор проходить. `0` — не перевіряти |
+| `max_age_hours` | `24` | `_ft` старша — `time-old` (вкладка з учора, збережена сторінка): «спробуйте ще раз». `0` — не перевіряти. Підроблений підпис (`time-token`) — спам завжди |
+| `phone_min_digits` | `9` | менше цифр у номері — `phone:short`, «Перевірте номер телефону». Символи поза цифрами й `+()-. ` — `junk:phone` |
+| `phone_country_codes` | `[]` | дозволені префікси (цифри після `+` чи `00`): `['380', '0']` — міжнародний український або національний з 0; інший — `phone:country`. `[]` — не перевіряти |
+| `max_urls` | `3` | посилань у повідомленні (http, www, домен поширеної зони) — спам (`url:message`) від цієї кількості; посилання в імені — `url:name` завжди; повідомлення без кирилиці з посиланням на uk/ru-сторінці — спам одразу (разом з `latin_only`). `0` — посилання не перевіряти |
+| `latin_only` | `true` | повідомлення від 40 символів без жодної кирилиці на uk/ru-сторінці — `latin-only`. На сторінках інших мов (en-сайти, контентні бренди) не діє — за `locale` сторінки форми. `false` — вимкнути |
+| `ip_per_hour` | `5` | заявок з однієї IP за годину (ковзне вікно, «Забагато заявок поспіль»); свої адреси — `LEAD_RATE_LIMIT_ALLOWLIST` у `.env.local`. Стільки ж спам-записів з IP за годину зберігається в БД, далі лише лог. `0` — без ліміту |
+| `dedup_seconds` | `600` | той самий номер (останні 9 цифр) у місті за цей час — дубль: другої заявки нема, подяка `src=dup` без повторної конверсії |
+| `turnstile` | `{site_key: '', secret_env: TURNSTILE_SECRET}` | Cloudflare Turnstile, див. нижче |
+
+Завжди, без параметрів: honeypot `website` (`honeypot`), SQL-проби, теги й 8+ цифр поспіль в імені (`junk:name`), SQL і
+теги-посилання в повідомленні (`junk:message`).
+
+**Спам не губиться.** Заявка, яку відсіяв захист, зберігається зі `spam_reason` (причина з таблиці вище; поля як прийшли,
+без файлів і без розрахунку калькулятора), але **не йде** в пошту, CRM (`app:crm:sync` її теж не бере) і сповіщення. Бот
+отримує звичайний редирект на подяку `/thank-you/?src=ok` — та сама сторінка, але без `app.lead_events`, конверсії Ads і
+Pixel (щоб не підбирав обхід). Людина з автозаповненням чи застарілою вкладкою (`too-fast`, `time-old`) або з коротким
+номером (`phone:short`) бачить помилку на формі й повторює — повтор проходить, спам-запис дублем не вважається.
+Адмінка → Заявки: бейдж «спам» з причиною, фільтр «Спам» (так/ні), дія **«Не спам»** — знімає позначку й відправляє
+заявку листом і в CRM тим самим шляхом, що звичайну (що робити з хибним спамом — `docs/site-ops.md`). У лог іде
+`lead.blocked` (reason, form, stored, ip, ua).
+
+**Cloudflare Turnstile — опційно, типово вимкнено.** Пак задає `app.lead_spam.turnstile.site_key` (публічний ключ сайту),
+а в `.env.local` сайту лежить секрет у змінній `secret_env` (типово `TURNSTILE_SECRET`). Коли є обоє — у чотирьох формах
+рушія (заявка, калькулятор обох режимів, міні-калькулятор) з'являється віджет (`partials/_turnstile.html.twig`, без
+коментарів у HTML), `base.html.twig` підключає `api.js` з `defer` один раз, а сервер перевіряє відповідь на `siteverify`
+(таймаут 3 с; Cloudflare недоступний чи `internal-error` — заявку пропускаємо з warning у лог, бо захист не має губити
+клієнтів). Без відповіді віджета — `turnstile:missing`, провалена — `turnstile:failed` (спам-запис, подяка без конверсії).
+Без ключів нічого не рендериться й не перевіряється. У Twig — `lead_turnstile()` → `{enabled, site_key}`.
+
+Пак, що перекриває шаблон форми, додає поруч із `_token`:
+
+```twig
+<input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<input type="hidden" name="_ft" value="{{ lead_form_ts() }}">
+{{ include('services/partials/_turnstile.html.twig') }}
+```
+
+Без `_ft` форма працює, але без перевірки часу; без include — без Turnstile (решта правил діє на сервері незалежно від
+шаблону). Міграція `Version20261108100000` (адитивна): `service_lead.spam_reason`.
 
 ## Редиректи зі старого сайту
 

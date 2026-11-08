@@ -11,12 +11,9 @@ framework:
             policy: sliding_window
             limit: '%app.admin_api_image_rate_limit%'
             interval: '1 minute'
-        # POST /lead — заявки сервісних сайтів
-        # жорсткий ліміт для всіх; свої адреси - у LEAD_RATE_LIMIT_ALLOWLIST
-        service_lead_ip:
-            policy: sliding_window
-            limit: 5
-            interval: '60 minutes'
+        # POST /lead і /calculator/lead — заявки сервісних сайтів: лімітер service_lead_ip будує App\ServiceSite\LeadRateLimit сам
+        # (ліміт — параметр паку app.lead_spam.ip_per_hour, вкладений параметр сюди не підставити; storage — cache.rate_limiter;
+        # свої адреси - у LEAD_RATE_LIMIT_ALLOWLIST)
         # POST /reviews/submit — подача відгуків (Google-юзери)
         service_review_ip:
             policy: sliding_window
