@@ -203,3 +203,6 @@ settings:
       google_ok: 'Google отвечает: issuer %issuer%, ключей подписи %keys%.'
       google_endpoints_changed: Google объявляет другие адреса конечных точек, чем использует движок, — сообщите разработчику.
       google_failed: 'Google недоступен с сервера (%reason%). Проверьте доступ сервера в интернет и попробуйте позже.'
+copy_url:
+  title: Скопировать адрес сайта
+  done: Скопировано

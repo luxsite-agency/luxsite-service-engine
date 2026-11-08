@@ -204,3 +204,6 @@ settings:
       google_ok: 'Google відповідає: issuer %issuer%, ключів підпису %keys%.'
       google_endpoints_changed: Google оголошує інші адреси кінцевих точок, ніж використовує рушій, — повідомте розробника.
       google_failed: 'Google недоступний з сервера (%reason%). Перевірте доступ сервера в інтернет і спробуйте пізніше.'
+copy_url:
+  title: Скопіювати адресу сайту
+  done: Скопійовано
