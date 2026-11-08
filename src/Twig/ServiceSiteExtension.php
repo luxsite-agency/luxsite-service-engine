@@ -20,6 +20,7 @@ use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
+use App\ServiceSite\ArticleOutline;
 use App\ServiceSite\CustomFields;
 use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -65,6 +66,7 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly bool $pagesEnabled = false,
         private readonly ?SiteLocales $siteLocales = null,
         private readonly ?ServicePostCategoryRepository $postCategories = null,
+        private readonly ?ArticleOutline $outline = null,
     ) {
     }
 
@@ -111,6 +113,13 @@ final class ServiceSiteExtension extends AbstractExtension
             // мініатюри статей у списках (ServiceSite.listThumbs, адмінка → бренд, 25.10.2026): sv_thumbs('home') — головна,
             // sv_thumbs('lists') — стрічка, рубрика, тег, автор; без бренду — false
             new TwigFunction('sv_thumbs', fn (string $where): bool => (bool) $this->locales()->currentSite()?->showsThumbs($where)),
+            // стаття блогу (ТЗ NRG 08.11.2026): зміст з H2/H3 зліва, ті самі id у тексті, «N min read» під датою
+            new TwigFunction('sv_toc', fn (?string $html): array => ($this->outline ?? new ArticleOutline())->headings($html)),
+            new TwigFunction('sv_anchors', fn (?string $html): string => ($this->outline ?? new ArticleOutline())->withAnchors($html), ['is_safe' => ['html']]),
+            new TwigFunction('sv_read_time', fn (?string ...$html): int => ($this->outline ?? new ArticleOutline())->readMinutes(...$html)),
+            // «Other posts» під статтею: своя рубрика першою, далі свіжі. Сервісний блог related не передає,
+            // тож беремо функцією — сайти, яким блок не потрібен, не платять за запит
+            new TwigFunction('sv_related', fn (\App\Entity\ServicePost $post, int $limit = 3): array => $this->posts->findRelated($post->getSite(), $post, $this->locales()->current(), $limit)),
             new TwigFunction('sv_layout', fn (): string => $this->locales()->currentSite()?->isContent() ? 'services/content/layout.html.twig' : 'services/base.html.twig'),
         ];
     }

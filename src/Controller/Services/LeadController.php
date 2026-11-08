@@ -141,6 +141,13 @@ final class LeadController extends AbstractController
         // форма з роздільними «ім'я / прізвище» і темою листа (як у CF7 на сайтах клієнтів)
         $last = trim((string) $request->request->get('name_last', ''));
         $subject = trim((string) $request->request->get('subject', ''));
+        // форма підписки на розсилку (ТЗ блогу NRG, 08.11.2026): лише email. Поки нема доступів до сервісу
+        // розсилки, підписка їде тією самою поштовою чергою, але окремим типом — щоб у GA4 вона не зливалась
+        // з формою зв'язку (своя сенкю-мітка src=subscribe)
+        $type = (string) $request->request->get('lead_type', 'contact');
+        if ($type === 'subscribe' && $message === '') {
+            $message = $this->translator->trans('subscribe.lead', [], 'servicesite');
+        }
         if ($last !== '' && mb_strlen($last) <= 128) {
             $name = trim($name . ' ' . $last);
         }
@@ -178,7 +185,7 @@ final class LeadController extends AbstractController
         $this->em->flush();
         $this->notifier->notify($lead, 'Повідомлення', $request->getHost());
 
-        return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'contact']);
+        return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => \in_array($type, ['contact', 'subscribe', 'demo'], true) ? $type : 'contact']);
     }
 
     /**

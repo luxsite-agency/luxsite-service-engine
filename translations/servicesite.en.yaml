@@ -227,6 +227,7 @@ contact.submit: 'Send message'
 contact.privacy_note: 'By sending this form you agree to our <a href="%url%">privacy policy</a>.'
 contact.invalid: 'Please check your email address and message.'
 contact.too_many: 'Too many messages in a row. Please try again later.'
+subscribe.lead: 'Newsletter subscription from the blog.'
 contact.thanks_title: 'Thank you, your message has been sent'
 contact.thanks_text: 'We will reply to the email address you provided.'
 legal.privacy_html: |
