@@ -1,0 +1,5 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# Віджет Cloudflare Turnstile у формі заявки (app.lead_spam.turnstile: site_key паку + секрет у .env.local); без ключів
+   нічого не рендериться. Скрипт api.js підключає base.html.twig один раз на сторінку. -#}
+{% set _ts = lead_turnstile() -%}
+{% if _ts.enabled %}<div class="cf-turnstile" data-sitekey="{{ _ts.site_key }}" data-size="flexible" style="flex-basis:100%"></div>{% endif %}

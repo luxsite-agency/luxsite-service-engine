@@ -2,7 +2,7 @@
 {# Інлайн-форма заявки: телефон обов'язковий, ім'я/повідомлення опційні.
    Honeypot-поле website приховане; CSRF-токен sv_lead; _ft - мітка часу показу (LeadSpamGuard).
    Параметри include: magnet (bool, головна — лід-магніт: абзац lead.subtitle під заголовком і месенджери міста з підписом
-   lead.messengers_hint під формою; порожні ключі = елементів нема), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
+   lead.messengers_hint під формою; порожні ключі = елементів нема; віджет Turnstile — лише з app.lead_spam.turnstile), lead_type ('form' | 'magnet' → на /thank-you/ lead_type
    у dataLayer, щоб у GA4 було видно, звідки заявка), lead_service і lead_context (необов'язкові: назва послуги з кнопки й звідки
    заявка — окремими полями заявки). Поле файлів і multipart — лише з app.lead_files.enabled (lead_files()).
    Під заголовком будь-якої форми — умова лише для міста (_city_note). -#}
@@ -35,6 +35,7 @@
             <input type="file" name="files[]" multiple accept="{{ _lf.accept }}">
         </label>
         {% endif %}
+        {{ include('services/partials/_turnstile.html.twig') }}
         <button class="btn" type="submit">{{ 'lead.submit'|trans({}, 'servicesite') }}</button>
     </form>
     {% if magnet and city.hasMessengers %}{% set _hint = 'lead.messengers_hint'|trans({}, 'servicesite') %}
