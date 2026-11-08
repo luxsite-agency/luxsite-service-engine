@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Admin\CopyUrlField;
 use App\Entity\ServiceSite;
 use App\Settings\AdminBranding;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -79,7 +80,7 @@ class ServiceSiteCrudController extends AbstractCrudController
             ->setHelp('Порожньо — як uk.');
         yield TextField::new('slug', 'Slug')
             ->setHelp('Латинський ідентифікатор ніші; dev-хост = <slug>.localhost. Міняти обережно.');
-        yield TextField::new('apexDomain', 'Апекс-домен')
+        yield CopyUrlField::apply(TextField::new('apexDomain', 'Апекс-домен'))
             ->setHelp('Домен головного міста, напр. example.com.ua');
         yield TextField::new('schemaType', 'Schema.org тип')
             ->setHelp('Підтип LocalBusiness для JSON-LD: Electrician, Plumber, HouseCleaning…');

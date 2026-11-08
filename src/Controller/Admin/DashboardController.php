@@ -70,7 +70,9 @@ class DashboardController extends AbstractDashboardController
         return Assets::new()
             ->addJsFile('assets/admin-tabs.js')
             // кругла підказка біля назв колонок у списках
-            ->addJsFile('assets/admin-hints.js');
+            ->addJsFile('assets/admin-hints.js')
+            // кнопка «скопіювати адресу» біля домену / хоста (App\Admin\CopyUrlField)
+            ->addJsFile('assets/admin-copy-url.js');
     }
 
     public function configureMenuItems(): iterable

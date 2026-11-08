@@ -1,0 +1,7 @@
+{# SPDX-License-Identifier: Apache-2.0. Copyright 2026 LuxSite (https://luxsite.agency). See LICENSE and NOTICE. -#}
+{# @var field \EasyCorp\Bundle\EasyAdminBundle\Dto\FieldDto #}
+{# Домен або хост і кнопка «скопіювати адресу» (App\Admin\CopyUrlField); копіює public/assets/admin-copy-url.js. -#}
+{%- set _url = sv_copy_url(field.value) -%}
+<span class="sv-copy-url-wrap">{{ field.formattedValue }}
+{%- if _url %} <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline sv-copy-url" data-copy="{{ _url }}" data-copied="{{ 'copy_url.done'|trans({}, 'admin') }}" title="{{ 'copy_url.title'|trans({}, 'admin') }}" aria-label="{{ 'copy_url.title'|trans({}, 'admin') }}"><i class="fa fa-copy" aria-hidden="true"></i></button>{% endif -%}
+</span>

@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Admin\CopyUrlField;
 use App\Entity\ServiceCity;
 use App\Form\ServiceFaqItemType;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -71,7 +72,7 @@ class ServiceCityCrudController extends AbstractCrudController
 
         yield FormField::addTab('Основне', 'fa fa-gear');
         yield AssociationField::new('site', 'Сайт')->setColumns(6);
-        yield TextField::new('host', 'Хост')->setColumns(6)
+        yield CopyUrlField::apply(TextField::new('host', 'Хост'))->setColumns(6)
             ->setHelp('Прод-хост: апекс (example.com.ua), піддомен (kharkiv.example.com.ua) '
                 . 'або окремий домен міста');
         yield TextField::new('slug', 'Slug')->setColumns(6)
