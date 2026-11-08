@@ -95,6 +95,8 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('sv_locales', fn (?ServiceSite $site = null): array => $this->locales()->enabled($site)),
             new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
             new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
+            // посилання hreflang сторінки ([{hreflang, href}], з x-default) — однаково в <head> і sitemap.xml (app.hreflang_single)
+            new TwigFunction('sv_hreflangs', fn (array $urls, array $order = []): array => $this->locales()->hreflangs($urls, $order)),
             new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
             // дата мовою сторінки (intl): «22 жовт. 2026 р.», «Oct 22, 2026» — для статей контентного сайту
             new TwigFunction('sv_date', static fn (?\DateTimeInterface $date, string $locale): string => $date === null ? ''
