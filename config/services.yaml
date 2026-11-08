@@ -56,7 +56,10 @@ parameters:
     # Звідки приймач студії качає картинки (обкладинка й картинки тексту): список доменів (і піддоменів); порожньо — будь-який
     # публічний https (приватні адреси й так заборонені, NoPrivateNetworkHttpClient). До 10 МБ, до 3 редиректів.
     app.studio.image_hosts: []
-    # Коди мови для розмітки: hreflang, og:locale, inLanguage (JSON-LD), підпис у перемикачі мов. Пак перекриває лише
+    # hreflang і для одномовного бренду: сторінка посилається сама на себе + x-default (так само в sitemap.xml). false — як було:
+    # hreflang лише коли мов бренду більше однієї.
+    app.hreflang_single: false
+    # Коди мови для розмітки: hreflang (кілька кодів через пробіл — 'en-US en-GB': посилання на кожен), og:locale, inLanguage (JSON-LD), підпис у перемикачі мов. Пак перекриває лише
     # потрібне (напр. en: { og: en_GB }); мова без запису — код мови як є.
     app.locale_codes:
         uk: { hreflang: uk-UA, og: uk_UA, schema: uk-UA, label: UA }

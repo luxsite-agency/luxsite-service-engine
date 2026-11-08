@@ -41,6 +41,9 @@ final class SiteLocales
         private readonly string $frameworkDefault = 'uk',
         #[Autowire('%app.locale_prefix%')]
         private readonly bool $prefixed = true,
+        /** app.hreflang_single: hreflang і для одномовного бренду (сторінка посилається сама на себе + x-default) */
+        #[Autowire('%app.hreflang_single%')]
+        private readonly bool $hreflangSingle = false,
     ) {
     }
 
@@ -135,6 +138,34 @@ final class SiteLocales
         }
 
         return (string) ($this->codes[$locale][$kind] ?? ($kind === 'label' ? strtoupper($locale) : $locale));
+    }
+
+    /**
+     * Посилання hreflang сторінки — одне джерело для <head> і sitemap.xml. $urls — мова → URL цієї сторінки,
+     * $order — мови бренду в потрібному порядку (порожньо — порядок $urls). Перша мова — x-default.
+     * Код береться з app.locale_codes[<мова>].hreflang і може містити кілька кодів через пробіл ('en-US en-GB') —
+     * тоді на кожен код окреме посилання на той самий URL. Одна мова — порожньо, якщо не ввімкнено app.hreflang_single.
+     *
+     * @param array<string, string> $urls
+     * @param list<string>          $order
+     *
+     * @return list<array{hreflang: string, href: string}>
+     */
+    public function hreflangs(array $urls, array $order = []): array
+    {
+        $langs = $order === [] ? array_keys($urls) : array_values(array_filter($order, static fn (string $l): bool => isset($urls[$l])));
+        if ($langs === [] || (\count($langs) < 2 && !$this->hreflangSingle)) {
+            return [];
+        }
+        $out = [];
+        foreach ($langs as $l) {
+            foreach (preg_split('/\s+/', trim($this->code($l, 'hreflang')), -1, \PREG_SPLIT_NO_EMPTY) ?: [$l] as $code) {
+                $out[] = ['hreflang' => $code, 'href' => $urls[$l]];
+            }
+        }
+        $out[] = ['hreflang' => 'x-default', 'href' => $urls[$langs[0]]];
+
+        return $out;
     }
 
     /** Бренд головного запиту (атрибут ServiceHostSubscriber); null — адмін-хост, CLI, хост без тенанта */

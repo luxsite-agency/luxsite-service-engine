@@ -67,4 +67,35 @@ final class SiteLocalesTest extends TestCase
         $l = new SiteLocales($this->stack('/admin', null), ['en'], [], 'uk');
         self::assertSame('uk', $l->fromPath(), 'адмінка розгортання en лишається українською');
     }
+
+    public function testHreflangsMultiLanguageUnchangedAndSingleOffByDefault(): void
+    {
+        $site = new ServiceSite();
+        $l = new SiteLocales($this->stack('/x/', $site, 'uk'), ['uk', 'ru'], self::CODES);
+        self::assertSame([
+            ['hreflang' => 'uk-UA', 'href' => 'https://a.test/x/'],
+            ['hreflang' => 'ru', 'href' => 'https://a.test/ru/x/'],
+            ['hreflang' => 'x-default', 'href' => 'https://a.test/x/'],
+        ], $l->hreflangs(['ru' => 'https://a.test/ru/x/', 'uk' => 'https://a.test/x/'], ['uk', 'ru']), 'дві мови: порядок бренду, x-default — перша');
+        self::assertSame([], $l->hreflangs(['uk' => 'https://a.test/x/']), 'одна мова без app.hreflang_single — без hreflang, як було');
+        self::assertSame([], $l->hreflangs([]));
+    }
+
+    public function testHreflangsSingleLanguageWithSeveralCodes(): void
+    {
+        $codes = ['en' => ['hreflang' => 'en-US en-GB', 'og' => 'en_US', 'schema' => 'en', 'label' => 'EN']] + self::CODES;
+        $site = (new ServiceSite())->setLocales(['en']);
+        $l = new SiteLocales($this->stack('/x/', $site, 'en'), ['en', 'uk'], $codes, 'uk', false, true);
+        self::assertSame([
+            ['hreflang' => 'en-US', 'href' => 'https://a.test/x/'],
+            ['hreflang' => 'en-GB', 'href' => 'https://a.test/x/'],
+            ['hreflang' => 'x-default', 'href' => 'https://a.test/x/'],
+        ], $l->hreflangs(['en' => 'https://a.test/x/'], ['en', 'uk']));
+        self::assertSame('en_US', $l->code('en', 'og'), 'og/schema — як були');
+        self::assertSame([
+            ['hreflang' => 'uk-UA', 'href' => 'https://b.test/'],
+            ['hreflang' => 'x-default', 'href' => 'https://b.test/'],
+        ], $l->hreflangs(['uk' => 'https://b.test/']), 'одномовний uk-бренд у тому ж розгортанні');
+        self::assertSame([], $l->hreflangs(['en' => 'https://a.test/x/'], ['uk']), 'мови сторінки нема серед мов бренду — без hreflang');
+    }
 }

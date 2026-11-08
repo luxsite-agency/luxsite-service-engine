@@ -36,10 +36,10 @@
         {% if _canon and _canon[locale] is defined %}
         <link rel="canonical" href="{{ _canon[locale] }}">
         {% endif %}
-        {# hreflang — мовами бренду (sv_locales), лише коли їх більше однієї; x-default — мова без префікса #}{% set _svAlt = _canon ? sv_locales()|filter(l => _canon[l] is defined) : [] %}{% if _svAlt|length > 1 %}
-        {% for _l in _svAlt %}<link rel="alternate" hreflang="{{ sv_locale_code(_l, 'hreflang') }}" href="{{ _canon[_l] }}">
-        {% endfor %}<link rel="alternate" hreflang="x-default" href="{{ _canon[_svAlt|first] }}">
-        {% endif %}
+        {# hreflang — мовами бренду (sv_locales) з canonical-адрес: від двох мов, або завжди з app.hreflang_single; x-default — перша мова;
+           кілька кодів на мову (app.locale_codes … hreflang: 'en-US en-GB') — по посиланню на код (SiteLocales::hreflangs) #}
+        {% for _h in (_canon ? sv_hreflangs(_canon, sv_locales()) : []) %}<link rel="alternate" hreflang="{{ _h['hreflang'] }}" href="{{ _h['href'] }}">
+        {% endfor %}
         {# опис сторінки: один блок живить і <meta description>, і og:description -#}
         {% set _desc %}{% block metaDescription %}{% endblock %}{% endset %}
         {% set _desc = _desc|striptags|trim|replace({
