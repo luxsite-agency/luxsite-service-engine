@@ -21,6 +21,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\NumberField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -31,6 +32,19 @@ class ServiceCalcOptionCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва опції, а не сайт */
     private const INDEX_PRIMARY = 'nameUk';
+
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -43,7 +57,7 @@ class ServiceCalcOptionCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Додаткова опція')
             ->setEntityLabelInPlural('Калькулятор: додаткові опції')
             ->setDefaultSort(['site' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['nameUk', 'nameRu'])
+            ->setSearchFields(['nameUk', 'nameRu', 'nameDe'])
             ->setPaginatorPageSize(60)
             ->setEntityPermission('ROLE_MODERATOR');
     }
@@ -79,6 +93,10 @@ class ServiceCalcOptionCrudController extends AbstractCrudController
         yield FormField::addFieldset('Назва');
         yield TextField::new('nameUk', 'Назва uk')->setColumns(6);
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Ціна');
         yield NumberField::new('price', 'Ціна, грн')->setNumDecimals(2)->setColumns(4)
             ->setHelp('Ціна позиції в грн.');
@@ -90,6 +108,10 @@ class ServiceCalcOptionCrudController extends AbstractCrudController
         yield TextField::new('unitUk', 'Одиниця uk')->hideOnIndex()->setColumns(6)
             ->setHelp('«стулка», «посадкове місце», «м²» - показується біля степера');
         yield TextField::new('unitRu', 'Одиниця ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('unitDe', 'Одиниця de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('position', 'Порядок')->setColumns(6)
             ->setHelp('Порядок у списку додаткових послуг.');

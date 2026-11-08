@@ -30,6 +30,7 @@ use App\ServiceSite\LeadNotifier;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\ServiceSite\LeadRateLimit;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -153,7 +154,7 @@ final class CalculatorController extends AbstractController
         if ($mode === null) {
             throw $this->createNotFoundException('Калькулятор ще не наповнено.');
         }
-        $locale = $request->request->get('loc') === 'ru' ? 'ru' : 'uk';
+        $locale = SiteLocales::slugLocale($request->request->get('loc'));
         $fromHome = $request->request->get('from') === 'home';
         // калькулятор стоїть і на сторінках послуг: повертаємо людину туди, звідки
         // вона надіслала форму. Слаг звіряємо з БД, щоб не зробити відкритий редирект

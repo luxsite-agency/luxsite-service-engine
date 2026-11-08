@@ -22,6 +22,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -32,6 +33,19 @@ class ServicePriceCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва позиції, а не послуга з містом */
     private const INDEX_PRIMARY = 'nameUk';
+
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -44,7 +58,7 @@ class ServicePriceCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Позиція прайсу')
             ->setEntityLabelInPlural('Прайс')
             ->setDefaultSort(['city' => 'ASC', 'item' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['nameUk', 'nameRu'])
+            ->setSearchFields(['nameUk', 'nameRu', 'nameDe'])
             ->setPaginatorPageSize(60)
             ->setEntityPermission('ROLE_MODERATOR');
     }
@@ -89,8 +103,16 @@ class ServicePriceCrudController extends AbstractCrudController
         yield TextField::new('nameUk', 'Назва uk')->setColumns(6)
             ->setHtmlAttributes($this->hint('Перша колонка таблиці на сторінці: «Диван на 3 місця», «51-75 м²».'));
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6);
         yield TextareaField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('descDe', 'Опис de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Ціна');
         yield NumberField::new('price', 'Ціна, грн')
             ->setNumDecimals(2)->setColumns(4)
@@ -105,6 +127,10 @@ class ServicePriceCrudController extends AbstractCrudController
         yield TextField::new('priceTextUk', 'Текст замість ціни uk')->hideOnIndex()->setColumns(6)
             ->setHelp('«За домовленістю» тощо; використовується, коли числова ціна порожня');
         yield TextField::new('priceTextRu', 'Текст замість ціни ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('priceTextDe', 'Текст замість ціни de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Калькулятор');
         yield BooleanField::new('inCalculator', 'У калькуляторі')->setColumns(4)
             ->setHelp('Показувати серед додаткових послуг у розрахунку')
@@ -118,6 +144,10 @@ class ServicePriceCrudController extends AbstractCrudController
         yield TextField::new('unitUk', 'Одиниця uk')->hideOnIndex()->setColumns(6)
             ->setHelp('«м²», «шт», «посадкове місце»');
         yield TextField::new('unitRu', 'Одиниця ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('unitDe', 'Одиниця de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('position', 'Порядок')->setColumns(6)
             ->setHtmlAttributes($this->hint(

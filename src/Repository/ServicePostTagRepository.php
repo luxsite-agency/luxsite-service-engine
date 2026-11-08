@@ -36,7 +36,7 @@ class ServicePostTagRepository extends ServiceEntityRepository
 
         return $this->createQueryBuilder('t')
             ->where('t.site = :site')->setParameter('site', $site)
-            ->andWhere('t.slugUk IN (:slugs) OR t.slugRu IN (:slugs) OR t.slugEn IN (:slugs)')->setParameter('slugs', $slugs)
+            ->andWhere('t.slugUk IN (:slugs) OR t.slugRu IN (:slugs) OR t.slugEn IN (:slugs) OR t.slugDe IN (:slugs)')->setParameter('slugs', $slugs)
             ->orderBy('t.id', 'ASC')
             ->getQuery()->getResult();
     }
@@ -47,6 +47,7 @@ class ServicePostTagRepository extends ServiceEntityRepository
         $field = match ($locale) {
             'ru' => 'slugRu',
             'en' => 'slugEn',
+            'de' => 'slugDe',
             default => 'slugUk',
         };
         $candidates = $this->findBy(['site' => $site, 'active' => true, $field => $slug]);

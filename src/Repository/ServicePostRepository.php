@@ -38,6 +38,7 @@ class ServicePostRepository extends ServiceEntityRepository
         return match ($locale) {
             null => null,
             'en' => "($alias.slugEn IS NOT NULL AND $alias.slugEn <> '' AND $alias.titleEn IS NOT NULL AND $alias.titleEn <> '')",
+            'de' => "($alias.slugDe IS NOT NULL AND $alias.slugDe <> '' AND $alias.titleDe IS NOT NULL AND $alias.titleDe <> '')",
             default => "($alias.slugUk IS NOT NULL AND $alias.slugUk <> '')",
         };
     }
@@ -226,6 +227,7 @@ class ServicePostRepository extends ServiceEntityRepository
         $condition = match ($locale) {
             'ru' => '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))',
             'en' => "(p.slugEn = :slug AND p.titleEn IS NOT NULL AND p.titleEn <> '')",
+            'de' => "(p.slugDe = :slug AND p.titleDe IS NOT NULL AND p.titleDe <> '')",
             default => 'p.slugUk = :slug',
         };
 

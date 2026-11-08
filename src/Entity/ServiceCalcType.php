@@ -48,12 +48,18 @@ class ServiceCalcType implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameDe = null;
+
     /** Короткий підпис під назвою («пил, підлога, санвузол, кухня») */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $descDe = null;
 
     /** Базова ціна за м², грн */
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
@@ -116,6 +122,18 @@ class ServiceCalcType implements TimestampableInterface
         return $this;
     }
 
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -136,6 +154,18 @@ class ServiceCalcType implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }

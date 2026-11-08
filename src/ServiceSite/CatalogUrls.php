@@ -32,7 +32,7 @@ final class CatalogUrls
     public const RESERVED_SEGMENTS = [
         'services', 'districts', 'blog', 'news', 'about', 'contacts', 'faq', 'reviews', 'privacy-policy',
         'terms-of-service', 'thank-you', 'calculator-cleaning', 'calculator', 'lead', 'sitemap.xml', 'robots.txt',
-        'ru', 'uk', 'en', 'author', 'feed', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
+        'ru', 'uk', 'en', 'de', 'author', 'feed', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
     ];
 
     public function __construct(
@@ -118,12 +118,12 @@ final class CatalogUrls
     /**
      * Слаг послуги зі шляху сторінки (звідки прийшла заявка: CRM бере назву послуги) або null, якщо за схемою це не
      * адреса послуги: flat/nested — останній сегмент після /services/; root — /<категорія>/<послуга>/; slug — /<послуга>/
-     * (перший сегмент не фіксований розділ). Префікс /ru/ пропускається. Чи є така послуга — вирішує той, хто питає.
+     * (перший сегмент не фіксований розділ). Префікс /ru/ чи /de/ пропускається. Чи є така послуга — вирішує той, хто питає.
      */
     public function itemSlugFromPath(string $path): ?string
     {
         $segments = array_values(array_filter(explode('/', $path), static fn (string $s): bool => $s !== ''));
-        if (($segments[0] ?? null) === 'ru') {
+        if (\in_array($segments[0] ?? null, SiteLocales::OWN_SLUGS, true)) {
             array_shift($segments);
         }
         if ($this->categoriesAtRoot()) {

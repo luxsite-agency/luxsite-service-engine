@@ -10,6 +10,7 @@ namespace App\ServiceSite;
 use App\Entity\ServiceCity;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceItemRepository;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -221,7 +222,7 @@ final class LegacyUrls
             return preg_match('#^https?://#i', $literal) ? $literal : $host . '/' . ltrim(trim($literal), '/');
         }
 
-        $locale = ($rule['locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = SiteLocales::slugLocale($rule['locale'] ?? 'uk');
         if (!empty($rule['route'])) {
             return $this->router->generate((string) $rule['route'], ['_locale' => $locale], UrlGeneratorInterface::ABSOLUTE_URL);
         }
@@ -240,7 +241,7 @@ final class LegacyUrls
             $target = $current;
         }
 
-        $targetPath = $locale === 'ru' ? '/ru/' : '/';
+        $targetPath = $locale === 'uk' ? '/' : '/' . $locale . '/';
         if (!empty($rule['item'])) {
             $item = $this->items->findOneActiveBySiteAndSlug($site, (string) $rule['item'], 'uk');
             if ($item !== null) {

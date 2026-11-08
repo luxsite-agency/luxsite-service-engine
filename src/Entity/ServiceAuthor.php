@@ -57,6 +57,9 @@ class ServiceAuthor implements TimestampableInterface
     private ?string $roleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $roleDe = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $roleEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -64,6 +67,9 @@ class ServiceAuthor implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $bioRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $bioDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $bioEn = null;
@@ -202,6 +208,18 @@ class ServiceAuthor implements TimestampableInterface
         return $this;
     }
 
+    public function getRoleDe(): ?string
+    {
+        return $this->roleDe;
+    }
+
+    public function setRoleDe(?string $roleDe): self
+    {
+        $this->roleDe = $roleDe === '' ? null : $roleDe;
+
+        return $this;
+    }
+
     public function getRoleEn(): ?string
     {
         return $this->roleEn;
@@ -234,6 +252,18 @@ class ServiceAuthor implements TimestampableInterface
     public function setBioRu(?string $bioRu): self
     {
         $this->bioRu = $bioRu === '' ? null : $bioRu;
+
+        return $this;
+    }
+
+    public function getBioDe(): ?string
+    {
+        return $this->bioDe;
+    }
+
+    public function setBioDe(?string $bioDe): self
+    {
+        $this->bioDe = $bioDe === '' ? null : $bioDe;
 
         return $this;
     }

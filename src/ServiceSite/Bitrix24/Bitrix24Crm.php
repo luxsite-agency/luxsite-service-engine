@@ -14,6 +14,7 @@ use App\ServiceSite\Crm\AbstractLeadCrm;
 use App\ServiceSite\Crm\CrmException;
 use App\ServiceSite\Crm\LeadCrmCapabilities;
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\SiteLocales;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -298,7 +299,7 @@ final class Bitrix24Crm extends AbstractLeadCrm
             return null;
         }
 
-        $locale = $lead->getLocale() === 'ru' ? 'ru' : 'uk';
+        $locale = SiteLocales::slugLocale($lead->getLocale());
         $item = $this->items->findOneActiveBySiteAndSlug($site, $slug, $locale);
         $title = $item !== null ? trim((string) $item->loc('title', $locale)) : '';
 

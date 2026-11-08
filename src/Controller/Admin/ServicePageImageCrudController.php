@@ -14,6 +14,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
@@ -24,6 +25,19 @@ use Vich\UploaderBundle\Form\Type\VichImageType;
 #[IsGranted('ROLE_MODERATOR')]
 class ServicePageImageCrudController extends AbstractCrudController
 {
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServicePageImage::class;
@@ -55,6 +69,10 @@ class ServicePageImageCrudController extends AbstractCrudController
             ->setHelp('Під зображенням і в alt: «Ліцензія МОЗ на медичну практику».');
         yield TextField::new('captionRu', 'Підпис ru')->setColumns(5)
             ->setHelp('Порожньо = український підпис.');
+        if ($this->has('de')) {
+            yield TextField::new('captionDe', 'Підпис de')->setColumns(5)
+                ->setHelp('Німецька');
+        }
         yield IntegerField::new('position', 'Порядок')->setColumns(2)
             ->setHelp('Менше = раніше.');
     }

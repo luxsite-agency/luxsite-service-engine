@@ -32,6 +32,7 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Table(name: 'service_page')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_de', columns: ['site_id', 'slug_de'])]
 #[ORM\Index(columns: ['site_id', 'active', 'position'], name: 'idx_svc_page_site_active')]
 #[Vich\Uploadable]
 class ServicePage implements TimestampableInterface
@@ -89,12 +90,19 @@ class ServicePage implements TimestampableInterface
     #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс (vakansii).')]
     private ?string $slugRu = null;
 
+    #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс (vakansii).')]
+    private ?string $slugDe = null;
+
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank(message: 'Заголовок uk обовʼязковий.')]
     private string $titleUk = '';
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     /** Вступ під H1 (простий текст), він же meta description, якщо своєї нема */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -104,10 +112,16 @@ class ServicePage implements TimestampableInterface
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
@@ -115,11 +129,17 @@ class ServicePage implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     /** Порядок серед сторінок одного батька і в футері */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
@@ -291,6 +311,19 @@ class ServicePage implements TimestampableInterface
         return $this;
     }
 
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $slugDe = $slugDe !== null ? trim($slugDe) : null;
+        $this->slugDe = $slugDe === '' ? null : $slugDe;
+
+        return $this;
+    }
+
     public function getTitleUk(): string
     {
         return $this->titleUk;
@@ -311,6 +344,18 @@ class ServicePage implements TimestampableInterface
     public function setTitleRu(?string $titleRu): self
     {
         $this->titleRu = $titleRu;
+
+        return $this;
+    }
+
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
 
         return $this;
     }
@@ -339,6 +384,18 @@ class ServicePage implements TimestampableInterface
         return $this;
     }
 
+    public function getLeadDe(): ?string
+    {
+        return $this->leadDe;
+    }
+
+    public function setLeadDe(?string $leadDe): self
+    {
+        $this->leadDe = $leadDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -359,6 +416,18 @@ class ServicePage implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -387,6 +456,18 @@ class ServicePage implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaDescUk(): ?string
     {
         return $this->metaDescUk;
@@ -407,6 +488,18 @@ class ServicePage implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
 
         return $this;
     }

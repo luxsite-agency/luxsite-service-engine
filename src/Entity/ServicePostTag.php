@@ -25,10 +25,12 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ORM\Entity(repositoryClass: ServicePostTagRepository::class)]
 #[UniqueEntity(fields: ['site', 'slugUk'], message: 'Тег з таким слагом uk у бренді вже є.', errorPath: 'slugUk', ignoreNull: true)]
 #[UniqueEntity(fields: ['site', 'slugRu'], message: 'Тег з таким слагом ru у бренді вже є.', errorPath: 'slugRu', ignoreNull: true)]
+#[UniqueEntity(fields: ['site', 'slugDe'], message: 'Тег з таким слагом de у бренді вже є.', errorPath: 'slugDe', ignoreNull: true)]
 #[UniqueEntity(fields: ['site', 'slugEn'], message: 'Тег з таким слагом en у бренді вже є.', errorPath: 'slugEn', ignoreNull: true)]
 #[ORM\Table(name: 'service_post_tag')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_de', columns: ['site_id', 'slug_de'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_tag_site_slug_en', columns: ['site_id', 'slug_en'])]
 class ServicePostTag implements TimestampableInterface
 {
@@ -60,6 +62,10 @@ class ServicePostTag implements TimestampableInterface
 
     #[ORM\Column(length: 160, nullable: true)]
     #[Assert\Regex('/^[a-z0-9-]+$/', message: 'Слаг: лише латиниця, цифри, дефіс.')]
+    private ?string $slugDe = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex('/^[a-z0-9-]+$/', message: 'Слаг: лише латиниця, цифри, дефіс.')]
     private ?string $slugEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -67,6 +73,9 @@ class ServicePostTag implements TimestampableInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleEn = null;
@@ -106,7 +115,7 @@ class ServicePostTag implements TimestampableInterface
     #[Assert\Callback]
     public function validateHasLanguage(ExecutionContextInterface $context): void
     {
-        foreach (['uk', 'en'] as $l) {
+        foreach (['uk', 'en', 'de'] as $l) {
             if ($this->existsIn($l)) {
                 return;
             }
@@ -129,7 +138,7 @@ class ServicePostTag implements TimestampableInterface
     /** Адмінка: назва й бренд — однойменні теги різних брендів у підказці поля «Теги» розрізняються */
     public function __toString(): string
     {
-        $title = $this->titleUk ?? $this->titleEn ?? $this->titleRu ?? '';
+        $title = $this->titleUk ?? $this->titleEn ?? $this->titleDe ?? $this->titleRu ?? '';
 
         return $this->site !== null ? $title . ' · ' . $this->site->getSlug() : $title;
     }
@@ -154,6 +163,18 @@ class ServicePostTag implements TimestampableInterface
     public function setSlugRu(?string $slugRu): self
     {
         $this->slugRu = $slugRu === '' ? null : $slugRu;
+
+        return $this;
+    }
+
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $this->slugDe = $slugDe === '' ? null : $slugDe;
 
         return $this;
     }
@@ -190,6 +211,18 @@ class ServicePostTag implements TimestampableInterface
     public function setTitleRu(?string $titleRu): self
     {
         $this->titleRu = $titleRu === '' ? null : $titleRu;
+
+        return $this;
+    }
+
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe === '' ? null : $titleDe;
 
         return $this;
     }

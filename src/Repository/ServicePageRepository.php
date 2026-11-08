@@ -35,9 +35,11 @@ class ServicePageRepository extends ServiceEntityRepository
             return null;
         }
         $slug = (string) end($segments);
-        $condition = $locale === 'ru'
-            ? '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))'
-            : 'p.slugUk = :slug';
+        $condition = match ($locale) {
+            'ru' => '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))',
+            'de' => 'p.slugDe = :slug',
+            default => 'p.slugUk = :slug',
+        };
         /** @var list<ServicePage> $candidates */
         $candidates = $this->createQueryBuilder('p')
             ->addSelect('parent')

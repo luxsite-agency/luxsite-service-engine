@@ -27,6 +27,7 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Table(name: 'service_post')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_de', columns: ['site_id', 'slug_de'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_slug_en', columns: ['site_id', 'slug_en'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_site_studio_group', columns: ['site_id', 'studio_group_id'])]
 #[ORM\Index(columns: ['site_id', 'active', 'published_at'], name: 'idx_svc_post_site_published')]
@@ -71,11 +72,17 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $slugRu = null;
 
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $slugDe = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     /** Лід-анонс (стрічка + meta description) */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -85,10 +92,16 @@ class ServicePost implements TimestampableInterface
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
@@ -96,11 +109,17 @@ class ServicePost implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $publishedAt = null;
@@ -121,6 +140,9 @@ class ServicePost implements TimestampableInterface
     /** alt обкладинки для ru (null = фолбек на imageAlt); панель content-studio пише по мовах */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $imageAltRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $imageAltDe = null;
 
     // контентний сайт (22.10.2026): рубрика, автор, «обрана» на головній; видалення рубрики/автора лишає статтю без них
     #[ORM\ManyToOne(targetEntity: ServicePostCategory::class)]
@@ -236,6 +258,18 @@ class ServicePost implements TimestampableInterface
         return $this;
     }
 
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $this->slugDe = $slugDe;
+
+        return $this;
+    }
+
     public function getTitleUk(): string
     {
         return $this->titleUk ?? '';
@@ -256,6 +290,18 @@ class ServicePost implements TimestampableInterface
     public function setTitleRu(?string $titleRu): self
     {
         $this->titleRu = $titleRu;
+
+        return $this;
+    }
+
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
 
         return $this;
     }
@@ -284,6 +330,18 @@ class ServicePost implements TimestampableInterface
         return $this;
     }
 
+    public function getLeadDe(): ?string
+    {
+        return $this->leadDe;
+    }
+
+    public function setLeadDe(?string $leadDe): self
+    {
+        $this->leadDe = $leadDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -304,6 +362,18 @@ class ServicePost implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -332,6 +402,18 @@ class ServicePost implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaDescUk(): ?string
     {
         return $this->metaDescUk;
@@ -352,6 +434,18 @@ class ServicePost implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
 
         return $this;
     }
@@ -496,6 +590,18 @@ class ServicePost implements TimestampableInterface
     public function setImageAltRu(?string $imageAltRu): self
     {
         $this->imageAltRu = $imageAltRu;
+
+        return $this;
+    }
+
+    public function getImageAltDe(): ?string
+    {
+        return $this->imageAltDe;
+    }
+
+    public function setImageAltDe(?string $imageAltDe): self
+    {
+        $this->imageAltDe = $imageAltDe;
 
         return $this;
     }
@@ -675,11 +781,14 @@ class ServicePost implements TimestampableInterface
         return array_values(array_filter($this->tags->toArray(), static fn (ServicePostTag $t): bool => $t->isActive() && $t->existsIn($locale)));
     }
 
-    /** alt за локаллю з фолбеком ru→uk (у шаблонах: post.imageAlt(locale)); en — без фолбеку */
+    /** alt за локаллю з фолбеком ru→uk (у шаблонах: post.imageAlt(locale)); en і de — без фолбеку */
     public function imageAlt(string $locale): ?string
     {
         if ($locale === 'en') {
             return $this->imageAltEn;
+        }
+        if ($locale === 'de') {
+            return $this->imageAltDe;
         }
 
         return $locale === 'ru' && $this->imageAltRu !== null && $this->imageAltRu !== '' ? $this->imageAltRu : $this->imageAlt;
@@ -698,7 +807,7 @@ class ServicePost implements TimestampableInterface
     #[Assert\Callback]
     public function validateHasLanguage(\Symfony\Component\Validator\Context\ExecutionContextInterface $context): void
     {
-        foreach (['uk', 'en'] as $l) {
+        foreach (['uk', 'en', 'de'] as $l) {
             if ($this->existsIn($l)) {
                 return;
             }
@@ -728,6 +837,6 @@ class ServicePost implements TimestampableInterface
 
     public function __toString(): string
     {
-        return $this->titleUk ?? $this->titleEn ?? '';
+        return $this->titleUk ?? $this->titleEn ?? $this->titleDe ?? '';
     }
 }

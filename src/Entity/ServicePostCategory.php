@@ -26,6 +26,7 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 #[ORM\Table(name: 'service_post_category')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_de', columns: ['site_id', 'slug_de'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_post_cat_site_slug_en', columns: ['site_id', 'slug_en'])]
 class ServicePostCategory implements TimestampableInterface
 {
@@ -51,6 +52,10 @@ class ServicePostCategory implements TimestampableInterface
 
     #[ORM\Column(length: 160, nullable: true)]
     #[Assert\Regex('/^[a-z0-9-]+$/', message: 'Слаг: лише латиниця, цифри, дефіс.')]
+    private ?string $slugDe = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex('/^[a-z0-9-]+$/', message: 'Слаг: лише латиниця, цифри, дефіс.')]
     private ?string $slugEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -58,6 +63,9 @@ class ServicePostCategory implements TimestampableInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleDe = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleEn = null;
@@ -70,6 +78,9 @@ class ServicePostCategory implements TimestampableInterface
     private ?string $descRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -79,6 +90,9 @@ class ServicePostCategory implements TimestampableInterface
     private ?string $metaTitleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -86,6 +100,9 @@ class ServicePostCategory implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescEn = null;
@@ -128,7 +145,7 @@ class ServicePostCategory implements TimestampableInterface
     #[Assert\Callback]
     public function validateHasLanguage(ExecutionContextInterface $context): void
     {
-        foreach (['uk', 'en'] as $l) {
+        foreach (['uk', 'en', 'de'] as $l) {
             if ($this->existsIn($l)) {
                 return;
             }
@@ -162,7 +179,7 @@ class ServicePostCategory implements TimestampableInterface
 
     public function __toString(): string
     {
-        return $this->titleUk ?? $this->titleEn ?? $this->titleRu ?? '';
+        return $this->titleUk ?? $this->titleEn ?? $this->titleDe ?? $this->titleRu ?? '';
     }
 
     public function getSlugUk(): ?string
@@ -185,6 +202,18 @@ class ServicePostCategory implements TimestampableInterface
     public function setSlugRu(?string $slugRu): self
     {
         $this->slugRu = $slugRu === '' ? null : $slugRu;
+
+        return $this;
+    }
+
+    public function getSlugDe(): ?string
+    {
+        return $this->slugDe;
+    }
+
+    public function setSlugDe(?string $slugDe): self
+    {
+        $this->slugDe = $slugDe === '' ? null : $slugDe;
 
         return $this;
     }
@@ -225,6 +254,18 @@ class ServicePostCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe === '' ? null : $titleDe;
+
+        return $this;
+    }
+
     public function getTitleEn(): ?string
     {
         return $this->titleEn;
@@ -257,6 +298,18 @@ class ServicePostCategory implements TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu === '' ? null : $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe === '' ? null : $descDe;
 
         return $this;
     }
@@ -297,6 +350,18 @@ class ServicePostCategory implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe === '' ? null : $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaTitleEn(): ?string
     {
         return $this->metaTitleEn;
@@ -329,6 +394,18 @@ class ServicePostCategory implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu === '' ? null : $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe === '' ? null : $metaDescDe;
 
         return $this;
     }

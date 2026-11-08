@@ -37,7 +37,7 @@ class ServicePostCrudController extends AbstractCrudController
 
     /**
      * Додаткові поля запису з паку (app.custom_fields); мови розгортання (app.locales) — які мовні поля показувати:
-     * uk/ru на сайтах як були, англійські — лише там, де en увімкнено (22.10.2026).
+     * uk/ru на сайтах як були, англійські — лише там, де en увімкнено (22.10.2026), німецькі — де de (08.11.2026).
      *
      * @param list<string> $locales
      */
@@ -120,6 +120,12 @@ class ServicePostCrudController extends AbstractCrudController
             yield TextField::new('slugEn', 'Слаг en')->setColumns(6)->setRequired($this->locales[0] === 'en')
                 ->setHelp('Частина адреси латиницею. ⚠️ Після публікації краще не міняти.');
         }
+        if ($this->has('de')) {
+            yield TextField::new('titleDe', 'Заголовок de')->setColumns(6)->setRequired($this->locales[0] === 'de')
+                ->setHelp('Стаття існує німецькою, лише коли є і заголовок, і слаг de.');
+            yield TextField::new('slugDe', 'Слаг de')->setColumns(6)->setRequired($this->locales[0] === 'de')
+                ->setHelp('Частина адреси латиницею. ⚠️ Після публікації краще не міняти.');
+        }
         yield FormField::addFieldset('Рубрика, теги й автор');
         yield AssociationField::new('category', 'Рубрика')->hideOnIndex()->setColumns(6)
             ->setHelp('Контентний сайт: рубрика блогу того самого бренду. Сервісним сайтам не потрібна.');
@@ -148,6 +154,9 @@ class ServicePostCrudController extends AbstractCrudController
         if ($this->has('en')) {
             yield TextareaField::new('leadEn', 'Лід en')->hideOnIndex()->setColumns(6);
         }
+        if ($this->has('de')) {
+            yield TextareaField::new('leadDe', 'Лід de')->hideOnIndex()->setColumns(6);
+        }
         // статті довгі - редактору потрібна повна ширина; ru одразу під uk
         yield FormField::addFieldset('Текст статті');
         yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
@@ -157,6 +166,9 @@ class ServicePostCrudController extends AbstractCrudController
         }
         if ($this->has('en')) {
             yield TextEditorField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12);
+        }
+        if ($this->has('de')) {
+            yield TextEditorField::new('descDe', 'Текст de')->hideOnIndex()->setColumns(12);
         }
 
         if ($this->customFields->has('post')) {
@@ -175,6 +187,9 @@ class ServicePostCrudController extends AbstractCrudController
         if ($this->has('en')) {
             yield TextField::new('metaTitleEn', 'Meta title en')->hideOnIndex()->setColumns(6);
         }
+        if ($this->has('de')) {
+            yield TextField::new('metaTitleDe', 'Meta title de')->hideOnIndex()->setColumns(6);
+        }
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів');
         if ($this->has('ru')) {
@@ -183,6 +198,10 @@ class ServicePostCrudController extends AbstractCrudController
         if ($this->has('en')) {
             yield TextareaField::new('metaDescEn', 'Meta description en')->hideOnIndex()->setColumns(6);
             yield TextField::new('imageAltEn', 'Alt обкладинки en')->hideOnIndex()->setColumns(6);
+        }
+        if ($this->has('de')) {
+            yield TextareaField::new('metaDescDe', 'Meta description de')->hideOnIndex()->setColumns(6);
+            yield TextField::new('imageAltDe', 'Alt обкладинки de')->hideOnIndex()->setColumns(6);
         }
 
         if ($this->has('ru')) {

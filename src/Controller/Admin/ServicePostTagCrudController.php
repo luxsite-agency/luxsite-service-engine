@@ -50,7 +50,7 @@ class ServicePostTagCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Тег статей')
             ->setEntityLabelInPlural('Теги статей')
             ->setDefaultSort(['site' => 'ASC', 'id' => 'DESC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'titleEn', 'slugUk', 'slugRu', 'slugEn'])
+            ->setSearchFields(['titleUk', 'titleRu', 'titleEn', 'titleDe', 'slugUk', 'slugRu', 'slugEn', 'slugDe'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 

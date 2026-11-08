@@ -42,7 +42,16 @@ class ServiceReviewCrudController extends AbstractCrudController
         private readonly TranslatorInterface $translator,
         #[Autowire('%app.reviews.require_location%')]
         private readonly bool $requireLocation = false,
+        // app.locales — мови розгортання
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
     ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
     }
 
     public static function getEntityFqcn(): string
@@ -88,6 +97,10 @@ class ServiceReviewCrudController extends AbstractCrudController
             ->setHelp('Тільки імʼя, без прізвища - так домовились із партнером.');
         yield TextField::new('authorRu', 'Автор ru')->hideOnIndex()
             ->setHelp('Порожньо = показується українське імʼя');
+        if ($this->has('de')) {
+            yield TextField::new('authorDe', 'Автор de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
         yield TextField::new('location', 'Місто')
             ->setRequired($this->requireLocation)
             ->setHelp('Місто автора, як він вказав («Київ»). Показується на картці поряд з імʼям.');
@@ -99,6 +112,10 @@ class ServiceReviewCrudController extends AbstractCrudController
             ->setHelp('Текст живої людини. ⚠️ Не переписувати і не «покращувати» - це чужі слова.');
         yield TextareaField::new('textRu', 'Текст ru')->hideOnIndex()
             ->setHelp('Порожньо - показується український текст.');
+        if ($this->has('de')) {
+            yield TextareaField::new('textDe', 'Текст de')->hideOnIndex()
+                ->setHelp('Німецька');
+        }
         yield from $this->imageFields('/media/service_review');
         yield BooleanField::new('active', 'Активний')
             ->setHelp('Вимкнений відгук зникає зі стрічки на головній і зі сторінки відгуків.');

@@ -51,6 +51,9 @@ class ServiceCalcFactor implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameDe = null;
+
     /** Множник вартості (1.00 = без надбавки, 1.25 = +25%) */
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, options: ['default' => '1.00'])]
     private string $multiplier = '1.00';
@@ -114,6 +117,18 @@ class ServiceCalcFactor implements TimestampableInterface
     public function setNameRu(?string $nameRu): self
     {
         $this->nameRu = $nameRu;
+
+        return $this;
+    }
+
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
 
         return $this;
     }

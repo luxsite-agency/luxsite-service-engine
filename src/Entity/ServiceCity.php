@@ -95,6 +95,9 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $addressRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $addressDe = null;
+
     /**
      * Абзац «Де ми працюємо» для сторінки «Про нас». Сам текст «Про нас» спільний
      * для всіх міст і написаний під Київ, тому райони й передмістя живуть тут,
@@ -108,10 +111,16 @@ class ServiceCity implements TimestampableInterface
     private ?string $aboutRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutDe = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $aboutWhereUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $aboutWhereRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutWhereDe = null;
 
     /**
      * Ідентифікатор лічильника: GTM-XXXXXXX (Tag Manager), G-XXXXXXXXXX (GA4
@@ -162,13 +171,25 @@ class ServiceCity implements TimestampableInterface
     private ?string $nameNomRu = null;
 
     #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nameNomDe = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
     private ?string $nameGenRu = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nameGenDe = null;
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $nameDatRu = null;
 
     #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nameDatDe = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
     private ?string $nameLocRu = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nameLocDe = null;
 
     // — Мета головної сторінки —
 
@@ -178,11 +199,17 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescDe = null;
 
     // — Текстові блоки головної —
 
@@ -192,11 +219,17 @@ class ServiceCity implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $introTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $introTitleDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $introTextUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $introTextRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $introTextDe = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $text2Uk = null;
@@ -205,10 +238,16 @@ class ServiceCity implements TimestampableInterface
     private ?string $text2Ru = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $text2De = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $text3Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $text3Ru = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $text3De = null;
 
     /**
      * FAQ-блок головної: [{q, a}, ...]
@@ -221,6 +260,9 @@ class ServiceCity implements TimestampableInterface
     /** @var list<array{q: string, a: string}>|null */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $faqRu = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $faqDe = null;
 
     // англійська версія (22.10.2026): без фолбеку на uk
     #[ORM\Column(length: 64, nullable: true)]
@@ -257,6 +299,9 @@ class ServiceCity implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $districtsIntroRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $districtsIntroDe = null;
 
     /**
      * Сирий текст «Про нас» міста для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
@@ -443,6 +488,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getAddressDe(): ?string
+    {
+        return $this->addressDe;
+    }
+
+    public function setAddressDe(?string $addressDe): self
+    {
+        $this->addressDe = $addressDe;
+
+        return $this;
+    }
+
     public function getAboutWhereUk(): ?string
     {
         return $this->aboutWhereUk;
@@ -463,6 +520,18 @@ class ServiceCity implements TimestampableInterface
     public function setAboutWhereRu(?string $aboutWhereRu): self
     {
         $this->aboutWhereRu = $aboutWhereRu;
+
+        return $this;
+    }
+
+    public function getAboutWhereDe(): ?string
+    {
+        return $this->aboutWhereDe;
+    }
+
+    public function setAboutWhereDe(?string $aboutWhereDe): self
+    {
+        $this->aboutWhereDe = $aboutWhereDe;
 
         return $this;
     }
@@ -605,6 +674,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getNameNomDe(): ?string
+    {
+        return $this->nameNomDe;
+    }
+
+    public function setNameNomDe(?string $nameNomDe): self
+    {
+        $this->nameNomDe = $nameNomDe;
+
+        return $this;
+    }
+
     public function getNameGenRu(): ?string
     {
         return $this->nameGenRu;
@@ -613,6 +694,18 @@ class ServiceCity implements TimestampableInterface
     public function setNameGenRu(?string $nameGenRu): self
     {
         $this->nameGenRu = $nameGenRu;
+
+        return $this;
+    }
+
+    public function getNameGenDe(): ?string
+    {
+        return $this->nameGenDe;
+    }
+
+    public function setNameGenDe(?string $nameGenDe): self
+    {
+        $this->nameGenDe = $nameGenDe;
 
         return $this;
     }
@@ -629,6 +722,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getNameDatDe(): ?string
+    {
+        return $this->nameDatDe;
+    }
+
+    public function setNameDatDe(?string $nameDatDe): self
+    {
+        $this->nameDatDe = $nameDatDe;
+
+        return $this;
+    }
+
     public function getNameLocRu(): ?string
     {
         return $this->nameLocRu;
@@ -637,6 +742,18 @@ class ServiceCity implements TimestampableInterface
     public function setNameLocRu(?string $nameLocRu): self
     {
         $this->nameLocRu = $nameLocRu;
+
+        return $this;
+    }
+
+    public function getNameLocDe(): ?string
+    {
+        return $this->nameLocDe;
+    }
+
+    public function setNameLocDe(?string $nameLocDe): self
+    {
+        $this->nameLocDe = $nameLocDe;
 
         return $this;
     }
@@ -665,6 +782,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getMetaTitleDe(): ?string
+    {
+        return $this->metaTitleDe;
+    }
+
+    public function setMetaTitleDe(?string $metaTitleDe): self
+    {
+        $this->metaTitleDe = $metaTitleDe;
+
+        return $this;
+    }
+
     public function getMetaDescUk(): ?string
     {
         return $this->metaDescUk;
@@ -685,6 +814,18 @@ class ServiceCity implements TimestampableInterface
     public function setMetaDescRu(?string $metaDescRu): self
     {
         $this->metaDescRu = $metaDescRu;
+
+        return $this;
+    }
+
+    public function getMetaDescDe(): ?string
+    {
+        return $this->metaDescDe;
+    }
+
+    public function setMetaDescDe(?string $metaDescDe): self
+    {
+        $this->metaDescDe = $metaDescDe;
 
         return $this;
     }
@@ -713,6 +854,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getIntroTitleDe(): ?string
+    {
+        return $this->introTitleDe;
+    }
+
+    public function setIntroTitleDe(?string $introTitleDe): self
+    {
+        $this->introTitleDe = $introTitleDe;
+
+        return $this;
+    }
+
     public function getIntroTextUk(): ?string
     {
         return $this->introTextUk;
@@ -733,6 +886,18 @@ class ServiceCity implements TimestampableInterface
     public function setIntroTextRu(?string $introTextRu): self
     {
         $this->introTextRu = $introTextRu;
+
+        return $this;
+    }
+
+    public function getIntroTextDe(): ?string
+    {
+        return $this->introTextDe;
+    }
+
+    public function setIntroTextDe(?string $introTextDe): self
+    {
+        $this->introTextDe = $introTextDe;
 
         return $this;
     }
@@ -761,6 +926,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getText2De(): ?string
+    {
+        return $this->text2De;
+    }
+
+    public function setText2De(?string $text2De): self
+    {
+        $this->text2De = $text2De;
+
+        return $this;
+    }
+
     public function getText3Uk(): ?string
     {
         return $this->text3Uk;
@@ -781,6 +958,18 @@ class ServiceCity implements TimestampableInterface
     public function setText3Ru(?string $text3Ru): self
     {
         $this->text3Ru = $text3Ru;
+
+        return $this;
+    }
+
+    public function getText3De(): ?string
+    {
+        return $this->text3De;
+    }
+
+    public function setText3De(?string $text3De): self
+    {
+        $this->text3De = $text3De;
 
         return $this;
     }
@@ -813,6 +1002,18 @@ class ServiceCity implements TimestampableInterface
         return $this;
     }
 
+    public function getFaqDe(): ?array
+    {
+        return $this->faqDe;
+    }
+
+    public function setFaqDe(?array $faqDe): self
+    {
+        $this->faqDe = $faqDe;
+
+        return $this;
+    }
+
     public function getDistrictsIntroUk(): ?string
     {
         return $this->districtsIntroUk;
@@ -833,6 +1034,18 @@ class ServiceCity implements TimestampableInterface
     public function setDistrictsIntroRu(?string $districtsIntroRu): self
     {
         $this->districtsIntroRu = $districtsIntroRu;
+
+        return $this;
+    }
+
+    public function getDistrictsIntroDe(): ?string
+    {
+        return $this->districtsIntroDe;
+    }
+
+    public function setDistrictsIntroDe(?string $districtsIntroDe): self
+    {
+        $this->districtsIntroDe = $districtsIntroDe;
 
         return $this;
     }
@@ -1014,6 +1227,18 @@ class ServiceCity implements TimestampableInterface
     public function setAboutRu(?string $aboutRu): self
     {
         $this->aboutRu = $aboutRu;
+
+        return $this;
+    }
+
+    public function getAboutDe(): ?string
+    {
+        return $this->aboutDe;
+    }
+
+    public function setAboutDe(?string $aboutDe): self
+    {
+        $this->aboutDe = $aboutDe;
 
         return $this;
     }

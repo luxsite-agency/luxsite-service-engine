@@ -60,11 +60,17 @@ class ServicePrice implements CalcOption, TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $nameRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $nameDe = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descDe = null;
 
     /** Числова ціна в грн; null = дивитись priceText */
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
@@ -80,6 +86,9 @@ class ServicePrice implements CalcOption, TimestampableInterface
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $priceTextRu = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $priceTextDe = null;
 
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $position = 0;
@@ -101,6 +110,9 @@ class ServicePrice implements CalcOption, TimestampableInterface
 
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $unitRu = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $unitDe = null;
 
     /** Стеля кількості в полі вводу калькулятора */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 30])]
@@ -171,6 +183,18 @@ class ServicePrice implements CalcOption, TimestampableInterface
         return $this;
     }
 
+    public function getNameDe(): ?string
+    {
+        return $this->nameDe;
+    }
+
+    public function setNameDe(?string $nameDe): self
+    {
+        $this->nameDe = $nameDe;
+
+        return $this;
+    }
+
     public function getDescUk(): ?string
     {
         return $this->descUk;
@@ -191,6 +215,18 @@ class ServicePrice implements CalcOption, TimestampableInterface
     public function setDescRu(?string $descRu): self
     {
         $this->descRu = $descRu;
+
+        return $this;
+    }
+
+    public function getDescDe(): ?string
+    {
+        return $this->descDe;
+    }
+
+    public function setDescDe(?string $descDe): self
+    {
+        $this->descDe = $descDe;
 
         return $this;
     }
@@ -239,6 +275,18 @@ class ServicePrice implements CalcOption, TimestampableInterface
     public function setPriceTextRu(?string $priceTextRu): self
     {
         $this->priceTextRu = $priceTextRu;
+
+        return $this;
+    }
+
+    public function getPriceTextDe(): ?string
+    {
+        return $this->priceTextDe;
+    }
+
+    public function setPriceTextDe(?string $priceTextDe): self
+    {
+        $this->priceTextDe = $priceTextDe;
 
         return $this;
     }
@@ -311,6 +359,18 @@ class ServicePrice implements CalcOption, TimestampableInterface
     public function setUnitRu(?string $unitRu): self
     {
         $this->unitRu = $unitRu;
+
+        return $this;
+    }
+
+    public function getUnitDe(): ?string
+    {
+        return $this->unitDe;
+    }
+
+    public function setUnitDe(?string $unitDe): self
+    {
+        $this->unitDe = $unitDe;
 
         return $this;
     }

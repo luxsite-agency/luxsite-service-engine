@@ -30,7 +30,8 @@ use Symfony\Component\Yaml\Yaml;
  * збіг за slug (сайт, місто, категорія, послуга, район, пост, сторінка) чи за парою назва+місто (прайс, відгук, команда) —
  * оновлює поля з файлу, нічого не дублює; --purge-missing не робимо (видаляти — в адмінці).
  *
- * Схема файлу (усі тексти — uk, ru необов'язково; порожнє = не чіпати):
+ * Схема файлу (усі тексти — uk, ru і de необов'язково: будь-який ключ `*_uk` має пару `*_ru` і `*_de`; порожнє = не чіпати).
+ * Слаги інших мов: slug_ru? / slug_de? у categories, items, districts, posts, pages (de без свого слага адреси de не має):
  *   site: {slug, name, apex, schema_type?, hero_image?, about_title_uk?, about_uk?, about_ru?}
  *   cities: [{slug, host, apex: true|false, name_nom_uk, name_gen_uk?, name_dat_uk?, name_loc_uk?, name_*_ru?, phone?, email?,
  *             hours?, address_uk?, meta_title_uk?, meta_desc_uk?, intro_title_uk?, intro_text_uk?, text2_uk?, text3_uk?,
@@ -49,7 +50,7 @@ use Symfony\Component\Yaml\Yaml;
 #[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
 {
-    private const array LOC = ['Uk', 'Ru'];
+    private const array LOC = ['Uk', 'Ru', 'De'];
 
     /** @var array<string, int> */
     private array $report = [];
@@ -198,6 +199,7 @@ final class SiteSeedCommand
         $cat = $this->em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $cat === null;
         $cat ??= (new ServiceCategory())->setSite($site)->setSlugUk($d['slug']);
+        $this->slugs($cat, $d);
         $this->loc($cat, $d, ['title' => 'title', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $cat->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['landing'])) {
@@ -219,6 +221,7 @@ final class SiteSeedCommand
         $item = $this->em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $item === null;
         $item ??= (new ServiceItem())->setSite($site)->setSlugUk($d['slug']);
+        $this->slugs($item, $d);
         $item->setCategory($cat);
         $this->loc($item, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'tab_title' => 'tabTitle',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
@@ -248,6 +251,9 @@ final class SiteSeedCommand
         if (isset($d['name_ru'])) {
             $price->setNameRu((string) $d['name_ru']);
         }
+        if (isset($d['name_de'])) {
+            $price->setNameDe((string) $d['name_de']);
+        }
         $price->setPrice(isset($d['price']) ? (string) $d['price'] : null);
         $price->setPricePrefix(isset($d['prefix']) ? (string) $d['prefix'] : null);
         $this->loc($price, $d, ['text' => 'priceText', 'desc' => 'desc', 'unit' => 'unit']);
@@ -269,6 +275,7 @@ final class SiteSeedCommand
         $dist = $this->em->getRepository(ServiceDistrict::class)->findOneBy(['city' => $city, 'slugUk' => $d['slug']]);
         $new = $dist === null;
         $dist ??= (new ServiceDistrict())->setCity($city)->setSlugUk($d['slug']);
+        $this->slugs($dist, $d);
         $this->loc($dist, $d, ['name' => 'name', 'title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'group' => 'group', 'sub_areas' => 'subAreas',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
         if (isset($d['primary'])) {
@@ -294,6 +301,12 @@ final class SiteSeedCommand
         }
         if (isset($d['text_ru'])) {
             $rev->setTextRu((string) $d['text_ru']);
+        }
+        if (isset($d['author_de'])) {
+            $rev->setAuthorDe((string) $d['author_de']);
+        }
+        if (isset($d['text_de'])) {
+            $rev->setTextDe((string) $d['text_de']);
         }
         $rev->setStars((int) ($d['stars'] ?? 5));
         if (isset($d['date'])) {
@@ -323,6 +336,7 @@ final class SiteSeedCommand
         $post = $this->em->getRepository(ServicePost::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $post === null;
         $post ??= (new ServicePost())->setSite($site)->setSlugUk($d['slug']);
+        $this->slugs($post, $d);
         $this->loc($post, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $post->setPublishedAt($this->date($d['published'] ?? 'now'));
         $post->setActive(true);
@@ -339,9 +353,7 @@ final class SiteSeedCommand
         $page = $this->em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $page === null;
         $page ??= (new ServicePage())->setSite($site)->setSlugUk($d['slug']);
-        if (\array_key_exists('slug_ru', $d)) {
-            $page->setSlugRu($d['slug_ru'] !== null ? (string) $d['slug_ru'] : null);
-        }
+        $this->slugs($page, $d);
         $this->loc($page, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $page->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         $page->setInFooter((bool) ($d['footer'] ?? $page->isInFooter()));
@@ -356,7 +368,24 @@ final class SiteSeedCommand
     }
 
     /**
-     * Локалізовані поля: ключ YAML `<key>_uk` / `<key>_ru` → setter `set<Prop>Uk` / `set<Prop>Ru`. Відсутній ключ не чіпає поле.
+     * Слаги інших мов: slug_ru / slug_de → setSlugRu / setSlugDe (null = прибрати). Відсутній ключ не чіпає поле.
+     *
+     * @param array<string, mixed> $d
+     */
+    private function slugs(object $e, array $d): void
+    {
+        foreach (self::LOC as $suffix) {
+            $k = 'slug_' . strtolower($suffix);
+            if ($suffix === 'Uk' || !\array_key_exists($k, $d)) {
+                continue;
+            }
+            $e->{'setSlug' . $suffix}($d[$k] !== null ? (string) $d[$k] : null);
+        }
+    }
+
+    /**
+     * Локалізовані поля: ключ YAML `<key>_uk` / `<key>_ru` / `<key>_de` → setter `set<Prop>Uk` / `set<Prop>Ru` / `set<Prop>De`.
+     * Відсутній ключ не чіпає поле.
      *
      * @param array<string, mixed>  $d
      * @param array<string, string> $map key → prop

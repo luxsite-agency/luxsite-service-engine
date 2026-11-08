@@ -59,11 +59,17 @@ class ServiceWork implements TimestampableInterface
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $titleRu = null;
 
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $titleDe = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $captionDe = null;
 
     #[Assert\Image(maxSize: '10M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], maxWidth: 8000, maxHeight: 8000, mimeTypesMessage: 'Дозволено лише JPG/PNG/WebP.')]
     #[Vich\UploadableField(mapping: 'service_work_media', fileNameProperty: 'imageName')]
@@ -143,6 +149,18 @@ class ServiceWork implements TimestampableInterface
         return $this;
     }
 
+    public function getTitleDe(): ?string
+    {
+        return $this->titleDe;
+    }
+
+    public function setTitleDe(?string $titleDe): self
+    {
+        $this->titleDe = $titleDe;
+
+        return $this;
+    }
+
     public function getCaptionUk(): ?string
     {
         return $this->captionUk;
@@ -163,6 +181,18 @@ class ServiceWork implements TimestampableInterface
     public function setCaptionRu(?string $captionRu): self
     {
         $this->captionRu = $captionRu;
+
+        return $this;
+    }
+
+    public function getCaptionDe(): ?string
+    {
+        return $this->captionDe;
+    }
+
+    public function setCaptionDe(?string $captionDe): self
+    {
+        $this->captionDe = $captionDe;
 
         return $this;
     }

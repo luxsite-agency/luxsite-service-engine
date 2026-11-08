@@ -138,6 +138,9 @@ class ServiceDistrictRepository extends ServiceEntityRepository
             return $this->findOneBy(['city' => $city, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['city' => $city, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);
         }
+        if ($locale === 'de') {
+            return $this->findOneBy(['city' => $city, 'slugDe' => $slug, 'active' => true]);
+        }
 
         return $this->findOneBy(['city' => $city, 'slugUk' => $slug, 'active' => true]);
     }

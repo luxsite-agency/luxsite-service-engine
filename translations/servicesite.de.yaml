@@ -1,0 +1,281 @@
+# UI-Strings der Engine (Domain servicesite), Deutsch (08.11.2026, übersetzt aus servicesite.en.yaml). Neutrale Standards: Brand-Texte (Tagline, Hero-Benefits,
+# Meta-Beschreibungen, Überschriften, Arbeitskategorien, Copyright) werden durch das Site-Pack in translations/servicesite.*.yaml -> translations/site/ gesetzt
+# (Schlüssel mit leerem Wert = Element ausgeblendet). Inhaltstexte befinden sich in der DB.
+nav.menu: Menü
+nav.services: Dienstleistungen
+nav.districts: Stadtteile
+nav.blog: Blog
+nav.about: Über uns
+nav.faq: FAQ
+# <title> und H1 der /faq/-Seite: Site-Pack überschreibt vollständig (Parameter %faq_title% = nav.faq, %site%, %city%, %cityGen%, %cityLoc%)
+faq.page_title: '%faq_title% - %site% %city%'
+faq.page_h1: '%faq_title%'
+nav.contacts: Kontakt
+nav.privacy: Datenschutz
+nav.terms: AGB
+footer.privacy: Datenschutz
+footer.terms: Nutzungsbedingungen
+nav.reviews: Bewertungen
+
+contacts.hours: Öffnungszeiten
+contacts.address: Adresse
+about.where: Einsatzgebiete
+about.cities: ''
+about.legal: ''
+footer.cities: ''
+# Katalogtitel im Footer (app.footer_catalog); leer = kein Titel
+footer.catalog_title: ''
+contacts.map_title: Unser Standort
+contacts.map_hint: Klicken, um Google Maps anzuzeigen
+contacts.map_open: In Google Maps öffnen
+contacts.coverage: 'Einsatzgebiet: %city% und Umgebung.'
+# Cookie-Consent-Banner (Admin-Panel -> Einstellungen -> "Cookie consent banner"); Site-Pack kann Texte überschreiben
+consent.title: Cookie-Einstellungen
+consent.text: 'Wir verwenden Cookies für Analysen und Werbung, um die Leistung der Website zu verbessern.'
+consent.more: Mehr erfahren
+consent.accept: Akzeptieren
+consent.decline: Ablehnen
+
+home.services_title: 'Unsere Dienstleistungen'
+home.districts_title: 'Einsatzgebiete'
+home.reviews_title: 'Kundenbewertungen'
+home.team_title: Unser Team
+home.faq_title: 'Häufige Fragen'
+home.faq_all: 'Alle Fragen'
+
+catalog.title: Dienstleistungen
+catalog.all_in_category: Alle Dienstleistungen der Kategorie
+catalog.prices_title: Preise
+# Preistabellen-Überschrift: Suchanfrage-Format
+catalog.prices_title_full: Was kostet %service% %in% %city%
+catalog.related_title: Weitere Dienstleistungen der Kategorie
+catalog.specs_title: Spezifikationen
+catalog.price_free_text: Preis auf Anfrage
+catalog.uah: UAH
+
+prices.from: ab
+prices.title: Preise für Dienstleistungen %in% %city%
+prices.col_service: Dienstleistung
+prices.col_price: 'Preis, UAH'
+
+district.title: Einsatzgebiete
+# <title> und H1 der /districts/-Seite: Site-Pack überschreibt vollständig (Parameter %site%, %city%, %cityGen%, %cityLoc%)
+district.page_title: '%district_title% - %site% %city%'
+district.page_h1: '%district_title% - %city%'
+# TODO Multi-Nische: Beruf in ServiceSite-Feld zusammen mit prices.title verschieben
+district.h1_prefix: Dienstleistungen
+districts.other: Weitere Stadtteile
+district.min_price: Mindestanfahrtsgebühr
+district.image_alt: 'Panorama von %cityGen%'
+district.services_title: 'Alle Dienstleistungen'
+
+common.order: Jetzt buchen
+common.call: Anrufen
+common.breadcrumb_home: Startseite
+
+review.form_title: Bewertung abgeben
+review.login_hint: 'Um eine Bewertung abzugeben, melden Sie sich mit einem Klick bei Google an.'
+review.login_google: Mit Google anmelden
+review.as: 'Sie schreiben als:'
+review.stars: 'Bewertung:'
+review.placeholder: Beschreiben Sie die ausgeführte Arbeit und ob Sie mit dem Ergebnis zufrieden sind (mindestens 20 Zeichen)
+review.submit: Bewertung absenden
+
+thanks.title: Vielen Dank, Ihre Nachricht wurde gesendet!
+thanks.text: Wir werden uns in Kürze bei Ihnen melden.
+thanks.urgent: Wenn es dringend ist, rufen Sie uns direkt an
+thanks.back: Zurück zur Startseite
+
+lead.title: Dienstleistung anfragen
+lead.cta: Anfrage absenden
+lead.messengers: 'Oder schreiben Sie uns direkt:'
+# Lead-Magnet auf der Startseite (app.home_lead_position): Absatz unter der Überschrift und Messenger-Text unter dem Formular; leer = keins
+lead.subtitle: ''
+lead.messengers_hint: ''
+form.required: Füllen Sie dieses Feld aus
+form.phone: Telefonnummer eingeben
+lead.phone: Telefon
+lead.name: Name
+lead.message: Was muss getan werden?
+lead.submit: Absenden
+
+brand.tagline: ''
+brand.in: in
+
+hero.person_name: ''
+hero.person_role: ''
+# Zähler unter der Hero-Illustration: Wert (Zahl) und Beschriftung (Text); leerer Wert = Element ausgeblendet
+hero.stat1_value: ''
+hero.stat1_label: ''
+hero.stat2_value: ''
+hero.stat2_label: ''
+hero.stat3_value: ''
+hero.stat3_label: ''
+hero.benefit1: Erfahrene Fachkräfte
+hero.benefit2: Festpreis vor Arbeitsbeginn
+hero.benefit3: Gesamte Stadt und Umgebung
+hero.benefit4: Termine nach Ihren Wünschen
+hero.benefit5: Bezahlung nach Fertigstellung
+
+# Meta-Beschreibungen für Seiten ohne individuellen Text (Stadt wird eingesetzt)
+meta.catalog: 'Dienstleistungen %in% %city%: Vollständiges Angebot, Preise und Termine. Service vor Ort, transparente Preise.'
+meta.districts: 'Wir bedienen alle Stadtteile von %cityGen% und Umgebung. Nächstgelegene Fachkraft verfügbar, täglich geöffnet, Festpreise.'
+meta.blog: 'Tipps und nützliche Artikel von Experten %in% %city%.'
+meta.faq: 'Antworten auf häufige Fragen zu unseren Dienstleistungen %in% %city%: Fristen, Preise, Arbeitsumfang, Garantie und Bezahlung.'
+meta.contacts: 'Telefon, E-Mail und Öffnungszeiten %in% %city%. Täglich für Anfragen erreichbar.'
+meta.reviews: 'Kundenbewertungen zu unseren Dienstleistungen %in% %city%.'
+
+# Kostenrechner
+nav.calculator: Rechner
+calc.title: Kostenrechner
+calc.intro: Wählen Sie die Arbeitsart, geben Sie Fläche und Zusatzoptionen an, um sofort geschätzte Kosten zu sehen. Der Endpreis wird nach Detailklärung bestätigt.
+calc.type_label: Arbeitsart
+calc.area_label: Fläche
+calc.mini_note: Nur Schätzung. Endpreis wird nach Detailklärung bestätigt.
+calc.object_label: Objekttyp
+calc.dirt_label: Zustand
+calc.m2: m²
+calc.per_m2: UAH/m²
+calc.group.object_type: Objekttyp
+calc.group.dirt_level: Verschmutzungsgrad
+calc.group.urgency: Dringlichkeit
+calc.group.floor: Etage und Aufzug
+calc.group.weekend: Tag des Besuchs
+calc.options_title: Zusatzoptionen
+calc.summary_title: Ihre Schätzung
+calc.base_label: Basispreis
+calc.options_label: Zusatzleistungen
+calc.total_label: Gesamt
+calc.min_note: Mindestbestellwert angewendet
+calc.disclaimer: Berechnung ist unverbindlich. Der Endpreis wird telefonisch nach Klärung der Details bestätigt.
+calc.submit: Anfrage absenden
+calc.mini_title: Kosten berechnen
+calc.mini_title_service: Kosten für diese Dienstleistung berechnen
+calc.mini_title_district: Kosten für Ihren Stadtteil berechnen
+calc.service_label: Dienstleistung
+calc.mini_result: Geschätzte Kosten
+calc.mini_order: Jetzt buchen
+calc.mini_full: Vollständige Schätzung mit Optionen
+meta.calculator: 'Online-Kostenrechner %in% %city%: Arbeitsart, Fläche und Zusatzoptionen wählen, um sofort einen Richtpreis zu erhalten.'
+meta.district: '%district%, %cityNom%: Service vor Ort. Festpreise vor Arbeitsbeginn.'
+meta.about: 'Über das Unternehmen: Wer wir sind, wie wir %in% %city% arbeiten und warum Kunden uns vertrauen.'
+meta.privacy: 'Vom Portal erfasste Daten, Verwendungszwecke, Weitergabe und Löschoptionen. Datenschutzerklärung.'
+meta.terms: 'Bestellablauf, Preisgestaltung, Zahlungsbedingungen und Garantieabdeckung. Nutzungsbedingungen.'
+title.catalog: 'Dienstleistungen %in% %city% - Vollständige Liste und Preise'
+title.blog: 'Blog - %cityNom%'
+title.about: 'Über das Unternehmen - %cityNom%'
+title.contacts: 'Kontakte %in% %city%'
+title.reviews: 'Kundenbewertungen für %site%'
+title.reviews_city: 'Kundenbewertungen für %site% %in% %city%'
+title.district: '%district% - unsere Dienstleistungen, %cityNom%'
+reviews.rating: 'Durchschnittliche Bewertung %avg% von 5 basierend auf %count% Bewertungen'
+reviews.count: '%count% Bewertung|%count% Bewertungen'
+reviews.all: 'Alle Bewertungen'
+reviews.more: Mehr lesen
+reviews.less: Weniger anzeigen
+reviews.prev: Vorherige Bewertungen
+reviews.next: Nächste Bewertungen
+title.district_long: '%district% - Dienstleistungen, %cityNom%'
+blog.h1: Blog
+blog.page_suffix: ' - Seite %page%'
+blog.pagination: 'Blog-Seiten'
+blog.prev: '← Neuer'
+blog.next: 'Älter →'
+blog.tag_desc: 'Alle News und Artikel mit dem Tag „%tag%“.'
+blog.tags: 'Tags'
+reviews.h1: 'Kundenbewertungen für %site%'
+reviews.h1_city: 'Kundenbewertungen für %site% %in% %city%'
+district.official_title: 'Stadtteile von %cityGen%'
+district.suburbs_title: 'Vororte und umliegende Gebiete'
+district.all_link: 'Alle Stadtteile'
+district.inside_title: 'Quartiere: %group%'
+district.nearby_title: 'In der Nähe im Stadtteil: %group%'
+district.parent_link: 'Verwaltungsbezirk'
+district.service_title: 'Wir bedienen alle Stadtteile von %cityGen%'
+district.faq_title: 'FAQ'
+title.district_b: '%district%: Vor-Ort-Service - %cityNom%'
+title.district_c: 'Dienstleistungen - %district%, %cityNom%'
+district.h1_a: 'Dienstleistungen - %district%'
+district.h1_b: 'Vor-Ort-Service - %district%'
+district.h1_c: 'Unsere Dienstleistungen - %district%, %cityNom%'
+meta.district_b: '%district%, %cityNom%: Vor-Ort-Service, Festpreise vor Arbeitsbeginn, Zahlung nach Fertigstellung.'
+meta.district_c: 'Dienstleistungen in %district%, %cityNom% buchen. Vor-Ort-Termin nach Wunsch, feste Preise.'
+district.contains: 'Enthält Quartiere'
+district.areas_title: 'Arbeitskategorien'
+district.area_home_title: ''
+district.area_home_text: ''
+district.area_commercial_title: ''
+district.area_commercial_text: ''
+district.area_textile_title: ''
+district.area_textile_text: ''
+district.area_extra_title: ''
+district.area_extra_text: ''
+district.also_here_a: '%group% - hier sind wir ebenfalls tätig:'
+district.also_here_b: 'Wir bedienen auch angrenzende Gebiete:'
+district.also_here_c: 'Dieselben Fachkräfte betreuen:'
+footer.copyright: 'Alle Inhalte der Website sind urheberrechtlich geschützt.'
+works.title: 'Unsere Arbeiten'
+works.before: 'Vorher'
+works.after: 'Nachher'
+
+# Content-Website (22.10.2026): Kontaktformular statt Service-Anfrage, Standard-Rechtstexte (%site%, %domain%, %contact% = Kontaktformular-URL)
+contact.title: 'Kontaktieren Sie uns'
+contact.intro: 'Senden Sie uns eine Nachricht und wir antworten an die von Ihnen angegebene E-Mail-Adresse.'
+contact.email: 'E-Mail'
+contact.message: 'Nachricht'
+contact.submit: 'Nachricht senden'
+contact.privacy_note: 'Mit dem Absenden dieses Formulars stimmen Sie unserer <a href="%url%">Datenschutzerklärung</a> zu.'
+contact.invalid: 'Bitte überprüfen Sie Ihre E-Mail-Adresse und Ihre Nachricht.'
+contact.too_many: 'Zu viele Nachrichten hintereinander. Bitte versuchen Sie es später erneut.'
+contact.thanks_title: 'Vielen Dank, Ihre Nachricht wurde gesendet'
+contact.thanks_text: 'Wir antworten an die von Ihnen angegebene E-Mail-Adresse.'
+legal.privacy_html: |
+    <p>%site% betreibt %domain%. Diese Datenschutzerklärung erläutert, wie wir mit den Daten der Besucher auf unserer Website umgehen.</p>
+    <h2>Daten, die wir erheben</h2>
+    <p>Wir erhalten nur personenbezogene Daten, die Sie uns freiwillig über unser <a href="%contact%">Kontaktformular</a> übermitteln. Dazu gehören:</p>
+    <ul>
+    <li>Ihr Name</li>
+    <li>Ihre E-Mail-Adresse</li>
+    <li>Ihr Nachrichtentext</li>
+    </ul>
+    <p>Wir verwenden diese Informationen ausschließlich zur Beantwortung Ihrer Anfrage. Wir verkaufen oder vermieten Ihre personenbezogenen Daten nicht; sie werden nur von den Diensten verarbeitet, die für den Betrieb der Website erforderlich sind (Hosting, E-Mail-Zustellung).</p>
+    <h2>Technische Daten und Cookies</h2>
+    <p>Der Server der Website erhebt automatisch grundlegende technische Daten wie IP-Adressen und Browser-Logs, um einen sicheren Betrieb zu gewährleisten. Wenn Webanalysen aktiviert sind (z. B. Google Analytics), werden Cookies gesetzt, um die Nutzung der Website besser zu verstehen. Sie können Ihre Einstellungen über unser Cookie-Banner verwalten.</p>
+    <h2>Speicherung und Rechte</h2>
+    <p>Wir speichern über das Formular gesendete Nachrichten bis zu 12 Monate. Sie haben das Recht, Auskunft über Ihre personenbezogenen Daten zu verlangen, Korrekturen oder die Löschung zu beantragen. Um diese Rechte auszuüben, schreiben Sie uns über das <a href="%contact%">Kontaktformular</a>.</p>
+    <h2>Änderungen</h2>
+    <p>Wir können diese Datenschutzerklärung gelegentlich aktualisieren. Überarbeitungen werden direkt auf dieser Seite veröffentlicht.</p>
+legal.terms_html: |
+    <p>Willkommen auf %domain%. Durch den Zugriff auf unsere Website und das Lesen der Inhalte erklären Sie sich mit den folgenden Bedingungen einverstanden.</p>
+    <h2>Informationsgehalte</h2>
+    <p>Alle auf %domain% veröffentlichten Artikel, Ratgeber und Materialien dienen ausschließlich allgemeinen Informationszwecken. Sie stellen keine professionelle Beratung dar. Sie sollten sich nicht ohne unabhängigen Fachrat auf diese Inhalte verlassen.</p>
+    <h2>Genauigkeit und Garantien</h2>
+    <p>%site% ist bemüht, alle Informationen aktuell und korrekt zu halten. Wir übernehmen jedoch keine ausdrückliche oder stillschweigende Garantie hinsichtlich der Vollständigkeit, Zuverlässigkeit oder Verfügbarkeit der Website-Inhalte.</p>
+    <h2>Externe Links</h2>
+    <p>Unsere Website kann Links zu externen Webressourcen enthalten. %site% kontrolliert oder unterstützt diese Websites Dritter nicht und übernimmt keine Verantwortung für deren Inhalte oder Datenschutzpraktiken.</p>
+    <h2>Urheberrecht</h2>
+    <p>Sofern nicht anders angegeben, gehören alle Text- und Bildinhalte auf %domain% zu %site%. Sie dürfen kurze Auszüge aus unseren Artikeln zitieren, vorausgesetzt, Sie fügen einen aktiven Link zur Originalseite auf %domain% ein.</p>
+    <h2>Kontakt</h2>
+    <p>Wenn Sie Fragen zu diesen Bedingungen haben, senden Sie uns bitte eine Nachricht über das <a href="%contact%">Kontaktformular</a>.</p>
+
+# Preislisten-Rechner und Hinweis unter den Preisen (main v0.9.40, #29); bei Content-Brands nicht gerendert
+prices.note: Die Preise auf der Website sind Richtwerte. Der endgültige Preis wird von der Fachkraft nach Klärung der Details bestätigt.
+calc.h1: '%title% %in% %city%'
+calc.city_note: 'Die Preise im Rechner gelten für %cityGen%. In anderen Orten, in denen wir tätig sind, können die Kosten abweichen.'
+calc.pricelist.intro: Wählen Sie Dienstleistungen und geben Sie die Menge ein - der geschätzte Preis wird sofort angezeigt. Der Endbetrag wird von der Fachkraft nach Klärung der Details bestätigt.
+calc.pricelist.col_name: Dienstleistung
+calc.pricelist.col_price: Preis, UAH
+calc.pricelist.col_qty: Menge
+calc.pricelist.col_sum: Summe, UAH
+calc.pricelist.unit_default: Stk.
+calc.pricelist.price_tbd: Preis auf Anfrage
+calc.pricelist.other: Weitere Leistungen
+calc.pricelist.subtotal: Zwischensumme
+calc.pricelist.group_total: Gesamt
+calc.pricelist.selected: Positionen ausgewählt
+calc.pricelist.unpriced: + Preis auf Anfrage
+calc.pricelist.unpriced_count: Positionen - Preis auf Anfrage
+calc.pricelist.submit: Anfrage mit Kostenschätzung senden
+calc.pricelist.empty: Wählen Sie mindestens eine Position und geben Sie die Menge ein.
+calc.pricelist.message_title: Kostenschätzung nach Preisliste
+meta.calculator_pricelist: 'Online-Kostenrechner %in% %city%: Leistungen aus der Preisliste wählen, Menge eingeben und sofort den geschätzten Preis sehen.'

@@ -78,6 +78,9 @@ class ServiceItemRepository extends ServiceEntityRepository
             return $this->findOneBy(['category' => $category, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['category' => $category, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);
         }
+        if ($locale === 'de') {
+            return $this->findOneBy(['category' => $category, 'slugDe' => $slug, 'active' => true]);
+        }
 
         return $this->findOneBy(['category' => $category, 'slugUk' => $slug, 'active' => true]);
     }
@@ -91,6 +94,9 @@ class ServiceItemRepository extends ServiceEntityRepository
         if ($locale === 'ru') {
             return $this->findOneBy(['site' => $site, 'slugRu' => $slug, 'active' => true])
                 ?? $this->findOneBy(['site' => $site, 'slugRu' => null, 'slugUk' => $slug, 'active' => true]);
+        }
+        if ($locale === 'de') {
+            return $this->findOneBy(['site' => $site, 'slugDe' => $slug, 'active' => true]);
         }
 
         return $this->findOneBy(['site' => $site, 'slugUk' => $slug, 'active' => true]);

@@ -22,6 +22,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
@@ -34,6 +35,19 @@ class ServiceWorkCrudController extends AbstractCrudController
     /** У списку виноситься наперед: назва роботи, а не місто */
     private const INDEX_PRIMARY = 'titleUk';
 
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServiceWork::class;
@@ -45,7 +59,7 @@ class ServiceWorkCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Наша робота')
             ->setEntityLabelInPlural('Наші роботи')
             ->setDefaultSort(['position' => 'ASC', 'id' => 'DESC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'captionUk', 'captionRu'])
+            ->setSearchFields(['titleUk', 'titleRu', 'titleDe', 'captionUk', 'captionRu', 'captionDe'])
             ->setHelp(
                 'index',
                 'Власні фото з об’єктів. Показуються на сторінках послуг і в галереї. '
@@ -84,9 +98,17 @@ class ServiceWorkCrudController extends AbstractCrudController
             ->setHelp('Коротко, що на фото: «Хімчистка офісного крісла». Видно підписом під знімком.');
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо = на російській сторінці покажемо українську назву.');
+        if ($this->has('de')) {
+            yield TextField::new('titleDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('captionUk', 'Уточнення uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Необовʼязковий рядок дрібним: район, тип обʼєкта, чим працювали.');
         yield TextField::new('captionRu', 'Уточнення ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('captionDe', 'Уточнення de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addFieldset('Де показувати');
         yield AssociationField::new('city', 'Місто')->hideOnIndex()->setColumns(6)

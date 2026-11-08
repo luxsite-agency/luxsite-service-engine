@@ -28,6 +28,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -42,7 +43,16 @@ class ServiceItemCrudController extends AbstractCrudController
     public function __construct(
         private readonly CustomFields $customFields,
         private readonly RootSlugs $rootSlugs,
+        // app.locales — мови розгортання
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
     ) {
+    }
+
+    /** Мова є серед мов розгортання: поля *De показуються лише з de в app.locales */
+    private function has(string $locale): bool
+    {
+        return \in_array($locale, $this->locales, true);
     }
 
     /** У списку виноситься наперед: назва послуги, а не категорія */
@@ -59,7 +69,7 @@ class ServiceItemCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Послуга')
             ->setEntityLabelInPlural('Послуги')
             ->setDefaultSort(['category' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'slugUk', 'slugRu'])
+            ->setSearchFields(['titleUk', 'titleRu', 'titleDe', 'slugUk', 'slugRu', 'slugDe'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -97,14 +107,27 @@ class ServiceItemCrudController extends AbstractCrudController
         yield TextField::new('titleUk', 'Назва uk')->setColumns(6)
             ->setHelp('Назва послуги, як її бачить відвідувач і як вона стоїть у заголовку сторінки.');
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('titleDe', 'Назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextField::new('slugUk', 'Слаг uk')->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'));
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('ru'))
             ->setHelp('Порожньо = використовується український слаг');
+        if ($this->has('de')) {
+            yield TextField::new('slugDe', 'Слаг de')->hideOnIndex()->setColumns(6)
+                ->setFormTypeOption('constraints', $this->rootSlugConstraints('de'))
+                ->setHelp('Німецька');
+        }
         yield TextField::new('nameUk', 'Коротка назва uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Для карток і меню («Самоскиди»). Порожньо = повна назва.');
         yield TextField::new('nameRu', 'Коротка назва ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('nameDe', 'Коротка назва de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('position', 'Порядок')->setColumns(4)
             ->setHelp('Порядок усередині категорії.');
@@ -132,19 +155,39 @@ class ServiceItemCrudController extends AbstractCrudController
         yield TextareaField::new('leadUk', 'Лід uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Один-два рядки під заголовком. Ідуть також в опис для Google і в мікророзмітку.');
         yield TextareaField::new('leadRu', 'Лід ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('leadDe', 'Лід de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Описи');
         yield TextEditorField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Основний текст сторінки, над таблицею цін.');
         yield TextEditorField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextEditorField::new('descDe', 'Опис de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Другий блок - під таблицею цін.');
         yield TextEditorField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextEditorField::new('desc2De', 'Опис 2 de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextEditorField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Третій блок - у самому низу.');
         yield TextEditorField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextEditorField::new('desc3De', 'Опис 3 de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield FormField::addFieldset('Інше');
         yield TextField::new('tabTitleUk', 'Підпис вкладки цін uk')->hideOnIndex()->setColumns(6);
         yield TextField::new('tabTitleRu', 'Підпис вкладки цін ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('tabTitleDe', 'Підпис вкладки цін de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         yield FormField::addTab('FAQ', 'fa fa-circle-question');
         yield CollectionField::new('faqUk', 'FAQ uk')->hideOnIndex()->setColumns(6)
@@ -155,6 +198,12 @@ class ServiceItemCrudController extends AbstractCrudController
             ->setEntryType(ServiceFaqItemType::class)
             ->allowAdd()->allowDelete()
             ->setHelp('Порядок пунктів у ru має збігатися з uk');
+        if ($this->has('de')) {
+            yield CollectionField::new('faqDe', 'FAQ de')->hideOnIndex()->setColumns(6)
+                ->setEntryType(ServiceFaqItemType::class)
+                ->allowAdd()->allowDelete()
+                ->setHelp('Німецька');
+        }
 
         if ($this->customFields->has('item')) {
             yield FormField::addTab('Додаткові поля', 'fa fa-list');
@@ -167,9 +216,17 @@ class ServiceItemCrudController extends AbstractCrudController
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6)
             ->setHelp('До ~60 символів');
         yield TextField::new('metaTitleRu', 'Meta title ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextField::new('metaTitleDe', 'Meta title de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+        if ($this->has('de')) {
+            yield TextareaField::new('metaDescDe', 'Meta description de')->hideOnIndex()->setColumns(6)
+                ->setHelp('Німецька');
+        }
 
         // індикатор перекладу в списку (той самий titleRu, інший рендер)
         yield TextField::new('titleRu', 'ru')->onlyOnIndex()
