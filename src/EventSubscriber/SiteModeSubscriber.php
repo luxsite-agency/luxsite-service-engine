@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\EventSubscriber;
 
 use App\Entity\ServiceSite;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -19,7 +20,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * - content: **allowlist** точних імен (CONTENT_ROUTES). Будь-який інший маршрут сайту (sv_*, вхід Google для відгуків)
  *   → 404: новий сервісний маршрут, доданий у рушій пізніше, на контентних сайтах сам не з'явиться.
  * - services: маршрути, яких у сервісних сайтів не було (CONTENT_ONLY_ROUTES: рубрики, теги, автори, RSS) → 404, тож сервісний
- *   сайт поводиться як до появи режиму.
+ *   сайт поводиться як до появи режиму. Виняток — пак із `app.blog_taxonomy: true` (сервісний сайт із повноцінним
+ *   блогом: рубрики-плашки, теги й сторінка автора; NRG, 08.11.2026).
  * Службові маршрути (студія, Liip, адмінка) не чіпаються.
  */
 final class SiteModeSubscriber implements EventSubscriberInterface
@@ -37,6 +39,13 @@ final class SiteModeSubscriber implements EventSubscriberInterface
     /** Префікси імен маршрутів, які стосуються сайту (решта — службові) */
     private const SITE_ROUTE_PREFIXES = ['sv_', 'connect_google'];
 
+    public function __construct(
+        /** app.blog_taxonomy: сервісному сайту відкрити рубрики, теги, автора й RSS блогу */
+        #[Autowire('%app.blog_taxonomy%')]
+        private readonly bool $blogTaxonomy = false,
+    ) {
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [KernelEvents::REQUEST => ['onKernelRequest', 19]];
@@ -53,12 +62,12 @@ final class SiteModeSubscriber implements EventSubscriberInterface
             return;
         }
         $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
-        if (!self::allowed($site, $route)) {
+        if (!self::allowed($site, $route, $this->blogTaxonomy)) {
             throw new NotFoundHttpException(sprintf('Маршрут «%s» вимкнено в режимі сайту «%s».', $route, $site->getMode()));
         }
     }
 
-    public static function allowed(ServiceSite $site, string $route): bool
+    public static function allowed(ServiceSite $site, string $route, bool $blogTaxonomy = false): bool
     {
         if ($site->isContent()) {
             $isSiteRoute = false;
@@ -69,6 +78,6 @@ final class SiteModeSubscriber implements EventSubscriberInterface
             return !$isSiteRoute || \in_array($route, self::CONTENT_ROUTES, true);
         }
 
-        return !\in_array($route, self::CONTENT_ONLY_ROUTES, true);
+        return $blogTaxonomy || !\in_array($route, self::CONTENT_ONLY_ROUTES, true);
     }
 }

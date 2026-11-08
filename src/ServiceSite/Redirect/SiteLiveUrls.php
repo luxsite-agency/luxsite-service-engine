@@ -51,6 +51,9 @@ final class SiteLiveUrls implements LiveUrls
         private readonly ServicePostRepository $posts,
         private readonly ServicePostTagRepository $tags,
         private readonly ServicePostCategoryRepository $postCategories,
+        /** app.blog_taxonomy: рубрики, теги й автор живі й на сервісному сайті */
+        #[Autowire('%app.blog_taxonomy%')]
+        private readonly bool $blogTaxonomy = false,
     ) {
     }
 
@@ -90,7 +93,7 @@ final class SiteLiveUrls implements LiveUrls
         return match (true) {
             $route === '' || $route === 'admin' || str_starts_with($route, 'admin_') || str_starts_with($route, 'api_') || str_starts_with($route, 'app_') => false,
             // маршрут, вимкнений режимом сайту (SiteModeSubscriber → 404): /feed/, /author/ на сервісному, /services/ на контентному
-            !SiteModeSubscriber::allowed($site, $route) => false,
+            !SiteModeSubscriber::allowed($site, $route, $this->blogTaxonomy) => false,
             $route === 'sv_service' => $this->itemLive($site, $city, (string) $match['slug'], $locale),
             $route === 'sv_category' => $this->categoryLive($site, $city, (string) $match['category'], $locale),
             $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,
