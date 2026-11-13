@@ -217,7 +217,7 @@ final class SiteSeedCommand
         $cat = $this->em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => $d['slug']]);
         $new = $cat === null;
         $cat ??= (new ServiceCategory())->setSite($site)->setSlugUk($d['slug']);
-        $this->loc($cat, $d, ['title' => 'title', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        $this->loc($cat, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $cat->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['landing'])) {
             $cat->setLanding((bool) $d['landing']);
