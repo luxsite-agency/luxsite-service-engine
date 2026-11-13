@@ -38,7 +38,7 @@ use Symfony\Component\Yaml\Yaml;
  *   cities: [{slug, host, apex: true|false, name_nom_uk, name_gen_uk?, name_dat_uk?, name_loc_uk?, name_*_ru?, phone?, email?,
  *             hours?, address_uk?, meta_title_uk?, meta_desc_uk?, intro_title_uk?, intro_text_uk?, text2_uk?, text3_uk?,
  *             faq_uk?: [{q,a}], districts_intro_uk?, noindex?: bool, gtm_id?}]
- *   categories: [{slug, title_uk, title_ru?, desc_uk?, position?, landing?}]
+ *   categories: [{slug, title_uk, title_ru?, lead_uk?, desc_uk?, position?, landing?}]
  *   items: [{slug, category, title_uk, title_ru?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
  *            meta_desc_uk?, faq_uk?: [{q,a}], position?, utp?, hidden_cities?: [slug], price_hidden_cities?: [slug],
  *            prices?: [{city, name_uk, name_ru?, price?, prefix?, text_uk?, unit_uk?, per_unit?, calculator?}]}]
