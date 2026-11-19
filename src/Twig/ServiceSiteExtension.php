@@ -72,6 +72,8 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly string $teamPrefix = '',
         private readonly ?LeadFields $leadFields = null,
         private readonly ?LeadConsent $leadConsent = null,
+        private readonly ?\App\Repository\ServicePriceRepository $prices = null,
+        private readonly ?\App\Repository\ServiceWorkRepository $works = null,
     ) {
     }
 
@@ -93,6 +95,8 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
             new TwigFunction('custom_fields', $this->customFieldsOf(...)),
+            new TwigFunction('city_prices', $this->cityPrices(...)),
+            new TwigFunction('city_works', $this->cityWorks(...)),
             new TwigFunction('lead_fields', $this->leadFieldsFor(...)),
             new TwigFunction('lead_consent', $this->leadConsentFor(...)),
         ];
@@ -140,6 +144,54 @@ final class ServiceSiteExtension extends AbstractExtension
         }
 
         return array_values($groups);
+    }
+
+    /** @var array<int, list<\App\Entity\ServiceWork>> memo: id міста → фото «Наші роботи» */
+    private array $cityWorks = [];
+
+    /**
+     * Активні фото «Наші роботи» поточного міста (без прив'язки до чужого міста), за полем «Порядок». Пак бере з них фото
+     * сторінок, де контролер галерею не передає (слоти головної й «Про клініку» за назвою запису).
+     *
+     * @return list<\App\Entity\ServiceWork>
+     */
+    public function cityWorks(): array
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if ($this->works === null || !$city instanceof ServiceCity) {
+            return [];
+        }
+
+        return $this->cityWorks[(int) $city->getId()] ??= array_values($this->works->findForCity($city, 200));
+    }
+
+    /** @var array<int, array<string, array{item: \App\Entity\ServiceItem, rows: list<\App\Entity\ServicePrice>}>> memo: id міста → прайс */
+    private array $cityPrices = [];
+
+    /**
+     * Увесь активний прайс поточного міста, згрупований за слагом послуги (uk): {слаг: {item, rows}} у порядку категорій,
+     * послуг і position цін. Для шаблонів, яким контролер прайс не передає: загальна сторінка цін, картки «від N грн»,
+     * ціни однієї послуги на сторінці іншої. Ціни правляться в адмінці — сторінки підхоплюють їх без перегенерації.
+     *
+     * @return array<string, array{item: \App\Entity\ServiceItem, rows: list<\App\Entity\ServicePrice>}>
+     */
+    public function cityPrices(): array
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if ($this->prices === null || !$city instanceof ServiceCity) {
+            return [];
+        }
+        if (!isset($this->cityPrices[(int) $city->getId()])) {
+            $out = [];
+            foreach ($this->prices->findActiveByCity($city) as $price) {
+                $slug = (string) $price->getItem()->getSlugUk();
+                $out[$slug] ??= ['item' => $price->getItem(), 'rows' => []];
+                $out[$slug]['rows'][] = $price;
+            }
+            $this->cityPrices[(int) $city->getId()] = $out;
+        }
+
+        return $this->cityPrices[(int) $city->getId()];
     }
 
     /** @var array<int, list<\App\Entity\ServicePage>> memo: id міста → сторінки футера (smoke ганяє кілька хостів одним ядром) */

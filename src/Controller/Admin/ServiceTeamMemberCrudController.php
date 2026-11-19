@@ -15,6 +15,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\CollectionField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
@@ -100,6 +101,13 @@ class ServiceTeamMemberCrudController extends AbstractCrudController
             ->setHelp('Чим менше число, тим раніше людина в списку.');
         yield BooleanField::new('active', 'Активний')
             ->setHelp('Вимкнений співробітник зникає з сайту, але лишається тут.');
+
+        yield FormField::addTab('Дипломи та сертифікати', 'fa fa-certificate');
+        yield CollectionField::new('images', 'Документи')->hideOnIndex()->setColumns(12)
+            ->useEntryCrudForm(ServiceTeamMemberImageCrudController::class)
+            ->setFormTypeOption('by_reference', false)
+            ->allowAdd()->allowDelete()
+            ->setHelp('Скани дипломів, сертифікатів, посвідчень. На сторінці лікаря блоком «Дипломи та сертифікати» в порядку поля «Порядок».');
 
         yield FormField::addTab('Послуги', 'fa fa-list-check');
         yield AssociationField::new('items', 'Послуги')->hideOnIndex()
