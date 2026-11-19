@@ -69,6 +69,11 @@ class ServiceTeamMember implements TimestampableInterface
     #[ORM\JoinTable(name: 'service_team_member_item')]
     private Collection $items;
 
+    /** @var Collection<int, ServiceTeamMemberImage> дипломи й сертифікати (сторінка лікаря, блок «Дипломи та сертифікати») */
+    #[ORM\OneToMany(targetEntity: ServiceTeamMemberImage::class, mappedBy: 'member', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
+    private Collection $images;
+
     #[ORM\Column(length: 128)]
     private string $nameUk = '';
 
@@ -129,6 +134,30 @@ class ServiceTeamMember implements TimestampableInterface
     {
         $this->cities = new ArrayCollection();
         $this->items = new ArrayCollection();
+        $this->images = new ArrayCollection();
+    }
+
+    /** @return Collection<int, ServiceTeamMemberImage> */
+    public function getImages(): Collection
+    {
+        return $this->images;
+    }
+
+    public function addImage(ServiceTeamMemberImage $image): self
+    {
+        if (!$this->images->contains($image)) {
+            $this->images->add($image);
+            $image->setMember($this);
+        }
+
+        return $this;
+    }
+
+    public function removeImage(ServiceTeamMemberImage $image): self
+    {
+        $this->images->removeElement($image);
+
+        return $this;
     }
 
     public function getId(): ?int

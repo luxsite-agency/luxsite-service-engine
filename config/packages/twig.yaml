@@ -25,6 +25,8 @@ twig:
         # сторінки команди: префікс розділу ('' = вимкнено) і тип JSON-LD людини
         team_prefix: '%app.team_prefix%'
         team_schema_type: '%app.team_schema_type%'
+        # дані паку для шаблонів (app.site_data)
+        site_data: '%app.site_data%'
         # вхід через Google для відгуків: {% if google_oauth.configured %} — без кредів кнопку й форму не показуємо
         google_oauth: '@App\Security\GoogleOAuthConfig'
         # віджет відгуків gbp-manager: {token, base}; token порожній — віджета нема
