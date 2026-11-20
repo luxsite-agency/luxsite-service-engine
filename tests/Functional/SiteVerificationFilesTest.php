@@ -11,6 +11,7 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceSiteSetting;
 use App\Entity\User;
+use App\ServiceSite\Redirect\SiteLiveUrls;
 use App\Settings\SecretBox;
 use App\Settings\SiteSettingKeys as K;
 use App\Settings\SiteSettings;
@@ -104,6 +105,22 @@ final class SiteVerificationFilesTest extends HttpKernelTestCase
         self::assertSame(404, $this->http('GET', 'https://' . $this->apexB . '/' . self::FILE_A)->getStatusCode(), 'чужий бренд — 404');
         self::assertSame(404, $this->http('GET', 'https://' . $this->apexA . '/google999aaa999bbb.html')->getStatusCode(), 'не заданий бренду файл — 404');
         self::assertSame(404, $this->http('GET', 'https://' . $this->adminHost . '/' . self::FILE_A)->getStatusCode(), 'хост адмінки — не сайт');
+    }
+
+    /** Журнал 404 і ручні правила: адреса файла «жива» лише там, де файл справді віддається. */
+    public function testLiveUrlsKnowWhichFileIsServed(): void
+    {
+        $this->set($this->siteA, [K::GOOGLE_VERIFICATION_FILES => self::FILE_A, K::BING_SITE_AUTH => self::BING_A]);
+        $live = static::getContainer()->get(SiteLiveUrls::class);
+        $a = $this->em()->find(ServiceSite::class, $this->siteA);
+        $b = $this->em()->find(ServiceSite::class, $this->siteB);
+        self::assertNotNull($a);
+        self::assertNotNull($b);
+        self::assertTrue($live->isLive($a, null, '/' . self::FILE_A));
+        self::assertTrue($live->isLive($a, null, '/BingSiteAuth.xml'));
+        self::assertFalse($live->isLive($a, null, '/google999aaa999bbb.html'));
+        self::assertFalse($live->isLive($b, null, '/' . self::FILE_A));
+        self::assertFalse($live->isLive($b, null, '/BingSiteAuth.xml'));
     }
 
     public function testEngineHasNoSharedVerificationFile(): void

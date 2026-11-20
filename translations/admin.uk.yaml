@@ -96,6 +96,12 @@ setting:
       bing_site_verification:
         label: Bing Webmaster — код верифікації
         help: Значення content мета-тегу msvalidate.01 (можна вставити тег цілком).
+      google_verification_files:
+        label: Google Search Console — файли підтвердження
+        help: 'Ім''я HTML-файла з GSC («Підтвердження власника» → «HTML-файл»): виду google1a2b3c4d5e6f7a8b.html, можна вставити повну адресу. До п''яти імен через пробіл чи кому. Файл віддається лише на хостах цього бренду (апекс і міста), на інших сайтах мережі — 404; деплой не потрібен. Окремий файл на кожен бренд — Google не пов''яже сайти мережі.'
+      bing_site_auth:
+        label: Bing Webmaster — BingSiteAuth.xml
+        help: 'Код із файла BingSiteAuth.xml (значення тега user; можна вставити вміст файла цілком). Файл /BingSiteAuth.xml віддається лише на хостах цього бренду.'
     html:
       head:
         label: Свій код у заголовку сторінки (head)
