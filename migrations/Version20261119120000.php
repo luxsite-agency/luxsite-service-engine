@@ -23,7 +23,7 @@ final class Version20261119120000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('CREATE TABLE service_team_image (id INT AUTO_INCREMENT NOT NULL, image_name VARCHAR(255) DEFAULT NULL, caption_uk VARCHAR(255) DEFAULT NULL, caption_ru VARCHAR(255) DEFAULT NULL, note_uk VARCHAR(255) DEFAULT NULL, position INT DEFAULT 0 NOT NULL, created_at DATETIME DEFAULT NULL, updated_at DATETIME DEFAULT NULL, member_id INT NOT NULL, INDEX IDX_SVC_TEAM_IMAGE_MEMBER_FK (member_id), INDEX idx_svc_team_image_member (member_id, position), PRIMARY KEY (id)) DEFAULT CHARACTER SET utf8mb4');
+        $this->addSql('CREATE TABLE service_team_image (id INT AUTO_INCREMENT NOT NULL, image_name VARCHAR(255) DEFAULT NULL, caption_uk VARCHAR(255) DEFAULT NULL, caption_ru VARCHAR(255) DEFAULT NULL, note_uk VARCHAR(255) DEFAULT NULL, position INT DEFAULT 0 NOT NULL, created_at DATETIME DEFAULT NULL, updated_at DATETIME DEFAULT NULL, member_id INT NOT NULL, INDEX IDX_946A74AB7597D3FE (member_id), INDEX idx_svc_team_image_member (member_id, position), PRIMARY KEY (id)) DEFAULT CHARACTER SET utf8mb4');
         $this->addSql('ALTER TABLE service_team_image ADD CONSTRAINT FK_SVC_TEAM_IMAGE_MEMBER FOREIGN KEY (member_id) REFERENCES service_team_member (id) ON DELETE CASCADE');
     }
 
