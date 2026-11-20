@@ -48,7 +48,7 @@ t "validate: app.blog_prefix = зарезервований розділ — в�
 has "зарезервований"
 printf 'parameters:\n    app.blog_prefix: news\n    app.catalog.url_scheme: root\n' > "$bad/config/parameters.yaml"; rm -f "$bad/.env.local"
 t "validate: app.blog_prefix news + схема root — ок" 0 bin/site validate "$bad"
-printf 'CLOUDFLARE_DNS_TOKEN=abcdefghijklmnop1234567890\n' > "$bad/notes.md"
+printf 'CLOUDFLARE_DNS_TOKEN=abcdefghijk1234\n' > "$bad/notes.md"
 t "validate: токен Cloudflare у паку — відмова" '!0' bin/site validate "$bad"
 has "схоже на секрет"; rm -f "$bad/notes.md"
 printf 'parameters:\n    app.calculator.mode: area\n    app.calculator.path: { uk: "/kalkuliator/", ru: "/ru/kalkuliator/" }\n' > "$bad/config/parameters.yaml"

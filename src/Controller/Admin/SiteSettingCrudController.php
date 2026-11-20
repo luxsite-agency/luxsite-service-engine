@@ -183,7 +183,9 @@ final class SiteSettingCrudController extends AbstractCrudController
         }
         $this->settings->ensureRows($site);
 
-        return $qb->andWhere('entity.site = :site')->setParameter('site', $site);
+        // рядки ключів, яких уже нема в реєстрі (прибрані фічі), не показуються сирими кодами — міграція їх і видаляє
+        return $qb->andWhere('entity.site = :site')->setParameter('site', $site)
+            ->andWhere('entity.code IN (:known)')->setParameter('known', SiteSettingKeys::all());
     }
 
     public function configureResponseParameters(KeyValueStore $responseParameters): KeyValueStore
@@ -287,6 +289,24 @@ final class SiteSettingCrudController extends AbstractCrudController
         return $this->redirect($this->indexUrl() . '#google-dns');
     }
 
+    /** «Стан у Cloudflare»: прочитати записи (без змін у DNS) і показати в розділі — сторінка сама в Cloudflare не ходить. */
+    #[AdminRoute(path: '/dns-status', name: 'dns_status', options: ['methods' => ['POST']])]
+    public function dnsStatus(Request $request): Response
+    {
+        $site = $this->currentSite();
+        if (!$this->isCsrfTokenValid(GoogleDnsVerification::CSRF, (string) $request->request->get('token', ''))) {
+            $this->addFlash('danger', htmlspecialchars($this->translator->trans('settings.dns.csrf_invalid', [], 'admin'), \ENT_QUOTES));
+        } elseif (null !== $site) {
+            try {
+                $this->dns->refresh($site);
+            } catch (\Throwable $e) {
+                $this->addFlash('warning', htmlspecialchars($this->translator->trans('settings.dns.state.error', ['%error%' => $e::class, '%lines%' => '', '%created%' => 0, '%deleted%' => 0], 'admin'), \ENT_QUOTES));
+            }
+        }
+
+        return $this->redirect($this->indexUrl() . '#google-dns');
+    }
+
     /** Після збереження значення TXT: записати в Cloudflare й показати результат по доменах; збій — лише статус. */
     private function syncDns(ServiceSite $site): void
     {
@@ -316,22 +336,21 @@ final class SiteSettingCrudController extends AbstractCrudController
             '%domain%' => $s->domain,
             '%lines%' => implode('; ', $s->lines),
             '%error%' => (string) $s->error,
+            '%created%' => $s->created,
+            '%deleted%' => $s->deleted,
         ], 'admin');
     }
 
     /**
-     * Розділ «Google Search Console: підтвердження DNS (TXT)»: значення, рядки TXT, стан по домену (Cloudflare — лише
-     * читання), посилання на поле й «Перевірити в DNS».
+     * Розділ «Google Search Console: підтвердження DNS (TXT)»: значення, рядки TXT, стан по домену (останній відомий),
+     * посилання на поле, «Стан у Cloudflare» і «Перевірити в DNS».
      *
      * @return array<string, mixed>
      */
     private function dnsView(ServiceSite $site): array
     {
-        try {
-            $statuses = $this->dns->status($site);
-        } catch (\Throwable $e) {
-            $statuses = array_map(static fn (string $domain): DnsStatus => new DnsStatus($domain, GoogleDnsVerification::STATE_ERROR, [], error: $e::class), $this->dns->domains($site));
-        }
+        // без запитів до Cloudflare: останній відомий стан (кеш синхронізації чи кнопки) або «невідомо»
+        $statuses = $this->dns->view($site);
 
         return [
             'values' => $this->dns->values($site),
