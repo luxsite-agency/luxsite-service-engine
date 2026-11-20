@@ -102,7 +102,7 @@ final class SiteSettingCrudController extends AbstractCrudController
         return $crud
             ->setEntityLabelInSingular(t('setting.label.singular', [], 'admin'))
             ->setEntityLabelInPlural(t('setting.label.plural', [], 'admin'))
-            ->setPageTitle(Crud::PAGE_INDEX, fn (): TranslatableMessage => t('setting.title.index', ['%site%' => $this->currentSite()?->getName() ?? '—'], 'admin'))
+            ->setPageTitle(Crud::PAGE_INDEX, fn (): TranslatableMessage => t('setting.title.index', ['%site%' => htmlspecialchars($this->currentSite()?->getName() ?? '—', \ENT_QUOTES)], 'admin')) // заголовок EasyAdmin — |raw
             ->setPageTitle(Crud::PAGE_EDIT, static fn (ServiceSiteSetting $s): TranslatableMessage => t(SiteSettingKeys::labelKey($s->getCode()), [], 'admin'))
             ->setEntityPermission('ROLE_ADMIN')
             ->setSearchFields(null)
