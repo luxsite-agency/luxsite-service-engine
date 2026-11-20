@@ -45,10 +45,11 @@ final class SiteSettingKeys
     public const string HREFLANG_SINGLE = 'seo.hreflang_single';
     /** коди hreflang за мовою сайту «en: en-US en-GB» (рядок на мову); не задано — app.locale_codes[…].hreflang паку → рушій */
     public const string HREFLANG_CODES = 'seo.hreflang_codes';
-    /** Файли підтвердження GSC (google<hex>.html) — лише цього бренду, через пробіл; віддає SiteVerificationController. */
-    public const string GOOGLE_VERIFICATION_FILES = 'seo.google_verification_files';
-    /** Код користувача з BingSiteAuth.xml (сам XML будує SiteVerificationController). */
-    public const string BING_SITE_AUTH = 'seo.bing_site_auth';
+    /**
+     * Підтвердження GSC ресурсом «Домен» через DNS TXT (власник 20.11.2026): значення google-site-verification, до п'яти
+     * через пробіл. TXT на апексі бренду ставить у Cloudflare GoogleDnsVerification при збереженні в адмінці.
+     */
+    public const string GOOGLE_DNS_VERIFICATION = 'seo.google_dns_verification';
     public const string HTML_HEAD = 'html.head';
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
@@ -72,8 +73,7 @@ final class SiteSettingKeys
         self::BING_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::HREFLANG_SINGLE => ['type' => self::TYPE_BOOL_DEFAULT, 'group' => 'seo'],
         self::HREFLANG_CODES => ['type' => self::TYPE_LINES, 'group' => 'seo'],
-        self::GOOGLE_VERIFICATION_FILES => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
-        self::BING_SITE_AUTH => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
+        self::GOOGLE_DNS_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],
@@ -95,9 +95,8 @@ final class SiteSettingKeys
         self::FB_PIXEL_ID => '/^[0-9]{6,20}$/',
         self::GOOGLE_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::BING_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
-        // ім'я файла від Google, до п'яти через пробіл (normalize() приводить до цього виду); шлях, інше ім'я — ні
-        self::GOOGLE_VERIFICATION_FILES => '/^' . self::GOOGLE_FILE . '(?: ' . self::GOOGLE_FILE . '){0,' . (self::GOOGLE_FILES_MAX - 1) . '}$/D',
-        self::BING_SITE_AUTH => '/^[0-9A-F]{16,64}$/D',
+        // значення TXT від Google, до п'яти через пробіл (normalize() приводить до цього виду); лапки, «;», HTML — ні
+        self::GOOGLE_DNS_VERIFICATION => '/^' . self::GOOGLE_DNS_VALUE . '(?: ' . self::GOOGLE_DNS_VALUE . '){0,' . (self::GOOGLE_DNS_MAX - 1) . '}$/D',
         self::ADMIN_TITLE => '/^[^\r\n<>]{1,64}$/u',
         self::HREFLANG_SINGLE => '/^[01]$/',
     ];
@@ -107,9 +106,10 @@ final class SiteSettingKeys
      * x-default сюди не проходить: його рушій ставить сам (перша мова сайту).
      */
     private const string HREFLANG_TAG = '/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$/';
-    /** Ім'я файла підтвердження Google Search Console. */
-    private const string GOOGLE_FILE = 'google[0-9a-f]{8,32}\\.html';
-    public const int GOOGLE_FILES_MAX = 5;
+    /** Значення TXT підтвердження Google Search Console (після «google-site-verification=»). */
+    private const string GOOGLE_DNS_VALUE = '[A-Za-z0-9_-]{20,100}';
+    public const int GOOGLE_DNS_MAX = 5;
+    public const string GOOGLE_DNS_PREFIX = 'google-site-verification=';
 
     /** @return list<string> */
     public static function all(): array
@@ -242,14 +242,14 @@ final class SiteSettingKeys
     }
 
     /**
-     * Імена файлів підтвердження Google зі значення налаштування; невалідне значення (правило змінилось, правка SQL) —
-     * жодного: сайт не віддає те, що адмінка не пропустила б.
+     * Значення TXT підтвердження Google з налаштування; невалідне значення (правило змінилось, правка SQL) — жодного:
+     * у DNS не піде те, що адмінка не пропустила б.
      *
      * @return list<string>
      */
-    public static function googleVerificationFiles(?string $value): array
+    public static function googleDnsValues(?string $value): array
     {
-        $value = self::validValue(self::GOOGLE_VERIFICATION_FILES, $value);
+        $value = self::validValue(self::GOOGLE_DNS_VERIFICATION, $value);
 
         return null === $value ? [] : explode(' ', $value);
     }
@@ -299,30 +299,29 @@ final class SiteSettingKeys
             self::FB_PIXEL_ID => $extract('/init["\']?\s*,\s*["\']([0-9]{6,20})["\']/') ?? $extract('/[?&]id=([0-9]{6,20})/') ?? $value,
             // <meta name="google-site-verification" content="…"> → значення content
             self::GOOGLE_SITE_VERIFICATION, self::BING_SITE_VERIFICATION => $extract('/content\s*=\s*["\']([^"\']+)["\']/i') ?? $value,
-            self::GOOGLE_VERIFICATION_FILES => self::normalizeGoogleFiles($value),
-            // вміст BingSiteAuth.xml: <users><user>КОД</user></users>
-            self::BING_SITE_AUTH => strtoupper($extract('#<user>\s*([^<\s]+)\s*</user>#i') ?? $value),
+            self::GOOGLE_DNS_VERIFICATION => self::normalizeGoogleDns($value),
             default => $value,
         };
     }
 
     /**
-     * Імена через пробіл, кому чи перенос; повна адреса (https://site/googleXXX.html) → ім'я; «google-site-verification:»
-     * з вмісту файла відкидається; дублі — один раз. Решта лишається як є, щоб валідація показала помилку біля поля.
+     * Значення через пробіл, кому чи перенос; рядок TXT цілком («google-site-verification=…», зокрема в лапках) → лише
+     * значення; дублі — один раз. Решта лишається як є, щоб валідація показала помилку біля поля.
      */
-    private static function normalizeGoogleFiles(string $value): string
+    private static function normalizeGoogleDns(string $value): string
     {
-        $names = [];
+        $values = [];
         foreach (preg_split('/[\s,;]+/', $value, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-            if ('google-site-verification:' === strtolower($token)) {
-                continue;
+            $token = trim($token, '"\'');
+            // лише префікс без значення лишається як є — помилка біля поля, а не тихе «не задано»
+            if (0 === stripos($token, self::GOOGLE_DNS_PREFIX) && \strlen($token) > \strlen(self::GOOGLE_DNS_PREFIX)) {
+                $token = substr($token, \strlen(self::GOOGLE_DNS_PREFIX));
             }
-            if (1 === preg_match('#^https?://[^/]+/(google[^/?\#]*)$#i', $token, $m)) {
-                $token = $m[1];
+            if ('' !== $token) {
+                $values[$token] = true;
             }
-            $names[$token] = true;
         }
 
-        return implode(' ', array_keys($names));
+        return implode(' ', array_map('strval', array_keys($values)));
     }
 }

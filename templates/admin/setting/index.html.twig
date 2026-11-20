@@ -2,7 +2,8 @@
 {% extends '@EasyAdmin/crud/index.html.twig' %}
 {% trans_default_domain 'admin' %}
 {# Налаштування сайту (SiteSettingCrudController): вибір сайту (якщо їх кілька) + список ключів + «Вхід через Google»
-   (стан, адреси для Google Cloud Console по кожному місту, інструкція, перевірка) + що виводиться на сайті по містах +
+   (стан, адреси для Google Cloud Console по кожному місту, інструкція, перевірка) + підтвердження GSC через DNS TXT
+   (рядки, стан у Cloudflare по домену, «Перевірити в DNS») + що виводиться на сайті по містах +
    інтеграції, які налаштовуються в паку чи на сервері. #}
 {% block main %}
     {% if settings_sites is defined and settings_sites|length > 1 %}
@@ -65,6 +66,42 @@
             {% if google.tryUrl %}
                 <a href="{{ google.tryUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary ms-1" id="google-try">{{ (gt ~ 'try')|trans }}</a>
             {% endif %}
+        </section>
+    {% endif %}
+
+    {% if dns is defined %}
+        {% set dt = 'settings.dns.' %}
+        <section class="mt-4" id="google-dns" data-dns-enabled="{{ dns.enabled ? 1 : 0 }}">
+            <h2 class="h5">{{ (dt ~ 'title')|trans }}</h2>
+            <p class="small text-muted mb-2">{{ (dt ~ 'help')|trans }}</p>
+            {% if dns.domains is empty %}
+                <p class="small text-danger mb-2">{{ (dt ~ 'no_domains')|trans }}</p>
+            {% elseif dns.values is empty %}
+                <p class="small mb-2" id="dns-not-set">{{ (dt ~ 'not_set')|trans }}</p>
+            {% else %}
+                <table class="table table-sm datagrid mb-3" id="dns-records" style="max-width: 64rem">
+                    <thead><tr><th>{{ (dt ~ 'domain')|trans }}</th><th>{{ (dt ~ 'txt')|trans }}</th><th>{{ (dt ~ 'status')|trans }}</th></tr></thead>
+                    <tbody>
+                    {% for row in dns.rows %}
+                        {% set state_class = row.state == 'ok' ? 'text-success' : (row.state == 'error' ? 'text-danger' : 'text-warning') %}
+                        <tr data-dns-domain="{{ row.domain }}" data-dns-state="{{ row.state }}">
+                            <td><code>{{ row.domain }}</code></td>
+                            <td>
+                                {% for line in row.lines %}
+                                    <div class="input-group input-group-sm mb-1"><input type="text" class="form-control" id="dns-txt-{{ loop.parent.loop.index }}-{{ loop.index }}" readonly value="{{ line }}" onclick="this.select()" aria-label="TXT {{ row.domain }}"><button type="button" class="btn btn-secondary" data-copy="#dns-txt-{{ loop.parent.loop.index }}-{{ loop.index }}" data-copied="{{ 'settings.google.copied'|trans }}">{{ 'settings.google.copy'|trans }}</button></div>
+                                {% endfor %}
+                            </td>
+                            <td class="small {{ state_class }}">{{ row.text }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+            {% if dns.edit %}<a href="{{ dns.edit }}" class="me-3" data-setting-edit="seo.google_dns_verification">{{ (dt ~ 'edit')|trans }}</a>{% endif %}
+            <form method="post" action="{{ ea_url().unsetAll().setController('App\\Controller\\Admin\\SiteSettingCrudController').setAction('dnsCheck').generateUrl() }}" class="d-inline" id="dns-check">
+                <input type="hidden" name="token" value="{{ csrf_token(dns.csrf) }}">
+                <button type="submit" class="btn btn-secondary btn-sm"{% if dns.values is empty %} disabled{% endif %}>{{ (dt ~ 'check')|trans }}</button>
+            </form>
         </section>
     {% endif %}
 
