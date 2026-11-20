@@ -18,6 +18,8 @@ use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostCategoryRepository;
 use App\Repository\ServicePostRepository;
 use App\Repository\ServicePostTagRepository;
+use App\Settings\SiteSettingKeys;
+use App\Settings\SiteSettings;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
@@ -51,6 +53,7 @@ final class SiteLiveUrls implements LiveUrls
         private readonly ServicePostRepository $posts,
         private readonly ServicePostTagRepository $tags,
         private readonly ServicePostCategoryRepository $postCategories,
+        private readonly SiteSettings $settings,
     ) {
     }
 
@@ -101,6 +104,9 @@ final class SiteLiveUrls implements LiveUrls
             // тег (24.10.2026): адреса злитого чи перейменованого тегу не жива — на неї можна завести 301
             $route === 'sv_blog_tag' || $route === 'sv_blog_tag_page' => $this->tags->findOneActiveBySlug($site, (string) $match['slug'], $contentLocale) !== null,
             $route === 'sv_legacy_redirect' => false,
+            // файли підтвердження: лише ті, що задано бренду (SiteVerificationController), решта — 404
+            $route === 'sv_google_verification' => \in_array((string) $match['file'], SiteSettingKeys::googleVerificationFiles($this->settings->get($site, SiteSettingKeys::GOOGLE_VERIFICATION_FILES)), true),
+            $route === 'sv_bing_site_auth' => $this->settings->valid($site, SiteSettingKeys::BING_SITE_AUTH) !== null,
             default => true,
         };
     }
