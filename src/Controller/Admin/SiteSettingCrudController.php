@@ -14,6 +14,8 @@ use App\Entity\User;
 use App\Repository\ServiceSiteRepository;
 use App\ServiceSite\Crm\LeadCrmConnector;
 use App\Settings\AdminBranding;
+use App\Settings\DnsStatus;
+use App\Settings\GoogleDnsVerification;
 use App\Settings\GoogleSignInPanel;
 use App\Settings\SecretBox;
 use App\Settings\SecretState;
@@ -79,6 +81,7 @@ final class SiteSettingCrudController extends AbstractCrudController
         private readonly ServiceSiteRepository $sites,
         private readonly AdminBranding $branding,
         private readonly LeadCrmConnector $crm,
+        private readonly GoogleDnsVerification $dns,
         private readonly TranslatorInterface $translator,
         #[Autowire(service: 'monolog.logger.security_audit')]
         private readonly LoggerInterface $audit,
@@ -180,7 +183,9 @@ final class SiteSettingCrudController extends AbstractCrudController
         }
         $this->settings->ensureRows($site);
 
-        return $qb->andWhere('entity.site = :site')->setParameter('site', $site);
+        // рядки ключів, яких уже нема в реєстрі (прибрані фічі), не показуються сирими кодами — міграція їх і видаляє
+        return $qb->andWhere('entity.site = :site')->setParameter('site', $site)
+            ->andWhere('entity.code IN (:known)')->setParameter('known', SiteSettingKeys::all());
     }
 
     public function configureResponseParameters(KeyValueStore $responseParameters): KeyValueStore
@@ -192,6 +197,7 @@ final class SiteSettingCrudController extends AbstractCrudController
             $responseParameters->set('google', $this->google->view($site));
             $responseParameters->set('google_edit', $this->editUrls($site, [SiteSettingKeys::GOOGLE_SIGN_IN_ENABLED, SiteSettingKeys::GOOGLE_CLIENT_ID, SiteSettingKeys::GOOGLE_CLIENT_SECRET]));
             $responseParameters->set('city_tags', $this->cityTags($site));
+            $responseParameters->set('dns', $this->dnsView($site));
             $responseParameters->set('integrations', [
                 'crm' => $this->crm->system(),
                 'crm_enabled' => $this->crm->isEnabled(),
@@ -216,6 +222,10 @@ final class SiteSettingCrudController extends AbstractCrudController
         $this->settings->invalidate();
         $this->tags->reset();
         $this->branding->reset();
+        if (SiteSettingKeys::GOOGLE_DNS_VERIFICATION === $entityInstance->getCode()) {
+            // і повторне збереження без змін: дописати в Cloudflare, чого бракує (upsert, без дублів)
+            $this->syncDns($entityInstance->getSite());
+        }
         if ($before === $entityInstance->getValue()) {
             return;
         }
@@ -252,6 +262,104 @@ final class SiteSettingCrudController extends AbstractCrudController
         }
 
         return $this->redirect($this->indexUrl() . '#google-sign-in');
+    }
+
+    /** «Перевірити в DNS»: чи видно TXT підтвердження Google у публічному DNS (DoH 1.1.1.1, без токена Cloudflare). */
+    #[AdminRoute(path: '/dns-check', name: 'dns_check', options: ['methods' => ['POST']])]
+    public function dnsCheck(Request $request): Response
+    {
+        $site = $this->currentSite();
+        $t = $this->translator;
+        if (!$this->isCsrfTokenValid(GoogleDnsVerification::CSRF, (string) $request->request->get('token', ''))) {
+            $this->addFlash('danger', htmlspecialchars($t->trans('settings.dns.csrf_invalid', [], 'admin'), \ENT_QUOTES));
+        } elseif (null !== $site) {
+            $rows = $this->dns->check($site);
+            $items = array_map(static fn (array $row): string => \sprintf(
+                '<li class="%s" data-dns-visible="%d">%s</li>',
+                $row['visible'] ? 'text-success' : 'text-danger',
+                $row['visible'] ? 1 : 0,
+                htmlspecialchars($t->trans('settings.dns.check_result.' . (null !== $row['error'] ? 'error' : ($row['visible'] ? 'visible' : 'not_visible')), ['%domain%' => $row['domain'], '%txt%' => $row['txt'], '%error%' => (string) $row['error']], 'admin'), \ENT_QUOTES),
+            ), $rows);
+            if ([] === $items) {
+                $items[] = '<li>' . htmlspecialchars($t->trans('settings.dns.check_result.empty', [], 'admin'), \ENT_QUOTES) . '</li>';
+            }
+            $this->addFlash(array_all($rows, static fn (array $row): bool => $row['visible']) ? 'success' : 'warning', '<ul class="mb-0 ps-3" id="dns-check-result">' . implode('', $items) . '</ul>');
+        }
+
+        return $this->redirect($this->indexUrl() . '#google-dns');
+    }
+
+    /** «Стан у Cloudflare»: прочитати записи (без змін у DNS) і показати в розділі — сторінка сама в Cloudflare не ходить. */
+    #[AdminRoute(path: '/dns-status', name: 'dns_status', options: ['methods' => ['POST']])]
+    public function dnsStatus(Request $request): Response
+    {
+        $site = $this->currentSite();
+        if (!$this->isCsrfTokenValid(GoogleDnsVerification::CSRF, (string) $request->request->get('token', ''))) {
+            $this->addFlash('danger', htmlspecialchars($this->translator->trans('settings.dns.csrf_invalid', [], 'admin'), \ENT_QUOTES));
+        } elseif (null !== $site) {
+            try {
+                $this->dns->refresh($site);
+            } catch (\Throwable $e) {
+                $this->addFlash('warning', htmlspecialchars($this->translator->trans('settings.dns.state.error', ['%error%' => $e::class, '%lines%' => '', '%created%' => 0, '%deleted%' => 0], 'admin'), \ENT_QUOTES));
+            }
+        }
+
+        return $this->redirect($this->indexUrl() . '#google-dns');
+    }
+
+    /** Після збереження значення TXT: записати в Cloudflare й показати результат по доменах; збій — лише статус. */
+    private function syncDns(ServiceSite $site): void
+    {
+        try {
+            $statuses = $this->dns->sync($site);
+        } catch (\Throwable $e) {
+            $statuses = array_map(static fn (string $domain): DnsStatus => new DnsStatus($domain, GoogleDnsVerification::STATE_ERROR, [], error: $e::class), $this->dns->domains($site));
+        }
+        if ([] === $statuses) {
+            $this->addFlash('warning', htmlspecialchars($this->translator->trans('settings.dns.no_domains', [], 'admin'), \ENT_QUOTES));
+
+            return;
+        }
+        $ok = [GoogleDnsVerification::STATE_OK, GoogleDnsVerification::STATE_CLEARED];
+        $items = array_map(fn (DnsStatus $s): string => \sprintf(
+            '<li data-dns-domain="%s" data-dns-state="%s">%s</li>',
+            htmlspecialchars($s->domain, \ENT_QUOTES),
+            htmlspecialchars($s->state, \ENT_QUOTES),
+            htmlspecialchars($this->dnsText($s), \ENT_QUOTES),
+        ), $statuses);
+        $this->addFlash(array_all($statuses, static fn (DnsStatus $s): bool => \in_array($s->state, $ok, true)) ? 'success' : 'warning', '<ul class="mb-0 ps-3" id="dns-sync-result">' . implode('', $items) . '</ul>');
+    }
+
+    private function dnsText(DnsStatus $s): string
+    {
+        return $this->translator->trans('settings.dns.state.' . $s->state, [
+            '%domain%' => $s->domain,
+            '%lines%' => implode('; ', $s->lines),
+            '%error%' => (string) $s->error,
+            '%created%' => $s->created,
+            '%deleted%' => $s->deleted,
+        ], 'admin');
+    }
+
+    /**
+     * Розділ «Google Search Console: підтвердження DNS (TXT)»: значення, рядки TXT, стан по домену (останній відомий),
+     * посилання на поле, «Стан у Cloudflare» і «Перевірити в DNS».
+     *
+     * @return array<string, mixed>
+     */
+    private function dnsView(ServiceSite $site): array
+    {
+        // без запитів до Cloudflare: останній відомий стан (кеш синхронізації чи кнопки) або «невідомо»
+        $statuses = $this->dns->view($site);
+
+        return [
+            'values' => $this->dns->values($site),
+            'domains' => $this->dns->domains($site),
+            'enabled' => $this->dns->isEnabled(),
+            'rows' => array_map(fn (DnsStatus $s): array => ['domain' => $s->domain, 'state' => $s->state, 'lines' => $s->lines, 'text' => $this->dnsText($s)], $statuses),
+            'edit' => $this->editUrls($site, [SiteSettingKeys::GOOGLE_DNS_VERIFICATION])[SiteSettingKeys::GOOGLE_DNS_VERIFICATION] ?? null,
+            'csrf' => GoogleDnsVerification::CSRF,
+        ];
     }
 
     /** Сайт сторінки: ?site=<id> (запам'ятовується в сесії) → вибраний раніше → сайт адмінки (AdminBranding) → перший. */
