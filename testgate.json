@@ -1,0 +1,10 @@
+{
+  "run": {
+    "all": "vendor/bin/phpunit",
+    "gate": {
+      "cmd": "{python} -m unittest discover -s tests/tools",
+      "exec": false
+    }
+  },
+  "exec": {}
+}
