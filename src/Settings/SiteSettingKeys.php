@@ -45,6 +45,10 @@ final class SiteSettingKeys
     public const string HREFLANG_SINGLE = 'seo.hreflang_single';
     /** коди hreflang за мовою сайту «en: en-US en-GB» (рядок на мову); не задано — app.locale_codes[…].hreflang паку → рушій */
     public const string HREFLANG_CODES = 'seo.hreflang_codes';
+    /** Файли підтвердження GSC (google<hex>.html) — лише цього бренду, через пробіл; віддає SiteVerificationController. */
+    public const string GOOGLE_VERIFICATION_FILES = 'seo.google_verification_files';
+    /** Код користувача з BingSiteAuth.xml (сам XML будує SiteVerificationController). */
+    public const string BING_SITE_AUTH = 'seo.bing_site_auth';
     public const string HTML_HEAD = 'html.head';
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
@@ -68,6 +72,8 @@ final class SiteSettingKeys
         self::BING_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::HREFLANG_SINGLE => ['type' => self::TYPE_BOOL_DEFAULT, 'group' => 'seo'],
         self::HREFLANG_CODES => ['type' => self::TYPE_LINES, 'group' => 'seo'],
+        self::GOOGLE_VERIFICATION_FILES => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
+        self::BING_SITE_AUTH => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],
@@ -89,6 +95,9 @@ final class SiteSettingKeys
         self::FB_PIXEL_ID => '/^[0-9]{6,20}$/',
         self::GOOGLE_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::BING_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
+        // ім'я файла від Google, до п'яти через пробіл (normalize() приводить до цього виду); шлях, інше ім'я — ні
+        self::GOOGLE_VERIFICATION_FILES => '/^' . self::GOOGLE_FILE . '(?: ' . self::GOOGLE_FILE . '){0,' . (self::GOOGLE_FILES_MAX - 1) . '}$/D',
+        self::BING_SITE_AUTH => '/^[0-9A-F]{16,64}$/D',
         self::ADMIN_TITLE => '/^[^\r\n<>]{1,64}$/u',
         self::HREFLANG_SINGLE => '/^[01]$/',
     ];
@@ -98,6 +107,9 @@ final class SiteSettingKeys
      * x-default сюди не проходить: його рушій ставить сам (перша мова сайту).
      */
     private const string HREFLANG_TAG = '/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$/';
+    /** Ім'я файла підтвердження Google Search Console. */
+    private const string GOOGLE_FILE = 'google[0-9a-f]{8,32}\\.html';
+    public const int GOOGLE_FILES_MAX = 5;
 
     /** @return list<string> */
     public static function all(): array
@@ -230,6 +242,19 @@ final class SiteSettingKeys
     }
 
     /**
+     * Імена файлів підтвердження Google зі значення налаштування; невалідне значення (правило змінилось, правка SQL) —
+     * жодного: сайт не віддає те, що адмінка не пропустила б.
+     *
+     * @return list<string>
+     */
+    public static function googleVerificationFiles(?string $value): array
+    {
+        $value = self::validValue(self::GOOGLE_VERIFICATION_FILES, $value);
+
+        return null === $value ? [] : explode(' ', $value);
+    }
+
+    /**
      * Що зберегти з того, що вставили: у поле id можна вставити цілий код від Google, Meta чи Microsoft — ідентифікатор
      * дістається звідти (як «Лічильник аналітики» міста). Не знайшлось — вводене як є, щоб валідація показала помилку
      * біля поля, а не порожнечу. HTML і секрети не чіпаються.
@@ -274,7 +299,30 @@ final class SiteSettingKeys
             self::FB_PIXEL_ID => $extract('/init["\']?\s*,\s*["\']([0-9]{6,20})["\']/') ?? $extract('/[?&]id=([0-9]{6,20})/') ?? $value,
             // <meta name="google-site-verification" content="…"> → значення content
             self::GOOGLE_SITE_VERIFICATION, self::BING_SITE_VERIFICATION => $extract('/content\s*=\s*["\']([^"\']+)["\']/i') ?? $value,
+            self::GOOGLE_VERIFICATION_FILES => self::normalizeGoogleFiles($value),
+            // вміст BingSiteAuth.xml: <users><user>КОД</user></users>
+            self::BING_SITE_AUTH => strtoupper($extract('#<user>\s*([^<\s]+)\s*</user>#i') ?? $value),
             default => $value,
         };
+    }
+
+    /**
+     * Імена через пробіл, кому чи перенос; повна адреса (https://site/googleXXX.html) → ім'я; «google-site-verification:»
+     * з вмісту файла відкидається; дублі — один раз. Решта лишається як є, щоб валідація показала помилку біля поля.
+     */
+    private static function normalizeGoogleFiles(string $value): string
+    {
+        $names = [];
+        foreach (preg_split('/[\s,;]+/', $value, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+            if ('google-site-verification:' === strtolower($token)) {
+                continue;
+            }
+            if (1 === preg_match('#^https?://[^/]+/(google[^/?\#]*)$#i', $token, $m)) {
+                $token = $m[1];
+            }
+            $names[$token] = true;
+        }
+
+        return implode(' ', array_keys($names));
     }
 }

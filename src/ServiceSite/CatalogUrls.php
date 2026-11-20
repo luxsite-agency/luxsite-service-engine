@@ -33,6 +33,7 @@ final class CatalogUrls
         'services', 'districts', 'blog', 'news', 'about', 'contacts', 'faq', 'reviews', 'privacy-policy',
         'terms-of-service', 'thank-you', 'calculator-cleaning', 'calculator', 'lead', 'sitemap.xml', 'robots.txt',
         'ru', 'uk', 'en', 'author', 'feed', 'api', 'admin', 'account', 'connect', 'login', 'logout', 'media', 'theme-live', 'bundles', '_',
+        'BingSiteAuth.xml',
     ];
 
     public function __construct(
