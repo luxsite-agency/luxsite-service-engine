@@ -1,0 +1,14 @@
+{
+  "base": "origin/main",
+  "run": {
+    "unit": "vendor/bin/phpunit --testsuite unit",
+    "functional": "vendor/bin/phpunit --testsuite functional",
+    "all": "vendor/bin/phpunit",
+    "gate": {"cmd": "{python} -m unittest discover -s tests/tools", "exec": false}
+  },
+  "exec": {
+    "local": "docker exec -e APP_ENV=test service-engine-php",
+    "mac": "docker exec -e APP_ENV=test {wt}",
+    "ssh": "ssh mac \"docker exec -e APP_ENV=test {wt} {cmd}\""
+  }
+}
