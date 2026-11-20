@@ -83,7 +83,7 @@
                     <thead><tr><th>{{ (dt ~ 'domain')|trans }}</th><th>{{ (dt ~ 'txt')|trans }}</th><th>{{ (dt ~ 'status')|trans }}</th></tr></thead>
                     <tbody>
                     {% for row in dns.rows %}
-                        {% set state_class = row.state == 'ok' ? 'text-success' : (row.state == 'error' ? 'text-danger' : 'text-warning') %}
+                        {% set state_class = row.state == 'ok' ? 'text-success' : (row.state == 'error' ? 'text-danger' : (row.state == 'unknown' ? 'text-muted' : 'text-warning')) %}
                         <tr data-dns-domain="{{ row.domain }}" data-dns-state="{{ row.state }}">
                             <td><code>{{ row.domain }}</code></td>
                             <td>
@@ -98,6 +98,12 @@
                 </table>
             {% endif %}
             {% if dns.edit %}<a href="{{ dns.edit }}" class="me-3" data-setting-edit="seo.google_dns_verification">{{ (dt ~ 'edit')|trans }}</a>{% endif %}
+            {% if dns.enabled %}
+            <form method="post" action="{{ ea_url().unsetAll().setController('App\\Controller\\Admin\\SiteSettingCrudController').setAction('dnsStatus').generateUrl() }}" class="d-inline" id="dns-status">
+                <input type="hidden" name="token" value="{{ csrf_token(dns.csrf) }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm"{% if dns.values is empty %} disabled{% endif %}>{{ (dt ~ 'status_check')|trans }}</button>
+            </form>
+            {% endif %}
             <form method="post" action="{{ ea_url().unsetAll().setController('App\\Controller\\Admin\\SiteSettingCrudController').setAction('dnsCheck').generateUrl() }}" class="d-inline" id="dns-check">
                 <input type="hidden" name="token" value="{{ csrf_token(dns.csrf) }}">
                 <button type="submit" class="btn btn-secondary btn-sm"{% if dns.values is empty %} disabled{% endif %}>{{ (dt ~ 'check')|trans }}</button>

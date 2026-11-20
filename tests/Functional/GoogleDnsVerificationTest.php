@@ -345,9 +345,8 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
         self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE)->isRedirect());
         self::assertSame('Bearer ' . self::TOKEN, $this->cf()->requests('POST')[0]['auth'] ?? null);
 
-        $this->boot(" \n ");
+        $this->boot(" \n "); // сесія адміністратора з попереднього ядра лишається
         $this->cf()->addZone($this->apexA);
-        $this->login($this->adminHost, $this->adminEmail, $this->password);
         self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE . 'x')->isRedirect());
         self::assertSame([], $this->cf()->requests, 'токен із пробілів = нема токена');
         self::assertStringContainsString('data-dns-state="disabled"', $this->index($this->siteA));
