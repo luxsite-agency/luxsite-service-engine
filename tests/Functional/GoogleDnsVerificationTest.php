@@ -11,8 +11,10 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceSiteSetting;
 use App\Entity\User;
+use App\Settings\GoogleDnsVerification;
 use App\Settings\SecretBox;
 use App\Settings\SiteSettingKeys as K;
+use App\Settings\SiteSettings;
 use App\Tests\Support\CloudflareFake;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,6 +38,7 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
     private int $siteA;
     private int $siteB;
     private string $adminEmail;
+    private string $moderatorEmail;
     private string $password;
 
     protected function setUp(): void
@@ -57,9 +60,12 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
         $em->persist((new ServiceCity())->setSite($b)->setHost($this->apexB)->setSlug('main')->setIsApex(true)->setNameNomUk('Головне'));
         $this->password = bin2hex(random_bytes(8));
         $this->adminEmail = 'ci-dns-' . $tag . '-admin@example.test';
-        $user = (new User())->setEmail($this->adminEmail)->setRoles(['ROLE_ADMIN']);
-        $user->setPassword(static::getContainer()->get(UserPasswordHasherInterface::class)->hashPassword($user, $this->password));
-        $em->persist($user);
+        $this->moderatorEmail = 'ci-dns-' . $tag . '-moderator@example.test';
+        foreach ([$this->adminEmail => 'ROLE_ADMIN', $this->moderatorEmail => 'ROLE_MODERATOR'] as $email => $role) {
+            $user = (new User())->setEmail($email)->setRoles([$role]);
+            $user->setPassword(static::getContainer()->get(UserPasswordHasherInterface::class)->hashPassword($user, $this->password));
+            $em->persist($user);
+        }
         $em->flush();
         $this->siteA = (int) $a->getId();
         $this->siteB = (int) $b->getId();
@@ -76,9 +82,11 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
                 $em->remove($site); // міста й налаштування — ON DELETE CASCADE
             }
         }
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $this->adminEmail]);
-        if (null !== $user) {
-            $em->remove($user);
+        foreach ([$this->adminEmail, $this->moderatorEmail] as $email) {
+            $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+            if (null !== $user) {
+                $em->remove($user);
+            }
         }
         $em->flush();
         parent::tearDown();
@@ -105,6 +113,8 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
         self::assertSame(1, preg_match('/<ul[^>]*id="dns-sync-result"[^>]*>.*?data-dns-state="ok"/s', $page), 'результат збереження — flash');
         self::assertStringContainsString('data-dns-domain="' . $this->apexA . '" data-dns-state="ok"', $page, 'стан на сторінці бренду — «запис стоїть»');
         self::assertStringNotContainsString(self::TOKEN, $page);
+        self::assertStringContainsString('ім&#039;я @', $page, 'апостроф у підписі колонки — один');
+        self::assertStringNotContainsString('&#039;&#039;', $page);
 
         // «Перевірити» — DoH 1.1.1.1
         $check = $this->dnsCheck($page);
@@ -213,6 +223,150 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
         }
     }
 
+    /** Рев'ю 1: «свій» запис — лише TXT з міткою на імені апекса; фільтр name= Cloudflare може проігнорувати. */
+    public function testMarkedRecordOnOtherNameIsNeitherDeletedNorCounted(): void
+    {
+        $this->cf()->addZone($this->apexA);
+        $this->cf()->ignoreNameFilter = true;
+        $sub = 'shop.' . $this->apexA;
+        $sameValue = $this->cf()->addRecord($this->apexA, $sub, self::TXT, GoogleDnsVerification::MARKER);
+        $oldValue = $this->cf()->addRecord($this->apexA, $sub, 'google-site-verification=old-value-on-subdomain-1', GoogleDnsVerification::MARKER);
+        $cname = $this->cf()->addRecord($this->apexA, $this->apexA, 'google-site-verification=old-value-not-txt-12345', GoogleDnsVerification::MARKER, 'SPF');
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+
+        self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE)->isRedirect());
+        self::assertSame([], $this->cf()->requests('DELETE'), 'мічені записи на іншому імені чи іншого типу не видаляються');
+        $posts = $this->cf()->requests('POST');
+        self::assertCount(1, $posts, 'запис на піддомені не рахується як «стоїть» для апекса');
+        self::assertSame($this->apexA, $posts[0]['body']['name'] ?? null);
+        $ids = array_column($this->cf()->records[$this->cf()->zones[$this->apexA]], 'id');
+        foreach ([$sameValue, $oldValue, $cname] as $id) {
+            self::assertContains($id, $ids);
+        }
+    }
+
+    /** Рев'ю 3: спершу POST нового, потім DELETE старого — збій POST лишає старий запис. */
+    public function testReplaceKeepsOldRecordWhenPostFails(): void
+    {
+        $this->cf()->addZone($this->apexA);
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        $edit = $this->editUrl($this->siteA);
+        self::assertTrue($this->submit($edit, self::VALUE)->isRedirect());
+
+        foreach (['429' => 429, 'timeout' => 'timeout', 'nonjson' => 'nonjson'] as $label => $fail) {
+            $this->cf()->failOn = ['POST' => $fail];
+            $new = 'replacement-value-' . $label . '-xxxxxx';
+            self::assertTrue($this->submit($edit, $new)->isRedirect(), 'збережено: ' . $label);
+            self::assertSame($new, $this->stored($this->siteA));
+            self::assertSame([], $this->cf()->requests('DELETE'), 'старий не видалено: ' . $label);
+            self::assertContains(self::TXT, $this->cf()->txt($this->apexA), 'старе значення в DNS: ' . $label);
+            $page = $this->index($this->siteA);
+            self::assertSame(1, preg_match('/id="dns-sync-result".*?data-dns-state="error"[^>]*>([^<]*)</s', $page, $m), 'стан — помилка: ' . $label);
+            self::assertStringContainsString('створено 0, видалено 0', html_entity_decode($m[1]), 'лічильники: ' . $label);
+            if (429 === $fail) {
+                self::assertStringContainsString('429', $m[1]);
+            }
+            if ('nonjson' === $fail) {
+                self::assertStringContainsString('502', $m[1]);
+            }
+        }
+    }
+
+    public function testParentZoneIsUsedForBrandOnSubdomain(): void
+    {
+        $brand = 'brand.' . $this->apexB;
+        $em = $this->em();
+        $site = $em->find(ServiceSite::class, $this->siteB);
+        self::assertNotNull($site);
+        $site->setApexDomain($brand);
+        $em->flush();
+        $em->clear();
+        $this->cf()->addZone($this->apexB);
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+
+        self::assertTrue($this->submit($this->editUrl($this->siteB), self::VALUE)->isRedirect());
+        $posts = $this->cf()->requests('POST');
+        self::assertCount(1, $posts);
+        self::assertSame('/client/v4/zones/' . $this->cf()->zones[$this->apexB] . '/dns_records', $posts[0]['path']);
+        self::assertSame($brand, $posts[0]['body']['name'] ?? null, 'запис на імені бренду в батьківській зоні');
+    }
+
+    public function testInactiveZoneIsReportedAndNotWritten(): void
+    {
+        $this->cf()->addZone($this->apexA, 'pending');
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+
+        self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE)->isRedirect());
+        self::assertSame([], $this->cf()->requests('POST'));
+        $page = $this->index($this->siteA);
+        self::assertSame(1, preg_match('/id="dns-sync-result".*?data-dns-state="zone_inactive"[^>]*>[^<]*pending/s', $page), 'зона є, але не активна — так і сказано');
+    }
+
+    /** Рев'ю 6: список налаштувань не ходить у Cloudflare; стан — з останньої синхронізації або за кнопкою. */
+    public function testSettingsPageDoesNotCallCloudflare(): void
+    {
+        $this->cf()->addZone($this->apexA);
+        $this->setValue($this->siteA, self::VALUE); // мимо адмінки — стану в кеші нема
+        $this->cf()->failOn = ['GET' => 'timeout'];
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        $before = \count($this->cf()->requests);
+
+        $page = $this->index($this->siteA);
+        self::assertSame($before, \count($this->cf()->requests), 'відкриття сторінки — без запитів до Cloudflare');
+        self::assertStringContainsString('data-dns-domain="' . $this->apexA . '" data-dns-state="unknown"', $page);
+
+        $this->cf()->failOn = [];
+        self::assertSame(1, preg_match('/<form method="post" action="([^"]+)" class="d-inline" id="dns-status">\s*<input type="hidden" name="token" value="([^"]+)"/', $page, $m), 'кнопка «Стан у Cloudflare»');
+        self::assertTrue($this->http('POST', $this->absolute(html_entity_decode($m[1])), ['token' => html_entity_decode($m[2])])->isRedirect());
+        self::assertSame([], $this->cf()->requests('POST'), 'кнопка лише читає');
+        self::assertStringContainsString('data-dns-domain="' . $this->apexA . '" data-dns-state="pending"', $this->index($this->siteA), 'запису ще нема — так і видно');
+    }
+
+    public function testModeratorCannotReachDnsActions(): void
+    {
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        $page = $this->index($this->siteA);
+        self::assertSame(1, preg_match('/action="([^"]+)" class="d-inline" id="dns-check">\s*<input type="hidden" name="token" value="([^"]+)"/', $page, $check));
+        self::assertSame(1, preg_match('/action="([^"]+)" class="d-inline" id="dns-status">/', $page, $status));
+        $this->http('GET', 'https://' . $this->adminHost . '/logout');
+        $this->login($this->adminHost, $this->moderatorEmail, $this->password);
+
+        self::assertSame(403, $this->http('GET', 'https://' . $this->adminHost . '/admin/site-setting?site=' . $this->siteA)->getStatusCode());
+        self::assertSame(403, $this->http('POST', $this->absolute(html_entity_decode($check[1])), ['token' => html_entity_decode($check[2])])->getStatusCode());
+        self::assertSame(403, $this->http('POST', $this->absolute(html_entity_decode($status[1])), ['token' => 'x'])->getStatusCode());
+        self::assertSame([], $this->cf()->requests);
+    }
+
+    public function testTokenIsTrimmedTheSameEverywhere(): void
+    {
+        $this->boot("  " . self::TOKEN . "\n");
+        $this->cf()->addZone($this->apexA);
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE)->isRedirect());
+        self::assertSame('Bearer ' . self::TOKEN, $this->cf()->requests('POST')[0]['auth'] ?? null);
+
+        $this->boot(" \n ");
+        $this->cf()->addZone($this->apexA);
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        self::assertTrue($this->submit($this->editUrl($this->siteA), self::VALUE . 'x')->isRedirect());
+        self::assertSame([], $this->cf()->requests, 'токен із пробілів = нема токена');
+        self::assertStringContainsString('data-dns-state="disabled"', $this->index($this->siteA));
+    }
+
+    /** Рев'ю 4: рядки ключів, яких більше нема в реєстрі (файли підтвердження з #66), не показуються сирими кодами. */
+    public function testRemovedKeysAreNotListed(): void
+    {
+        $db = $this->em()->getConnection();
+        foreach (['seo.google_verification_files' => 'google111aaa222bbb.html', 'seo.bing_site_auth' => '0123456789ABCDEF0123456789ABCDEF'] as $code => $value) {
+            $db->insert('service_site_setting', ['site_id' => $this->siteA, 'code' => $code, 'value' => $value, 'updated_at' => '2026-11-20 12:00:00']);
+        }
+        $this->login($this->adminHost, $this->adminEmail, $this->password);
+        $page = $this->index($this->siteA);
+        self::assertStringNotContainsString('seo.google_verification_files', $page);
+        self::assertStringNotContainsString('seo.bing_site_auth', $page);
+        self::assertStringContainsString('data-setting-edit="' . K::GOOGLE_DNS_VERIFICATION . '"', $page);
+    }
+
     public function testVerificationFilesAreGone(): void
     {
         self::assertSame([], glob(\dirname(__DIR__, 2) . '/public/google*.html') ?: [], 'жодного файла Google у public рушія');
@@ -243,6 +397,14 @@ final class GoogleDnsVerificationTest extends HttpKernelTestCase
         self::ensureKernelShutdown();
         self::bootKernel();
         $this->cf()->reset();
+    }
+
+    private function setValue(int $siteId, string $value): void
+    {
+        $site = $this->em()->find(ServiceSite::class, $siteId);
+        self::assertNotNull($site);
+        static::getContainer()->get(SiteSettings::class)->set($site, K::GOOGLE_DNS_VERIFICATION, $value);
+        $this->em()->clear();
     }
 
     private function cf(): CloudflareFake

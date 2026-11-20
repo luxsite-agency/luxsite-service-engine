@@ -24,26 +24,37 @@ final class CloudflareFake
     public array $requests = [];
     /** Код помилки, яким відповідає кожен запит до API (403, 500…); null — працює. */
     public ?int $failWith = null;
+    /** @var array<string, int|string> збій лише для методу: код HTTP, 'timeout' (транспорт) або 'nonjson' (502 з HTML) */
+    public array $failOn = [];
+    /** Cloudflare «проігнорував» фільтр name= у списку записів — віддає TXT усієї зони. */
+    public bool $ignoreNameFilter = false;
+    /** @var array<string, string> ім'я зони → status (active, pending…) */
+    public array $zoneStatus = [];
     private int $seq = 0;
 
     public function reset(): void
     {
-        $this->zones = $this->records = $this->requests = [];
+        $this->zones = $this->records = $this->requests = $this->failOn = $this->zoneStatus = [];
         $this->failWith = null;
+        $this->ignoreNameFilter = false;
     }
 
-    public function addZone(string $name): string
+    public function addZone(string $name, string $status = 'active'): string
     {
         $id = 'zone' . substr(md5($name), 0, 12);
         $this->zones[$name] = $id;
+        $this->zoneStatus[$name] = $status;
         $this->records[$id] ??= [];
 
         return $id;
     }
 
-    public function addRecord(string $zone, string $name, string $content, ?string $comment = null): void
+    public function addRecord(string $zone, string $name, string $content, ?string $comment = null, string $type = 'TXT'): string
     {
-        $this->records[$this->zones[$zone]][] = ['id' => 'rec' . ++$this->seq, 'type' => 'TXT', 'name' => $name, 'content' => $content, 'comment' => $comment];
+        $id = 'rec' . ++$this->seq;
+        $this->records[$this->zones[$zone]][] = ['id' => $id, 'type' => $type, 'name' => $name, 'content' => $content, 'comment' => $comment];
+
+        return $id;
     }
 
     /** @return list<string> вміст TXT зони */
@@ -76,19 +87,29 @@ final class CloudflareFake
         if ('1.1.1.1' === ($parts['host'] ?? '') && '/dns-query' === $path) {
             return $this->doh((string) ($query['name'] ?? ''));
         }
+        $fail = $this->failOn[$method] ?? null;
+        if ('timeout' === $fail) {
+            return new MockResponse('', ['error' => 'Idle timeout reached for "' . $url . '".']);
+        }
+        if ('nonjson' === $fail) {
+            return new MockResponse('<html><body>502 Bad Gateway</body></html>', ['http_code' => 502, 'response_headers' => ['content-type' => 'text/html']]);
+        }
+        if (\is_int($fail)) {
+            return $this->json(['success' => false, 'errors' => [['code' => 10000 + $fail, 'message' => 'Fake failure ' . $fail]], 'result' => null], $fail);
+        }
         if (null !== $this->failWith) {
             return $this->json(['success' => false, 'errors' => [['code' => 10000 + $this->failWith, 'message' => 'Fake failure ' . $this->failWith]], 'result' => null], $this->failWith);
         }
         if ('GET' === $method && '/client/v4/zones' === $path) {
             $name = (string) ($query['name'] ?? '');
-            $result = isset($this->zones[$name]) ? [['id' => $this->zones[$name], 'name' => $name]] : [];
+            $result = isset($this->zones[$name]) ? [['id' => $this->zones[$name], 'name' => $name, 'status' => $this->zoneStatus[$name] ?? 'active']] : [];
 
             return $this->json(['success' => true, 'errors' => [], 'result' => $result]);
         }
         if (1 === preg_match('#^/client/v4/zones/([^/]+)/dns_records(?:/([^/]+))?$#', $path, $m) && \array_key_exists($m[1], $this->records)) {
             $zone = $m[1];
             if ('GET' === $method && !isset($m[2])) {
-                $result = array_values(array_filter($this->records[$zone], static fn (array $r): bool => (!isset($query['type']) || $r['type'] === $query['type']) && (!isset($query['name']) || $r['name'] === $query['name'])));
+                $result = array_values(array_filter($this->records[$zone], fn (array $r): bool => (!isset($query['type']) || $r['type'] === $query['type']) && ($this->ignoreNameFilter || !isset($query['name']) || $r['name'] === $query['name'])));
 
                 return $this->json(['success' => true, 'errors' => [], 'result' => $result]);
             }
