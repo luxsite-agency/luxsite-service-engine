@@ -147,7 +147,6 @@ def engine_params(engine_dir):
 RESERVED_SEGMENTS = {
     "services", "districts", "blog", "news", "about", "contacts", "faq", "reviews", "privacy-policy",
     "terms-of-service", "thank-you", "calculator-cleaning", "calculator", "lead", "application", "sitemap.xml", "robots.txt",
-    "BingSiteAuth.xml",
     "ru", "uk", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
 }
 

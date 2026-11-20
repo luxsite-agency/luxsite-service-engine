@@ -4,11 +4,14 @@
 
 ## Невипущене
 
-- **Файли підтвердження Google Search Console — на кожен бренд з адмінки.** «Налаштування сайту» → SEO →
-  «Google Search Console — файли підтвердження» (`seo.google_verification_files`, до 5 імен `google<hex>.html`) і
-  «Bing Webmaster — BingSiteAuth.xml» (`seo.bing_site_auth`). Файл віддається лише на хостах свого бренду, інакше 404.
-  Як підключити — `docs/site-ops.md`, «Підтвердження сайту в Google Search Console файлом».
-- **Прибрано `public/google3cc17ecbb1f93a59.html`** (з v0.9.31 віддавався на всіх сайтах усіх розгортань і зв'язував мережу).
-  Дія: якщо сайт підтверджено в GSC цим файлом — до оновлення внести `google3cc17ecbb1f93a59.html` у налаштування
-  потрібного бренду (лише того, чий це акаунт GSC), інакше GSC з часом зніме підтвердження.
-- Слаг `BingSiteAuth.xml` зарезервовано (`CatalogUrls::RESERVED_SEGMENTS`, `bin/site.d/_validate.py`).
+- **Підтвердження Google Search Console через DNS TXT з адмінки бренду.** «Налаштування сайту» → SEO →
+  «Google: підтвердження DNS (TXT)» (`seo.google_dns_verification`, до 5 значень; рядок `google-site-verification=…`
+  зводиться до значення). При збереженні рушій ставить TXT на апекс бренду в Cloudflare і прибирає лише свої записи;
+  стан по домену й «Перевірити в DNS» — під списком налаштувань. Як підключити — `docs/site-ops.md`,
+  «Підтвердження сайту в Google Search Console через DNS TXT».
+  Дія: власник створює Cloudflare API token з правами лише **Zone:Read + DNS:Edit** і кладе в `shared/.env.local`
+  як `CLOUDFLARE_DNS_TOKEN=…` (600). Без токена все працює, TXT додається вручну за рядком з адмінки.
+- **Файлів підтвердження на сайтах більше нема.** Прибрано `public/google3cc17ecbb1f93a59.html` (з v0.9.31 віддавався на
+  всіх сайтах усіх розгортань і зв'язував мережу); `/google<hex>.html` і `/BingSiteAuth.xml` → 404.
+  Дія: сайти, підтверджені цим файлом (elektryky.com.ua), до оновлення перепідтвердити ресурсом «Домен» через TXT,
+  інакше GSC згодом зніме підтвердження. Bing — імпортом з GSC.

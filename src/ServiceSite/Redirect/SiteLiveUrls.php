@@ -15,8 +15,6 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePostRepository;
-use App\Settings\SiteSettingKeys;
-use App\Settings\SiteSettings;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
@@ -45,7 +43,6 @@ final class SiteLiveUrls implements LiveUrls
         private readonly ServiceCategoryRepository $categories,
         private readonly ServiceDistrictRepository $districts,
         private readonly ServicePostRepository $posts,
-        private readonly SiteSettings $settings,
     ) {
     }
 
@@ -88,9 +85,6 @@ final class SiteLiveUrls implements LiveUrls
             $route === 'sv_district' => $this->districts->findOneActiveBySlug($city, (string) $match['slug'], $locale) !== null,
             $route === 'sv_blog_post' => $this->posts->findOnePublishedBySlug($site, (string) $match['slug'], $locale) !== null,
             $route === 'sv_legacy_redirect' => false,
-            // файли підтвердження: лише ті, що задано бренду (SiteVerificationController), решта — 404
-            $route === 'sv_google_verification' => \in_array((string) $match['file'], SiteSettingKeys::googleVerificationFiles($this->settings->get($site, SiteSettingKeys::GOOGLE_VERIFICATION_FILES)), true),
-            $route === 'sv_bing_site_auth' => $this->settings->valid($site, SiteSettingKeys::BING_SITE_AUTH) !== null,
             default => true,
         };
     }
