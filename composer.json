@@ -20,7 +20,7 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
-        "easycorp/easyadmin-bundle": "^5.5.1",
+        "easycorp/easyadmin-bundle": "^5.10.2",
         "knpuniversity/oauth2-client-bundle": "^2.20",
         "league/oauth2-google": "^5.0",
         "liip/imagine-bundle": "^2.17",
