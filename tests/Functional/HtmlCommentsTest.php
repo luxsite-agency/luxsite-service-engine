@@ -114,6 +114,6 @@ final class HtmlCommentsTest extends SeoTestCase
 
     private static function noToken(string $html): string
     {
-        return (string) preg_replace('~(_token|_csrf_token)" value="[^"]+"~', '$1" value="x"', $html);
+        return (string) preg_replace('~(_token|_csrf_token|_ft)" value="[^"]+"~', '$1" value="x"', $html);
     }
 }

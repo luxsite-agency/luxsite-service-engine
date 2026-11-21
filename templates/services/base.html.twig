@@ -903,6 +903,10 @@
             })();
         </script>
         {%~ endif %}
+        {#~ Cloudflare Turnstile (app.lead_spam.turnstile): один скрипт на сторінку для всіх форм заявок; без ключів — нічого. #}
+        {%~ if lead_turnstile().enabled %}
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
+        {%~ endif %}
         {#~ Свій код перед </body> (адмінка → Налаштування → HTML-коди; лише адміністратор): сирим, як збережено. #}
         {%~ if _svTags.htmlBodyEnd %}
         {{ _svTags.htmlBodyEnd|raw }}
