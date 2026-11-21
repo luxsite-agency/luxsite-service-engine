@@ -62,6 +62,7 @@ final class LegacyUrls
         array $cleanUrls = [],
         #[Autowire('%app.gone_prefixes%')]
         array $gonePrefixes = [],
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
         $map = [];
         foreach ($legacyRedirects as $key => $rule) {
@@ -86,12 +87,14 @@ final class LegacyUrls
     public function defaultStripQueryPaths(): string
     {
         $blog = preg_quote($this->catalogUrls->blogPrefix(), '#');
+        $prefixes = implode('|', array_map(static fn (string $l): string => preg_quote($l, '#'), \array_slice($this->siteLocales?->deployment() ?? LocalizedRoutes::DECLARED, 1)));
+        $prefix = $prefixes === '' ? '' : '(?:(?:' . $prefixes . ')/)?';
         if (!$this->catalogUrls->categoriesAtRoot()) {
-            return '#^/(ru/)?(services|districts|' . $blog . ')(/|$)#';
+            return '#^/' . $prefix . '(services|districts|' . $blog . ')(/|$)#';
         }
-        $reserved = implode('|', array_map(static fn (string $s) => preg_quote($s, '#'), array_diff(CatalogUrls::RESERVED_SEGMENTS, ['services', 'districts', 'blog', 'news'])));
+        $reserved = implode('|', array_map(static fn (string $s) => preg_quote($s, '#'), array_diff($this->catalogUrls->reservedSegments(), ['services', 'districts', $this->catalogUrls->blogPrefix()])));
 
-        return '#^/(ru/)?(services|districts|' . $blog . '|(?!(' . $reserved . ')(/|$))[a-z0-9-]+)(/|$)#';
+        return '#^/' . $prefix . '(services|districts|' . $blog . '|(?!(' . $reserved . ')(/|$))[a-z0-9-]+)(/|$)#';
     }
 
     /**
@@ -217,7 +220,11 @@ final class LegacyUrls
             return preg_match('#^https?://#i', $literal) ? $literal : $host . '/' . ltrim(trim($literal), '/');
         }
 
-        $locale = ($rule['locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $defaultLocale = $this->siteLocales?->default() ?? 'uk';
+        $locale = (string) ($rule['locale'] ?? $defaultLocale);
+        if (!\in_array($locale, $this->siteLocales?->enabled() ?? LocalizedRoutes::DECLARED, true)) {
+            $locale = $defaultLocale;
+        }
         if (!empty($rule['route'])) {
             return $this->router->generate((string) $rule['route'], ['_locale' => $locale], UrlGeneratorInterface::ABSOLUTE_URL);
         }
@@ -236,7 +243,7 @@ final class LegacyUrls
             $target = $current;
         }
 
-        $targetPath = $locale === 'ru' ? '/ru/' : '/';
+        $targetPath = $this->router->generate('sv_home', ['_locale' => $locale]);
         if (!empty($rule['item'])) {
             $item = $this->items->findOneActiveBySiteAndSlug($site, (string) $rule['item'], 'uk');
             if ($item !== null) {

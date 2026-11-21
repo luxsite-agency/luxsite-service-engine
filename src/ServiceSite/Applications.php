@@ -34,7 +34,7 @@ final class Applications
     private const array BASE = ['name' => 128, 'phone' => 32, 'email' => 191];
     private const array TYPES = ['text', 'textarea', 'list'];
 
-    /** @var array<string, array{title: array{uk: string, ru: string}, email: string, required: list<string>, consent: bool, files: array<string, mixed>|null, fields: array<string, array{label: array{uk: string, ru: string}, type: string, options: array<string, array{uk: string, ru: string}>}>}> */
+    /** @var array<string, array{title: array<string, string>, email: string, required: list<string>, consent: bool, files: array<string, mixed>|null, fields: array<string, array{label: array<string, string>, type: string, options: array<string, array<string, string>>}>}> */
     private array $forms = [];
 
     /** @param array<string, mixed> $config */
@@ -99,7 +99,7 @@ final class Applications
 
     public function title(string $key, string $locale): string
     {
-        return $this->forms[$key]['title'][$locale === 'ru' ? 'ru' : 'uk'] ?? $key;
+        return $this->forms[$key]['title'][$locale] ?? $this->forms[$key]['title']['uk'] ?? $key;
     }
 
     public function email(string $key): string
@@ -121,7 +121,7 @@ final class Applications
     public function view(string $key, string $locale): array
     {
         $form = $this->forms[$key] ?? throw new \InvalidArgumentException('Невідома форма анкети: ' . $key);
-        $l = $locale === 'ru' ? 'ru' : 'uk';
+        $l = $locale;
         $fields = [];
         foreach ($form['fields'] as $name => $f) {
             if ($name === 'context') {
@@ -129,12 +129,12 @@ final class Applications
             }
             $options = [];
             foreach ($f['options'] as $value => $label) {
-                $options[] = ['value' => $value, 'label' => $label[$l]];
+                $options[] = ['value' => $value, 'label' => $label[$l] ?? $label['uk']];
             }
-            $fields[] = ['name' => $name, 'label' => $f['label'][$l], 'type' => $f['type'], 'required' => \in_array($name, $form['required'], true), 'options' => $options];
+            $fields[] = ['name' => $name, 'label' => $f['label'][$l] ?? $f['label']['uk'], 'type' => $f['type'], 'required' => \in_array($name, $form['required'], true), 'options' => $options];
         }
 
-        return ['key' => $key, 'title' => $form['title'][$l], 'consent' => $form['consent'], 'files' => $form['files'] !== null, 'required' => $form['required'], 'fields' => $fields];
+        return ['key' => $key, 'title' => $this->title($key, $locale), 'consent' => $form['consent'], 'files' => $form['files'] !== null, 'required' => $form['required'], 'fields' => $fields];
     }
 
     /**
@@ -147,6 +147,7 @@ final class Applications
     {
         $form = $this->forms[$key];
         $ru = $locale === 'ru';
+        $en = $locale === 'en';
         $in = $request->request;
         $base = [];
         foreach (self::BASE as $name => $max) {
@@ -174,30 +175,34 @@ final class Applications
         $error = null;
         foreach ($form['required'] as $r) {
             if ((isset(self::BASE[$r]) ? (string) $base[$r] : ($values[$r] ?? '')) === '') {
-                $label = isset(self::BASE[$r]) ? self::baseLabel($r, $ru) : $form['fields'][$r]['label'][$ru ? 'ru' : 'uk'];
-                $error = sprintf($ru ? 'Заполните поле «%s».' : 'Заповніть поле «%s».', $label);
+                $label = isset(self::BASE[$r]) ? self::baseLabel($r, $ru, $en) : ($form['fields'][$r]['label'][$locale] ?? $form['fields'][$r]['label']['uk']);
+                $error = sprintf($en ? 'Please fill in “%s”.' : ($ru ? 'Заполните поле «%s».' : 'Заповніть поле «%s».'), $label);
                 break;
             }
         }
         if ($error === null && $base['phone'] !== null) {
             $digits = preg_replace('/\D/', '', $base['phone']) ?? '';
             if (\strlen($digits) < 9 || \strlen($digits) > 15) {
-                $error = $ru ? 'Проверьте номер телефона.' : 'Перевірте номер телефону.';
+                $error = $en ? 'Please check your phone number.' : ($ru ? 'Проверьте номер телефона.' : 'Перевірте номер телефону.');
             }
         }
         if ($error === null && $base['email'] !== null && filter_var($base['email'], \FILTER_VALIDATE_EMAIL) === false) {
-            $error = $ru ? 'Проверьте email.' : 'Перевірте email.';
+            $error = $en ? 'Please check your email address.' : ($ru ? 'Проверьте email.' : 'Перевірте email.');
         }
         $consent = filter_var($in->get('consent', false), \FILTER_VALIDATE_BOOLEAN);
         if ($error === null && $form['consent'] && !$consent) {
-            $error = $ru ? 'Нужно согласие на обработку персональных данных.' : 'Потрібна згода на обробку персональних даних.';
+            $error = $en ? 'Please consent to the processing of your personal data.' : ($ru ? 'Нужно согласие на обработку персональных данных.' : 'Потрібна згода на обробку персональних даних.');
         }
 
         return ['error' => $error, 'name' => $base['name'], 'phone' => $base['phone'], 'email' => $base['email'], 'consent' => $consent, 'data' => $data];
     }
 
-    private static function baseLabel(string $name, bool $ru): string
+    private static function baseLabel(string $name, bool $ru, bool $en = false): string
     {
+        if ($en) {
+            return match ($name) { 'name' => 'Name', 'phone' => 'Phone', default => 'Email' };
+        }
+
         return match ($name) {
             'name' => $ru ? 'Имя' : "Ім'я",
             'phone' => 'Телефон',
@@ -205,7 +210,7 @@ final class Applications
         };
     }
 
-    /** @return array{uk: string, ru: string} */
+    /** @return array<string, string> */
     private static function label(mixed $label, string $fallback): array
     {
         if (\is_string($label) && $label !== '') {
@@ -215,7 +220,14 @@ final class Applications
         $ru = \is_array($label) ? (string) ($label['ru'] ?? '') : '';
         $uk = $uk !== '' ? $uk : $fallback;
 
-        return ['uk' => $uk, 'ru' => $ru !== '' ? $ru : $uk];
+        $out = ['uk' => $uk, 'ru' => $ru !== '' ? $ru : $uk];
+        foreach (\is_array($label) ? $label : [] as $locale => $value) {
+            if (\is_string($locale) && preg_match('/^[a-z]{2}$/', $locale) && \is_string($value) && $value !== '') {
+                $out[$locale] = $value;
+            }
+        }
+
+        return $out;
     }
 
     private static function line(mixed $value): ?string

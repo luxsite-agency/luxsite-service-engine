@@ -17,6 +17,7 @@ use App\Repository\ServicePostRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -62,8 +63,12 @@ final class SitemapController extends AbstractController
         }
 
         $entries = [];
-        $add = function (string $route, array $ukParams = [], ?array $ruParams = null, ?\DateTimeInterface $lastmod = null) use (&$entries): void {
-            $entries[] = $this->altUrls($route, $ukParams, $ruParams) + ['lastmod' => $lastmod];
+        // запис карти: URL сторінки мовами бренду (мова → URL) + lastmod; параметри, що різняться між мовами, — функцією від мови
+        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null) use (&$entries): void {
+            $urls = $this->altUrls($route, $params);
+            if ($urls !== []) {
+                $entries[] = ['urls' => $urls, 'lastmod' => $lastmod];
+            }
         };
 
         // lastmod беремо з даних сторінки, а не з дати деплою: інакше
@@ -72,7 +77,7 @@ final class SitemapController extends AbstractController
         $newest = static fn (?\DateTimeInterface $a, ?\DateTimeInterface $b): ?\DateTimeInterface
             => $a === null ? $b : ($b === null ? $a : ($a > $b ? $a : $b));
 
-        $add('sv_home', [], null, $city->getUpdatedAt());
+        $add('sv_home', [], $city->getUpdatedAt());
         $add('sv_services');
         // у схемах nested, root і slug у карті є й сторінки категорій
         // послуги, що надаються в цьому місті (sitemap — на хост міста); категорії без них — поза картою
@@ -87,14 +92,13 @@ final class SitemapController extends AbstractController
                 if (!$category->isLanding() || $category->isNoindex() || !isset($catsWithItems[$category->getId()])) {
                     continue; // не посадкова: noindex, у карті сайту їй не місце
                 }
-                $add('sv_category', ['category' => $category->slug('uk')], ['category' => $category->slug('ru')]);
+                $add('sv_category', static fn (string $l): array => ['category' => $category->slug($l)]);
             }
         }
         foreach ($siteItems as $item) {
             $add(
                 'sv_service',
-                $this->catalogUrls->itemParams($item, 'uk'),
-                $this->catalogUrls->itemParams($item, 'ru'),
+                fn (string $l): array => $this->catalogUrls->itemParams($item, $l),
                 $newest($item->getUpdatedAt(), $textDates[$item->getId()] ?? null),
             );
         }
@@ -104,29 +108,30 @@ final class SitemapController extends AbstractController
             $add('sv_districts');
         }
         foreach ($districts as $district) {
-            $add(
-                'sv_district',
-                ['slug' => $district->slug('uk')],
-                ['slug' => $district->slug('ru')],
-                $district->getUpdatedAt(),
-            );
+            $add('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)], $district->getUpdatedAt());
         }
         // Блогу може не бути зовсім - порожнього розділу в карті сайту не показуємо.
         // На міських хостах блог теж не показуємо: статті там ті самі, що на
         // апексі, і canonical веде саме туди. Карта має містити лише ті адреси,
         // які ми хочемо бачити в індексі.
-        $posts = $this->posts->findPublishedBySite($site);
+        // Усі статті, але адреси — лише мовами, у яких стаття існує (en може не мати uk-слага).
+        $posts = [];
+        $blogLocales = [];
+        foreach ($this->container->get(SiteLocales::class)->enabled($site) as $l) {
+            foreach ($this->posts->findPublishedBySite($site, 50, $l) as $post) {
+                $posts[(int) $post->getId()] = $post;
+                $blogLocales[$l] = true;
+            }
+        }
         $apex = $this->cities->findActiveApex($site);
         $blogBelongsHere = $apex === null || $apex->getId() === $city->getId();
         if ($posts !== [] && $blogBelongsHere) {
-            $add('sv_blog');
+            $add('sv_blog', static fn (string $l): ?array => isset($blogLocales[$l]) ? [] : null);
             foreach ($posts as $post) {
-                $add('sv_blog_post', ['slug' => $post->slug('uk')], ['slug' => $post->slug('ru')], $post->getPublishedAt());
+                $add('sv_blog_post', static fn (string $l): ?array => $post->existsIn($l) ? ['slug' => $post->slug($l)] : null, $post->getPublishedAt());
             }
         }
-        if ($site->getAboutUk() !== null) {
-            $add('sv_about');
-        }
+        $add('sv_about', static fn (string $l): ?array => $site->aboutFor($l) !== null || $city->aboutFor($l) !== null ? [] : null);
         // сторінки app.pages, видимі в цьому місті (своя карта на кожен хост, як у послуг)
         if ($this->getParameter('app.pages')) {
             foreach ($this->pages->findLiveBySite($site, $city) as $page) {
@@ -134,7 +139,7 @@ final class SitemapController extends AbstractController
                 if (!$page->isMapped()) {
                     continue;
                 }
-                $add('sv_page', ['path' => $page->path('uk')], ['path' => $page->path('ru')], $page->getUpdatedAt());
+                $add('sv_page', static fn (string $l): array => ['path' => $page->path($l)], $page->getUpdatedAt());
             }
         }
         // калькулятор є, де він наповнений (типи прибирання або позиції прайсу з in_calculator); адреса — дійсна для режиму
@@ -178,8 +183,7 @@ Disallow: /
             'Allow: /',
             'Disallow: /lead',
             'Disallow: /application/',
-            'Disallow: /thank-you/',
-            'Disallow: /ru/thank-you/',
+            ...array_map(fn (string $l): string => 'Disallow: ' . $this->generateUrl('sv_thanks', ['_locale' => $l]), $this->container->get(SiteLocales::class)->deployment()),
             'Disallow: /connect/',
             'Disallow: /login',
             '',

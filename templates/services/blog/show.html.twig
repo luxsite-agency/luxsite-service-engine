@@ -20,7 +20,7 @@
         'headline': post.loc('title', locale)|slice(0, 110),
         'url': altUrls[locale],
         'mainEntityOfPage': {'@type': 'WebPage', '@id': altUrls[locale]},
-        'inLanguage': locale == 'ru' ? 'ru-UA' : 'uk-UA',
+        'inLanguage': sv_locale_code(locale, 'schema'),
         'author': {'@type': 'Organization', 'name': site.name},
         'publisher': {
             '@type': 'Organization',

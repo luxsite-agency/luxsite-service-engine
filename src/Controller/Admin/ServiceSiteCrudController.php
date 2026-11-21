@@ -13,10 +13,12 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_ADMIN')]
@@ -25,8 +27,12 @@ class ServiceSiteCrudController extends AbstractCrudController
     use CancelActionTrait;
     use FieldHintTrait;
 
-    public function __construct(private readonly AdminBranding $branding)
-    {
+    /** @param list<string> $locales app.locales — мови розгортання */
+    public function __construct(
+        private readonly AdminBranding $branding,
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
     }
 
     public static function getEntityFqcn(): string
@@ -73,6 +79,10 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield TextField::new('schemaType', 'Schema.org тип')
             ->setHelp('Підтип LocalBusiness для JSON-LD: Electrician, Plumber, HouseCleaning…');
         yield BooleanField::new('active', 'Активний');
+        yield ChoiceField::new('locales', 'Мови сайту')->hideOnIndex()
+            ->setChoices(array_combine(array_map('strtoupper', $this->locales), $this->locales))
+            ->allowMultipleChoices()->renderExpanded()
+            ->setHelp(sprintf('Порожньо — усі мови розгортання (%s). Перша мова розгортання — без префікса в адресі; вимкнена мова → 404, без hreflang і sitemap.', implode(', ', $this->locales)));
         yield TextField::new('heroImagePath', 'Ілюстрація хіро')->hideOnIndex()
             ->setHelp('Шлях від кореня сайту, напр. /themes/<ключ-паку>/hero.webp; порожньо = без ілюстрації');
 
@@ -89,5 +99,17 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield TextEditorField::new('termsUk', 'Умови надання послуг uk')->hideOnIndex()
             ->setHelp('Порожньо - на /terms-of-service/ показується типовий текст рушія');
         yield TextEditorField::new('termsRu', 'Умови надання послуг ru')->hideOnIndex();
+
+        if (\in_array('en', $this->locales, true)) {
+            yield FormField::addFieldset('English');
+            yield TextField::new('brandNameEn', 'Коротка назва бренду en')->hideOnIndex();
+            yield TextField::new('aboutTitleEn', '«Про нас»: заголовок en')->hideOnIndex();
+            yield TextEditorField::new('aboutEn', '«Про нас»: текст en')->hideOnIndex()
+                ->setHelp('Порожньо — сторінки «Про нас» англійською нема (без фолбеку на uk).');
+            yield TextEditorField::new('privacyEn', 'Політика конфіденційності en')->hideOnIndex()
+                ->setHelp('Порожньо — типовий текст рушія англійською');
+            yield TextEditorField::new('termsEn', 'Умови en')->hideOnIndex()
+                ->setHelp('Порожньо — типовий текст рушія англійською');
+        }
     }
 }

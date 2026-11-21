@@ -12,6 +12,7 @@ use App\Repository\ServiceCityRepository;
 use App\Security\GoogleKeySource;
 use App\Security\GoogleOAuthClientFactory;
 use App\Security\GoogleOAuthCredentials;
+use App\ServiceSite\SiteLocales;
 use League\OAuth2\Client\Provider\Google;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -39,6 +40,7 @@ final class GoogleSignInPanel
         private readonly UrlGeneratorInterface $urls,
         private readonly TranslatorInterface $translator,
         #[Autowire(service: 'app.google_probe_http_client')] private readonly HttpClientInterface $http,
+        private readonly ?SiteLocales $locales = null,
     ) {
     }
 
@@ -49,7 +51,7 @@ final class GoogleSignInPanel
     {
         $resolved = $this->credentials->resolve($site);
         $callback = $this->path(GoogleOAuthClientFactory::CHECK_ROUTE, [], '/connect/google/check');
-        $reviews = $this->path('sv_reviews', ['_locale' => 'uk'], '/reviews/');
+        $reviews = $this->path('sv_reviews', ['_locale' => $this->locales?->default() ?? 'uk'], '/reviews/');
         $hosts = [];
         $try = null;
         foreach ($this->cities->findBy(['site' => $site], ['isApex' => 'DESC', 'id' => 'ASC']) as $city) {

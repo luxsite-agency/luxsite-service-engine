@@ -92,7 +92,7 @@ final class HtmlSitemap
         $posts = [];
         $apex = $this->cities->findActiveApex($site);
         if ($apex === null || $apex->getId() === $city->getId()) {
-            foreach ($this->posts->findPublishedBySite($site, 500) as $post) {
+            foreach ($this->posts->findPublishedBySite($site, 500, $locale) as $post) {
                 $posts[] = ['title' => (string) $post->loc('title', $locale), 'url' => $this->path('sv_blog_post', ['slug' => $post->slug($locale)], $locale)];
             }
         }
@@ -104,7 +104,7 @@ final class HtmlSitemap
         if ($this->calculator->isAvailable($site, $city)) {
             $fixed[] = ['title' => $this->t('nav.calculator', $locale), 'url' => $this->path('sv_calculator', [], $locale)];
         }
-        if ($site->getAboutUk() !== null) {
+        if ($site->aboutFor($locale) !== null || $city->aboutFor($locale) !== null) {
             $fixed[] = ['title' => $this->t('nav.about', $locale), 'url' => $this->path('sv_about', [], $locale)];
         }
         foreach (['sv_reviews' => 'nav.reviews', 'sv_faq' => 'nav.faq', 'sv_contacts' => 'nav.contacts'] as $route => $key) {

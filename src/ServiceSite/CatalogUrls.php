@@ -43,6 +43,8 @@ final class CatalogUrls
         private readonly string $blogPrefix = 'blog',
         #[Autowire('%app.calculator.path%')]
         private readonly mixed $calculatorPath = [],
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = LocalizedRoutes::DECLARED,
     ) {
     }
 
@@ -60,7 +62,7 @@ final class CatalogUrls
      */
     public function reservedSegments(): array
     {
-        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
+        return array_values(array_unique(array_filter([...self::RESERVED_SEGMENTS, ...$this->locales, $this->blogPrefix, CalculatorRoutes::firstSegment($this->calculatorPath)])));
     }
 
     /**
@@ -124,7 +126,7 @@ final class CatalogUrls
     public function itemSlugFromPath(string $path): ?string
     {
         $segments = array_values(array_filter(explode('/', $path), static fn (string $s): bool => $s !== ''));
-        if (($segments[0] ?? null) === 'ru') {
+        if (\in_array($segments[0] ?? null, \array_slice($this->locales, 1), true)) {
             array_shift($segments);
         }
         if ($this->categoriesAtRoot()) {
