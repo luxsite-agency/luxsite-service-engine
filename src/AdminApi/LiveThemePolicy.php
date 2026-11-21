@@ -43,6 +43,7 @@ final class LiveThemePolicy
         'absolute_url', 'asset', 'block', 'constant', 'csrf_token', 'cycle', 'date', 'html_classes', 'include', 'max', 'min', 'parent',
         'path', 'random', 'range', 'relative_path', 'url',
         // рушій сервісних сайтів
+        'lead_consent', 'lead_fields',
         // файли в заявці (app.lead_files): поле files[] і multipart у формах
         'lead_files',
         // форми анкет (app.applications)
@@ -89,6 +90,8 @@ final class LiveThemePolicy
         'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
         // форма анкети (application_form()): поля з конфігурації паку
         'title', 'consent', 'files', 'required', 'fields', 'type', 'options',
+        // поля форми заявки й згода (app.lead_fields, app.lead_consent; partials _lead_fields, _lead_consent)
+        'group', 'label_full', 'max', 'min', 'placeholder', 'policy_text', 'policy_url', 'selected', 'text',
         'a', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',
         'calcType', 'category', 'city', 'clarityId', 'colors', 'configured', 'consentBanner', 'consultation_cost', 'count', 'cssVars',
         'dirt_level', 'displayName', 'districts', 'email', 'experience', 'extraValue', 'filter', 'first', 'fleet', 'founder', 'get',
