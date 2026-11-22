@@ -4,6 +4,9 @@ parameters:
     # Ключ шифрування секретів налаштувань (Client Secret Google): 32 байти base64, лише shared/.env.local (600) на сервері.
     # bin/site deploy дописує його сам, якщо нема; вручну — bin/console app:secrets:keygen. Порожньо = секретні поля неактивні.
     env(SETTINGS_SECRET_KEY): ''
+    # Токен Cloudflare для TXT підтвердження Google Search Console (GoogleDnsVerification): лише Zone:Read + DNS:Edit,
+    # лише shared/.env.local (600). Порожньо = TXT додається вручну, адмінка показує точний рядок.
+    env(CLOUDFLARE_DNS_TOKEN): ''
 
 services:
     # HTTP-клієнт кнопки «Перевірити налаштування» (discovery/JWKS Google): короткий таймаут, без редиректів
@@ -11,6 +14,15 @@ services:
         class: Symfony\Contracts\HttpClient\HttpClientInterface
         factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
         arguments: [{ timeout: 5, max_redirects: 0 }]
+    # Cloudflare API (TXT підтвердження GSC) і DoH 1.1.1.1 («Перевірити в DNS»): короткий таймаут, без редиректів
+    app.cloudflare_http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments: [{ timeout: 10, max_duration: 20, max_redirects: 0 }]
+    app.doh_http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments: [{ timeout: 5, max_duration: 10, max_redirects: 0 }]
 
 when@test:
     services:
@@ -19,3 +31,12 @@ when@test:
         app.google_probe_http_client:
             class: Symfony\Component\HttpClient\MockHttpClient
             arguments: ['@App\Tests\Support\GoogleProbeMock']
+        # фейковий Cloudflare API і DoH (tests/Support/CloudflareFake.php): тест бачить кожен запит до API
+        App\Tests\Support\CloudflareFake:
+            public: true
+        app.cloudflare_http_client:
+            class: Symfony\Component\HttpClient\MockHttpClient
+            arguments: ['@App\Tests\Support\CloudflareFake']
+        app.doh_http_client:
+            class: Symfony\Component\HttpClient\MockHttpClient
+            arguments: ['@App\Tests\Support\CloudflareFake']
