@@ -19,7 +19,7 @@ import yaml
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,30}$")
 HOST_RE = re.compile(r"^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 SECRET_FILE_RE = re.compile(r"(^|/)(\.env(\..*)?|.*\.sql(\.gz)?|.*\.pem|id_rsa.*|id_ed25519.*|.*\.p12|\.secrets.*)$")
-SECRET_TEXT_RE = re.compile(r"mysql://[^:/\s]+:[^@/\s]{6,}@|(PIPEDRIVE_API_TOKEN|STUDIO_API_TOKEN|APP_SECRET|GOOGLE_CLIENT_SECRET)\s*[:=]\s*['\"]?[A-Za-z0-9_-]{12,}")
+SECRET_TEXT_RE = re.compile(r"mysql://[^:/\s]+:[^@/\s]{6,}@|(PIPEDRIVE_API_TOKEN|STUDIO_API_TOKEN|APP_SECRET|GOOGLE_CLIENT_SECRET|CLOUDFLARE_DNS_TOKEN)\s*[:=]\s*['\"]?[A-Za-z0-9_-]{12,}")
 TEXT_EXT = {".yaml", ".yml", ".md", ".json", ".txt", ".css", ".twig", ".html", ".svg", ".csv"}
 MAX_PACK_MB = 30
 MAX_FILE_MB = 5
@@ -163,7 +163,6 @@ RESERVED_SEGMENTS = {
     "services", "districts", "blog", "news", "about", "contacts", "faq", "reviews", "privacy-policy",
     "terms-of-service", "thank-you", "calculator-cleaning", "calculator", "lead", "sitemap.xml", "robots.txt",
     "ru", "uk", "en", "author", "feed", "api", "admin", "account", "connect", "login", "logout", "media", "theme-live", "bundles", "_",
-    "BingSiteAuth.xml",
 }
 
 
