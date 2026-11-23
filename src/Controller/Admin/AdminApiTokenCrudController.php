@@ -142,7 +142,7 @@ final class AdminApiTokenCrudController extends AbstractCrudController
                 $issued = $this->tokens->issue($user, $data['name'], $data['scopes'], $data['days'], $user);
                 // значення — один раз, через сесію (на сервері), на сторінці списку; у БД і логах його нема
                 $request->getSession()->set(self::SESSION_PLAIN, $issued->plain);
-                $this->addFlash('success', sprintf('Токен «%s» створено. Скопіюйте значення зараз — удруге воно не покажеться.', $issued->token->getName()));
+                $this->addFlash('success', sprintf('Токен «%s» створено. Скопіюйте значення зараз — удруге воно не покажеться.', htmlspecialchars($issued->token->getName(), \ENT_QUOTES))); // флеші EasyAdmin — |raw
 
                 return $this->redirect($this->indexUrl());
             } catch (\InvalidArgumentException $e) {
@@ -177,7 +177,7 @@ final class AdminApiTokenCrudController extends AbstractCrudController
             return $this->redirect($this->indexUrl());
         }
         $this->tokens->revoke($token, $user);
-        $this->addFlash('success', sprintf('Токен «%s» відкликано', $token->getName()));
+        $this->addFlash('success', sprintf('Токен «%s» відкликано', htmlspecialchars($token->getName(), \ENT_QUOTES))); // флеші EasyAdmin — |raw
 
         return $this->redirect($this->indexUrl());
     }

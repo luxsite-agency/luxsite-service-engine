@@ -37,6 +37,11 @@ final class SiteSettingKeys
     public const string CONSENT_BANNER = 'analytics.consent_banner';
     public const string GOOGLE_SITE_VERIFICATION = 'seo.google_site_verification';
     public const string BING_SITE_VERIFICATION = 'seo.bing_site_verification';
+    /**
+     * Підтвердження GSC ресурсом «Домен» через DNS TXT (власник 20.11.2026): значення google-site-verification, до п'яти
+     * через пробіл. TXT на апексі бренду ставить у Cloudflare GoogleDnsVerification при збереженні в адмінці.
+     */
+    public const string GOOGLE_DNS_VERIFICATION = 'seo.google_dns_verification';
     public const string HTML_HEAD = 'html.head';
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
@@ -59,6 +64,7 @@ final class SiteSettingKeys
         self::CONSENT_BANNER => ['type' => self::TYPE_BOOL, 'group' => 'analytics'],
         self::GOOGLE_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::BING_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
+        self::GOOGLE_DNS_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],
@@ -81,10 +87,17 @@ final class SiteSettingKeys
         self::FB_PIXEL_ID => '/^[0-9]{6,20}$/',
         self::GOOGLE_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
         self::BING_SITE_VERIFICATION => '/^[A-Za-z0-9_=-]{8,128}$/',
+        // значення TXT від Google, до п'яти через пробіл (normalize() приводить до цього виду); лапки, «;», HTML — ні
+        self::GOOGLE_DNS_VERIFICATION => '/^' . self::GOOGLE_DNS_VALUE . '(?: ' . self::GOOGLE_DNS_VALUE . '){0,' . (self::GOOGLE_DNS_MAX - 1) . '}$/D',
         self::ADMIN_TITLE => '/^[^\r\n<>]{1,64}$/u',
         // одна чи кілька адрес через кому
         self::APPLICATIONS_EMAIL => '/^[^\s@,<>]+@[^\s@,<>]+\.[a-z]{2,}(?:\s*,\s*[^\s@,<>]+@[^\s@,<>]+\.[a-z]{2,})*$/i',
     ];
+
+    /** Значення TXT підтвердження Google Search Console (після «google-site-verification=»). */
+    private const string GOOGLE_DNS_VALUE = '[A-Za-z0-9_-]{20,100}';
+    public const int GOOGLE_DNS_MAX = 5;
+    public const string GOOGLE_DNS_PREFIX = 'google-site-verification=';
 
     /** @return list<string> */
     public static function all(): array
@@ -162,6 +175,19 @@ final class SiteSettingKeys
     }
 
     /**
+     * Значення TXT підтвердження Google з налаштування; невалідне значення (правило змінилось, правка SQL) — жодного:
+     * у DNS не піде те, що адмінка не пропустила б.
+     *
+     * @return list<string>
+     */
+    public static function googleDnsValues(?string $value): array
+    {
+        $value = self::validValue(self::GOOGLE_DNS_VERIFICATION, $value);
+
+        return null === $value ? [] : explode(' ', $value);
+    }
+
+    /**
      * Що зберегти з того, що вставили: у поле id можна вставити цілий код від Google, Meta чи Microsoft — ідентифікатор
      * дістається звідти (як «Лічильник аналітики» міста). Не знайшлось — вводене як є, щоб валідація показала помилку
      * біля поля, а не порожнечу. HTML і секрети не чіпаються.
@@ -193,7 +219,29 @@ final class SiteSettingKeys
             self::FB_PIXEL_ID => $extract('/init["\']?\s*,\s*["\']([0-9]{6,20})["\']/') ?? $extract('/[?&]id=([0-9]{6,20})/') ?? $value,
             // <meta name="google-site-verification" content="…"> → значення content
             self::GOOGLE_SITE_VERIFICATION, self::BING_SITE_VERIFICATION => $extract('/content\s*=\s*["\']([^"\']+)["\']/i') ?? $value,
+            self::GOOGLE_DNS_VERIFICATION => self::normalizeGoogleDns($value),
             default => $value,
         };
+    }
+
+    /**
+     * Значення через пробіл, кому чи перенос; рядок TXT цілком («google-site-verification=…», зокрема в лапках) → лише
+     * значення; дублі — один раз. Решта лишається як є, щоб валідація показала помилку біля поля.
+     */
+    private static function normalizeGoogleDns(string $value): string
+    {
+        $values = [];
+        foreach (preg_split('/[\s,;]+/', $value, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+            $token = trim($token, '"\'');
+            // лише префікс без значення лишається як є — помилка біля поля, а не тихе «не задано»
+            if (0 === stripos($token, self::GOOGLE_DNS_PREFIX) && \strlen($token) > \strlen(self::GOOGLE_DNS_PREFIX)) {
+                $token = substr($token, \strlen(self::GOOGLE_DNS_PREFIX));
+            }
+            if ('' !== $token) {
+                $values[$token] = true;
+            }
+        }
+
+        return implode(' ', array_map('strval', array_keys($values)));
     }
 }
