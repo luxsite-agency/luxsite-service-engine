@@ -94,6 +94,7 @@ class ServiceItem implements TimestampableInterface
 
     #[ORM\Column(length: 160, nullable: true)]
     #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    #[Assert\Length(max: 160, maxMessage: 'Слаг — не довше {{ limit }} символів.')]
     private ?string $slugEn = null;
 
     #[ORM\Column(length: 160, nullable: true)]

@@ -92,7 +92,7 @@ class ServicePageCrudController extends AbstractCrudController
     {
         if ($entityInstance instanceof ServicePage && !$entityInstance->getChildren()->isEmpty()) {
             $this->addFlash('danger', sprintf('Сторінку «%s» не видалено: у неї є дочірні (%d). Спершу перенесіть або видаліть їх.',
-                $entityInstance->getTitleUk(), $entityInstance->getChildren()->count()));
+                htmlspecialchars((string) $entityInstance->getTitleUk(), \ENT_QUOTES), $entityInstance->getChildren()->count())); // флеші EasyAdmin — |raw
 
             return;
         }

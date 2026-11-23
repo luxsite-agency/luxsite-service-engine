@@ -27,6 +27,8 @@ final class SiteSettingKeysTest extends TestCase
         yield 'Pixel: цілий код' => [K::FB_PIXEL_ID, "fbq('init', '1234567890123');\nfbq('track', 'PageView');", '1234567890123'];
         yield 'Pixel: noscript' => [K::FB_PIXEL_ID, '<img src="https://www.facebook.com/tr?id=1234567890123&ev=PageView&noscript=1"/>', '1234567890123'];
         yield 'GSC: мета-тег' => [K::GOOGLE_SITE_VERIFICATION, '<meta name="google-site-verification" content="AbCdEf_123-xyz=" />', 'AbCdEf_123-xyz='];
+        yield 'GSC DNS: рядок TXT цілком' => [K::GOOGLE_DNS_VERIFICATION, 'google-site-verification=abcDEF_123-xyzxyzxyzxyz', 'abcDEF_123-xyzxyzxyzxyz'];
+        yield 'GSC DNS: у лапках, кілька, дублі' => [K::GOOGLE_DNS_VERIFICATION, "\"google-site-verification=abcDEF_123-xyzxyzxyzxyz\"\n abcDEF_123-xyzxyzxyzxyz, Zz9_-aaaaaaaaaaaaaaaaaaaa", 'abcDEF_123-xyzxyzxyzxyz Zz9_-aaaaaaaaaaaaaaaaaaaa'];
         yield 'порожнє → null' => [K::GTM_CONTAINER_ID, '   ', null];
         yield 'HTML як є' => [K::HTML_HEAD, " <script>x()</script>\n", " <script>x()</script>\n"];
     }
@@ -46,6 +48,21 @@ final class SiteSettingKeysTest extends TestCase
         self::assertFalse(K::isValidValue(K::GA4_MEASUREMENT_ID, "G-ABC123'"));
         self::assertFalse(K::isValidValue(K::FB_PIXEL_ID, '12ab'));
         self::assertFalse(K::isValidValue(K::ADMIN_TITLE, "Назва\nз переносом"));
+        // підтвердження GSC через DNS TXT: значення 20–100 символів [A-Za-z0-9_-], до п'яти
+        self::assertTrue(K::isValidValue(K::GOOGLE_DNS_VERIFICATION, 'abcDEF_123-xyzxyzxyzxyz'));
+        self::assertTrue(K::isValidValue(K::GOOGLE_DNS_VERIFICATION, str_repeat('a', 100)));
+        $five = implode(' ', array_map(static fn (int $i): string => 'abcDEF_123-xyzxyzxyz' . $i, range(1, 5)));
+        self::assertTrue(K::isValidValue(K::GOOGLE_DNS_VERIFICATION, $five));
+        self::assertFalse(K::isValidValue(K::GOOGLE_DNS_VERIFICATION, $five . ' abcDEF_123-xyzxyzxyz6'), 'шосте — забагато');
+        foreach (['<script>alert(1)</script>', 'abcde', str_repeat('a', 101), 'abcDEF_123-xyzxyzxyz.z', 'abcDEF_123-xyzxyzxyz"; rm', 'google-site-verification='] as $bad) {
+            self::assertFalse(K::isValidValue(K::GOOGLE_DNS_VERIFICATION, K::normalize(K::GOOGLE_DNS_VERIFICATION, $bad)), $bad);
+        }
+        self::assertSame(['abcDEF_123-xyzxyzxyzxyz', 'Zz9_-aaaaaaaaaaaaaaaaaaaa'], K::googleDnsValues('abcDEF_123-xyzxyzxyzxyz Zz9_-aaaaaaaaaaaaaaaaaaaa'));
+        self::assertSame([], K::googleDnsValues('abcDEF_123-xyzxyzxyzxyz <x>'), 'невалідне в БД — жодного');
+        self::assertSame([], K::googleDnsValues(null));
+        // файлів підтвердження більше нема
+        self::assertFalse(K::isKnown('seo.google_verification_files'));
+        self::assertFalse(K::isKnown('seo.bing_site_auth'));
         self::assertFalse(K::isValidValue(K::ADMIN_TITLE, '<b>HTML</b>'));
         self::assertTrue(K::isValidValue(K::ADMIN_TITLE, 'Назва адмінки'));
         self::assertNull(K::validValue(K::GTM_CONTAINER_ID, 'nonsense'));
