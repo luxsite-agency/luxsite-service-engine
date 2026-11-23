@@ -21,7 +21,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -140,13 +139,13 @@ class ServicePostCrudController extends AbstractCrudController
         }
         // статті довгі - редактору потрібна повна ширина; ru одразу під uk
         yield FormField::addFieldset('Текст статті');
-        yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
+        yield HtmlField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
             ->setHelp('Текст статті.');
         if ($this->has('ru')) {
-            yield TextEditorField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
+            yield HtmlField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
         }
         if ($this->has('en')) {
-            yield TextEditorField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12);
+            yield HtmlField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12);
         }
 
         if ($this->customFields->has('post')) {

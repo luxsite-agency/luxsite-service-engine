@@ -25,7 +25,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -179,12 +178,12 @@ class ServicePageCrudController extends AbstractCrudController
             yield TextareaField::new('leadEn', 'Вступ en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
         yield TextareaField::new('leadRu', 'Вступ ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
+        yield HtmlField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
             ->setHelp('Основний текст сторінки.');
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12)->setRequired(false);
+            yield HtmlField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12)->setRequired(false);
         }
-        yield TextEditorField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
+        yield HtmlField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
 
         yield FormField::addTab('Галерея', 'fa fa-images');
         yield CollectionField::new('images', 'Зображення')->hideOnIndex()->setColumns(12)
