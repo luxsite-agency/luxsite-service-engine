@@ -76,6 +76,13 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $processed = false;
 
+    /**
+     * Причина, з якої LeadSpamGuard визнав заявку спамом (honeypot, too-fast, url:message…); null — звичайна заявка.
+     * Спам не йде в пошту й CRM, не рахується конверсією; в адмінці — бейдж, фільтр «Спам» і дія «Не спам».
+     */
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $spamReason = null;
+
     // - Джерело переходу: заповнюється прихованими полями форми -
 
     #[ORM\Column(length: 128, nullable: true)]
@@ -278,6 +285,23 @@ class ServiceLead implements TimestampableInterface
         $this->processed = $processed;
 
         return $this;
+    }
+
+    public function getSpamReason(): ?string
+    {
+        return $this->spamReason;
+    }
+
+    public function setSpamReason(?string $spamReason): self
+    {
+        $this->spamReason = $spamReason;
+
+        return $this;
+    }
+
+    public function isSpam(): bool
+    {
+        return $this->spamReason !== null;
     }
 
     public function getUtmSource(): ?string

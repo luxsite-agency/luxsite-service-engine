@@ -26,9 +26,10 @@ use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CalculatorRoutes;
 use App\ServiceSite\PricelistCalc;
 use App\ServiceSite\CatalogUrls;
-use App\ServiceSite\LeadNotifier;
-use App\ServiceSite\Crm\LeadCrmConnector;
+use App\ServiceSite\LeadDispatcher;
 use App\ServiceSite\LeadRateLimit;
+use App\ServiceSite\LeadSpamGuard;
+use App\ServiceSite\LeadSpamRecorder;
 use App\ServiceSite\ServiceCityAware;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -60,11 +61,12 @@ final class CalculatorController extends AbstractController
         private readonly ServiceDistrictRepository $districts,
         private readonly CalcPricer $pricer,
         private readonly EntityManagerInterface $em,
-        private readonly LeadNotifier $notifier,
+        private readonly LeadDispatcher $dispatcher,
         private readonly LeadAttribution $attribution,
-        private readonly LeadCrmConnector $crm,
         private readonly TranslatorInterface $translator,
         private readonly LeadRateLimit $rateLimit,
+        private readonly LeadSpamGuard $spamGuard,
+        private readonly LeadSpamRecorder $spam,
         private readonly CatalogUrls $catalogUrls,
         private readonly ServiceLeadRepository $leads,
         private readonly CalculatorAvailability $availability,
@@ -179,9 +181,17 @@ final class CalculatorController extends AbstractController
             return $this->redirect($back);
         }
 
-        // honeypot: приховане поле, яке заповнюють лише боти
-        if ((string) $request->request->get('website', '') !== '') {
-            return $this->redirect($back);
+        // honeypot, мітка часу показу форми, сміття в полях, телефон, Turnstile - див. LeadSpamGuard. Спам зберігається зі
+        // spam_reason без розрахунку (LeadSpamRecorder); відповідь — як у LeadController::spamResponse
+        if (null !== $reason = $this->spamGuard->blockReason($request, $locale)) {
+            $this->spam->record($request, $city, $reason, 'calculator', $sourceUrl, $locale);
+            if (LeadSpamGuard::isRetryReason($reason)) {
+                $this->addFlash('lead_error', str_starts_with($reason, 'phone') ? 'Перевірте номер телефону.' : 'Не вдалося надіслати, спробуйте ще раз.');
+
+                return $this->redirect($back);
+            }
+
+            return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'ok']);
         }
 
         if (!$this->rateLimit->isAccepted($request)) {
@@ -192,8 +202,8 @@ final class CalculatorController extends AbstractController
 
         $phone = trim((string) $request->request->get('phone', ''));
         $name = trim((string) $request->request->get('name', ''));
-        $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
-        if (\strlen($phoneDigits) < 9 || \strlen($phoneDigits) > 15 || mb_strlen($name) > 128) {
+        // мінімум цифр у номері перевіряє LeadSpamGuard (app.lead_spam.phone_min_digits)
+        if (\strlen(preg_replace('/\D/', '', $phone) ?? '') > 15 || mb_strlen($name) > 128) {
             $this->addFlash('lead_error', 'Перевірте номер телефону.');
 
             return $this->redirect($back);
@@ -201,7 +211,7 @@ final class CalculatorController extends AbstractController
 
         // подвійне натискання: заявка з цим номером у місті вже є - другу не створюємо
         // (та сама логіка, що в LeadController; src=dup не рахує конверсію вдруге)
-        if ($this->leads->findRecentDuplicate($city, $phone, LeadController::DUPLICATE_WINDOW) !== null) {
+        if ($this->leads->findRecentDuplicate($city, $phone, $this->spamGuard->dedupSeconds()) !== null) {
             return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'dup']);
         }
 
@@ -276,9 +286,8 @@ final class CalculatorController extends AbstractController
         $this->em->persist($lead);
         $this->em->flush();
 
-        $this->notifier->notify($lead, 'Заявка з калькулятора', $request->getHost());
-        // CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
-        $this->crm->push($lead);
+        // лист менеджерам міста і CRM сайту (app.crm): best effort, помилку конектор пише в заявку, добере app:crm:sync
+        $this->dispatcher->dispatch($lead, 'Заявка з калькулятора', $request->getHost());
 
         return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'calc']);
     }

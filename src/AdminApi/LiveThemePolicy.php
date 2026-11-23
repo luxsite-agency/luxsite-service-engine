@@ -50,6 +50,8 @@ final class LiveThemePolicy
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',
+        // мітка часу форм заявки (LeadSpamGuard, приховане поле _ft) і віджет Cloudflare Turnstile (app.lead_spam.turnstile)
+        'lead_form_ts', 'lead_turnstile',
     ];
 
     /** Тести. Поза списком: constant. */
@@ -85,8 +87,8 @@ final class LiveThemePolicy
      * Масиви з таким ключем — x['token'], x['parent'] (ARRAY_CALL на об'єкті без ArrayAccess методів не викликає).
      */
     public const array ATTRIBUTES = [
-        // форма заявки з файлами (lead_files())
-        'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
+        // форма заявки з файлами (lead_files()) і Turnstile (lead_turnstile())
+        'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb', 'site_key',
         // форма анкети (application_form()): поля з конфігурації паку
         'title', 'consent', 'files', 'required', 'fields', 'type', 'options',
         'a', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',

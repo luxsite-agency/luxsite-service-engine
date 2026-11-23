@@ -58,6 +58,8 @@ class CrmSyncCommand
             ->where('l.crmExternalId IS NULL')
             // оброблені вручну назад у CRM не тягнемо
             ->andWhere('l.processed = false')
+            // спам (LeadSpamGuard) у CRM не йде; «Не спам» в адмінці відправляє його сам
+            ->andWhere('l.spamReason IS NULL')
             ->andWhere('l.createdAt >= :since')
             // щойно створені відправляє сам запит форми; крон бере їх лише за 2 хв, щоб не поїхали двічі
             ->andWhere('l.createdAt <= :fresh')

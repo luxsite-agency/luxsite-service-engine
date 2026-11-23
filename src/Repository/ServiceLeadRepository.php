@@ -26,7 +26,8 @@ class ServiceLeadRepository extends ServiceEntityRepository
      * Остання заявка з тим самим номером у місті за вікно часу. Номер порівнюємо
      * за останніми 9 цифрами: «0937593844» і «380937593844» - одна людина.
      * Захищає від подвійного натискання й повторної відправки після «назад»
-     * (на першому сайті було по дві однакові заявки з інтервалом 1-3 с).
+     * (на першому сайті було по дві однакові заявки з інтервалом 1-3 с). Спам-записи
+     * (spam_reason) дублем не вважаються: після «спробуйте ще раз» повтор людини має пройти.
      */
     public function findRecentDuplicate(ServiceCity $city, string $phone, int $seconds): ?ServiceLead
     {
@@ -39,6 +40,7 @@ class ServiceLeadRepository extends ServiceEntityRepository
         $candidates = $this->createQueryBuilder('l')
             ->andWhere('l.city = :city')
             ->andWhere('l.createdAt >= :since')
+            ->andWhere('l.spamReason IS NULL')
             ->setParameter('city', $city)
             ->setParameter('since', new \DateTimeImmutable(sprintf('-%d seconds', $seconds)))
             ->orderBy('l.id', 'DESC')
