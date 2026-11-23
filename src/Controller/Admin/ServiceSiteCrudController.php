@@ -16,7 +16,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -89,26 +88,26 @@ class ServiceSiteCrudController extends AbstractCrudController
         yield FormField::addFieldset('Сторінка «Про нас»');
         yield TextField::new('aboutTitleUk', 'Заголовок uk')->hideOnIndex();
         yield TextField::new('aboutTitleRu', 'Заголовок ru')->hideOnIndex();
-        yield TextEditorField::new('aboutUk', 'Текст uk')->hideOnIndex();
-        yield TextEditorField::new('aboutRu', 'Текст ru')->hideOnIndex();
+        yield HtmlField::new('aboutUk', 'Текст uk')->hideOnIndex();
+        yield HtmlField::new('aboutRu', 'Текст ru')->hideOnIndex();
 
         yield FormField::addFieldset('Юридичні сторінки');
-        yield TextEditorField::new('privacyUk', 'Політика конфіденційності uk')->hideOnIndex()
+        yield HtmlField::new('privacyUk', 'Політика конфіденційності uk')->hideOnIndex()
             ->setHelp('Порожньо - на /privacy-policy/ показується типовий текст рушія');
-        yield TextEditorField::new('privacyRu', 'Політика конфіденційності ru')->hideOnIndex();
-        yield TextEditorField::new('termsUk', 'Умови надання послуг uk')->hideOnIndex()
+        yield HtmlField::new('privacyRu', 'Політика конфіденційності ru')->hideOnIndex();
+        yield HtmlField::new('termsUk', 'Умови надання послуг uk')->hideOnIndex()
             ->setHelp('Порожньо - на /terms-of-service/ показується типовий текст рушія');
-        yield TextEditorField::new('termsRu', 'Умови надання послуг ru')->hideOnIndex();
+        yield HtmlField::new('termsRu', 'Умови надання послуг ru')->hideOnIndex();
 
         if (\in_array('en', $this->locales, true)) {
             yield FormField::addFieldset('English');
             yield TextField::new('brandNameEn', 'Коротка назва бренду en')->hideOnIndex();
             yield TextField::new('aboutTitleEn', '«Про нас»: заголовок en')->hideOnIndex();
-            yield TextEditorField::new('aboutEn', '«Про нас»: текст en')->hideOnIndex()
+            yield HtmlField::new('aboutEn', '«Про нас»: текст en')->hideOnIndex()
                 ->setHelp('Порожньо — сторінки «Про нас» англійською нема (без фолбеку на uk).');
-            yield TextEditorField::new('privacyEn', 'Політика конфіденційності en')->hideOnIndex()
+            yield HtmlField::new('privacyEn', 'Політика конфіденційності en')->hideOnIndex()
                 ->setHelp('Порожньо — типовий текст рушія англійською');
-            yield TextEditorField::new('termsEn', 'Умови en')->hideOnIndex()
+            yield HtmlField::new('termsEn', 'Умови en')->hideOnIndex()
                 ->setHelp('Порожньо — типовий текст рушія англійською');
         }
     }
