@@ -1,0 +1,24 @@
+# Правила тестування (bin/test-gate.py): код без тестів, тести без перевірки наслідку, fix-гілка без нового тесту.
+# Та сама перевірка, що в pre-push хуку; виняток — рядок коміту «Tests: none — причина».
+# З прапорцем --advisory порушення видно анотацією, PR не блокується; без нього job падає.
+name: test-gate
+
+on:
+  pull_request:
+
+jobs:
+  test-gate:
+    runs-on: ubuntu-latest
+    env:
+      PR_BASE: origin/${{ github.base_ref }}
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_BRANCH: ${{ github.head_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Тести самої перевірки
+        run: python3 -m unittest discover -s tests/tools
+      - name: bin/test-gate.py check
+        run: python3 bin/test-gate.py check --advisory --base "$PR_BASE" --head "$PR_HEAD" --branch "$PR_BRANCH"
