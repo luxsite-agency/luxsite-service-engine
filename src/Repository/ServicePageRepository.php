@@ -25,7 +25,7 @@ class ServicePageRepository extends ServiceEntityRepository
 
     /**
      * Активна сторінка за шляхом адреси без слешів по краях («vakansii», «vakansii/likar») у мові $locale: останній
-     * сегмент — слаг сторінки, перший (якщо є) — слаг її батька; батько теж активний. Для ru порожній slugRu =
+     * сегмент — слаг сторінки, перший (якщо є) — слаг її батька; батько теж активний. Для ru і en порожній slugRu/slugEn =
      * «використовується uk-слаг» (як у послуг). Місто тут не перевіряється — це робить контролер (404).
      */
     public function findOneActiveByPath(ServiceSite $site, string $path, string $locale): ?ServicePage
@@ -35,9 +35,11 @@ class ServicePageRepository extends ServiceEntityRepository
             return null;
         }
         $slug = (string) end($segments);
-        $condition = $locale === 'ru'
-            ? '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))'
-            : 'p.slugUk = :slug';
+        $condition = match ($locale) {
+            'ru' => '(p.slugRu = :slug OR (p.slugRu IS NULL AND p.slugUk = :slug))',
+            'en' => '(p.slugEn = :slug OR (p.slugEn IS NULL AND p.slugUk = :slug))',
+            default => 'p.slugUk = :slug',
+        };
         /** @var list<ServicePage> $candidates */
         $candidates = $this->createQueryBuilder('p')
             ->addSelect('parent')

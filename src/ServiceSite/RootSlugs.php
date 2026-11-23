@@ -65,7 +65,7 @@ final class RootSlugs implements ResetInterface
         if (!$site instanceof ServiceSite) {
             return false;
         }
-        $locale = ($params['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = \in_array($params['_locale'] ?? 'uk', ['ru', 'en'], true) ? $params['_locale'] : 'uk';
 
         return match ($kind) {
             'item' => $this->item($site, (string) ($params['slug'] ?? ''), $locale) !== null,

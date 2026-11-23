@@ -32,6 +32,7 @@ use Vich\UploaderBundle\Mapping\Attribute as Vich;
 #[ORM\Table(name: 'service_page')]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_uk', columns: ['site_id', 'slug_uk'])]
 #[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_ru', columns: ['site_id', 'slug_ru'])]
+#[ORM\UniqueConstraint(name: 'uniq_svc_page_site_slug_en', columns: ['site_id', 'slug_en'])]
 #[ORM\Index(columns: ['site_id', 'active', 'position'], name: 'idx_svc_page_site_active')]
 #[Vich\Uploadable]
 class ServicePage implements TimestampableInterface
@@ -89,12 +90,19 @@ class ServicePage implements TimestampableInterface
     #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс (vakansii).')]
     private ?string $slugRu = null;
 
+    #[ORM\Column(length: 160, nullable: true)]
+    #[Assert\Regex(pattern: self::SLUG_PATTERN, message: 'Слаг — лише латиниця в нижньому регістрі, цифри й дефіс.')]
+    private ?string $slugEn = null;
+
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank(message: 'Заголовок uk обовʼязковий.')]
     private string $titleUk = '';
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
 
     /** Вступ під H1 (простий текст), він же meta description, якщо своєї нема */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -104,10 +112,16 @@ class ServicePage implements TimestampableInterface
     private ?string $leadRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $leadEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
@@ -115,11 +129,17 @@ class ServicePage implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
 
     /** Порядок серед сторінок одного батька і в футері */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
@@ -487,7 +507,21 @@ class ServicePage implements TimestampableInterface
         return $this;
     }
 
-    /** Слаг за локаллю з фолбеком ru→uk */
+    /**
+     * Поле за локаллю. en на сторінці каталогу має фолбек на uk (як ru): англомовний сайт без англійського тексту не
+     * віддає порожню сторінку. SEO-поля metaTitle/metaDesc фолбеку не мають (їх замінює шаблонний дефолт мовою сторінки).
+     */
+    public function loc(string $property, string $locale): mixed
+    {
+        $value = $this->locRaw($property, $locale);
+        if ($locale !== 'uk' && ($value === null || $value === '' || $value === []) && $this->locFallsBack($property)) {
+            return $this->locRaw($property, 'uk');
+        }
+
+        return $value;
+    }
+
+    /** Слаг за локаллю: порожній ru/en → uk-слаг (без цього маршрут sv_page отримує порожній path) */
     public function slug(string $locale): string
     {
         return (string) $this->loc('slug', $locale);
@@ -497,6 +531,78 @@ class ServicePage implements TimestampableInterface
     public function path(string $locale): string
     {
         return $this->parent !== null ? $this->parent->slug($locale) . '/' . $this->slug($locale) : $this->slug($locale);
+    }
+
+    public function getSlugEn(): ?string
+    {
+        return $this->slugEn;
+    }
+
+    public function setSlugEn(?string $slugEn): self
+    {
+        $this->slugEn = $slugEn === null || trim($slugEn) === '' ? null : $slugEn;
+
+        return $this;
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn === null || trim($titleEn) === '' ? null : $titleEn;
+
+        return $this;
+    }
+
+    public function getLeadEn(): ?string
+    {
+        return $this->leadEn;
+    }
+
+    public function setLeadEn(?string $leadEn): self
+    {
+        $this->leadEn = $leadEn === null || trim($leadEn) === '' ? null : $leadEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn === null || trim($descEn) === '' ? null : $descEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn === null || trim($metaTitleEn) === '' ? null : $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn === null || trim($metaDescEn) === '' ? null : $metaDescEn;
+
+        return $this;
     }
 
     public function __toString(): string

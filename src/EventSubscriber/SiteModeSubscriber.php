@@ -28,7 +28,7 @@ final class SiteModeSubscriber implements EventSubscriberInterface
     public const CONTENT_ROUTES = [
         'sv_home', 'sv_blog', 'sv_blog_page', 'sv_blog_post', 'sv_blog_category', 'sv_blog_category_page', 'sv_blog_category_root', 'sv_blog_category_root_page', 'sv_blog_tag', 'sv_blog_tag_page', 'sv_author',
         'sv_feed', 'sv_blog_category_feed', 'sv_blog_category_root_feed',
-        'sv_about', 'sv_contacts', 'sv_thanks', 'sv_privacy', 'sv_terms', 'sv_sitemap', 'sv_robots', 'sv_lead',
+        'sv_about', 'sv_contacts', 'sv_thanks', 'sv_privacy', 'sv_terms', 'sv_sitemap', 'sv_robots', 'sv_lead', 'sv_page',
     ];
 
     /** Маршрути лише для контентного сайту */

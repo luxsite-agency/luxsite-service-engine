@@ -73,6 +73,12 @@ class ServiceLeadCrudController extends AbstractCrudController
                 'Текст із форми або розрахунок калькулятора: тип, площа, коефіцієнти, опції, сума. Суму '
                 . 'рахує сервер, з форми вона не приймається.'
             );
+        yield TextField::new('service', 'Послуга')->hideOnIndex();
+        yield TextField::new('townZip', 'Місто / ZIP')->hideOnIndex();
+        yield TextField::new('timeline', 'Терміни')->hideOnIndex();
+        yield BooleanField::new('ownerOccupied', 'Власник житла')->hideOnIndex();
+        yield BooleanField::new('consent', 'Згода на передачу контакту')->hideOnIndex();
+        yield TextField::new('context', 'Звідки (блок, кнопка)')->hideOnIndex();
         yield TextField::new('pageUrl', 'Сторінка')->hideOnIndex()
             ->setHelp('Сторінка, з якої надіслали заявку. Показує, що саме людина читала перед зверненням.');
         yield TextField::new('locale', 'Мова')->hideOnIndex()
