@@ -52,13 +52,19 @@ trait ServiceCityAware
      * функцією від мови: fn (string $l) => ['slug' => $post->slug($l)].
      *
      * @param array<string, string>|\Closure(string): (array<string, string>|null) $params null — сторінки цією мовою немає
+     * @param object|null $content запис сторінки (послуга, категорія, район, сторінка): мови, якими його нема, пропускаються
      *
      * @return array<string, string>
      */
-    private function altUrls(string $route, array|\Closure $params = []): array
+    private function altUrls(string $route, array|\Closure $params = [], ?object $content = null): array
     {
         $urls = [];
-        foreach ($this->container->get(SiteLocales::class)->enabled() as $locale) {
+        $locales = $this->container->get(SiteLocales::class);
+        foreach ($locales->enabled() as $locale) {
+            // запис без перекладу цією мовою (en без англійських полів) — без адреси, hreflang і пункту перемикача
+            if ($content !== null && !$locales->has($content, $locale)) {
+                continue;
+            }
             $p = $params instanceof \Closure ? $params($locale) : $params;
             if ($p === null) {
                 continue;
@@ -67,6 +73,14 @@ trait ServiceCityAware
         }
 
         return $urls;
+    }
+
+    /** 404, якщо запису нема мовою запиту (en без англійських полів у розгортанні, де en не основна) */
+    private function requireInLocale(object $content, string $locale): void
+    {
+        if (!$this->container->get(SiteLocales::class)->has($content, $locale)) {
+            throw $this->createNotFoundException('Сторінки цією мовою нема.');
+        }
     }
 
     /**

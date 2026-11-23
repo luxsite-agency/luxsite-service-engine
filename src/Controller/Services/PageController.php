@@ -11,6 +11,7 @@ use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceTeamMemberRepository;
 use App\ServiceSite\ServiceCityAware;
+use App\ServiceSite\SiteLocales;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -167,12 +168,18 @@ final class PageController extends AbstractController
         // текст однаковий на всіх хостах: на неапексних містах — noindex, follow (пак: app.legal_noindex_cities). Заголовок
         // X-Robots-Tag — щоб працювало й з паком/живою темою, що перекриває base.html.twig без pageNoindex.
         $noindex = $this->legalNoindex($city);
+        // en у [uk, ru, en] без власного тексту бренду — 404: типовий текст рушія лише uk/ru
+        $locales = $this->container->get(SiteLocales::class);
+        if ($locales->legalLocale($site, $field, $request->getLocale()) === null) {
+            throw $this->createNotFoundException('Сторінки цією мовою нема.');
+        }
+        $legalUrls = $this->altUrls($route, static fn (string $l): ?array => $locales->legalLocale($site, $field, $l) !== null ? [] : null);
         $text = $site->loc($field, $request->getLocale());
         if ($text === null || trim($text) === '') {
             $response = $this->render('services/page/' . $field . '.html.twig', [
                 'site' => $site,
                 'city' => $city,
-                'altUrls' => $this->altUrls($route),
+                'altUrls' => $legalUrls,
                 'pageNoindex' => $noindex,
             ]);
         } else {
@@ -181,7 +188,7 @@ final class PageController extends AbstractController
                 'city' => $city,
                 'heading' => 'nav.' . $field,
                 'text' => $text,
-                'altUrls' => $this->altUrls($route),
+                'altUrls' => $legalUrls,
                 'pageNoindex' => $noindex,
             ]);
         }
