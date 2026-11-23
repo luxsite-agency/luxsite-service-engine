@@ -323,7 +323,10 @@ do_deploy() {
     if [ "$RUNTIME" = docker ]; then
         # контейнери стартують із нового релізу (./ → /app); vendor і var — спільні томи проєкту
         COMPOSE_REL="$rel"
-        run compose up -d --build --remove-orphans
+        # --pull: Dockerfile бере плаваючий php:8.4-fpm; без нього збірка лишається на локальному старому базовому образі
+        # і сайт не отримує патчів PHP (shop-engine 23.11.2026: частина магазинів на 8.4.27 замість 8.4.28 з виправленням RCE)
+        run compose build --pull
+        run compose up -d --remove-orphans
         [ "$DRY_RUN" = 1 ] || wait_mysql
         # var — спільний том: скомпільований контейнер попереднього релізу посилається на його бандли, і cache:clear нового
         # релізу (auto-scripts composer) падає на першому ж прибраному пакеті («Class …Bundle not found», 17.10 після #74)
