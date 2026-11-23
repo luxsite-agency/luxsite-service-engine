@@ -45,7 +45,8 @@ final class DistrictController extends AbstractController
     {
         $city = $this->serviceCity($request);
         $primary = $this->districts->findPrimaryByCity($city);
-        $grouped = $this->districts->findActiveByCityGrouped($city);
+        $groupLocale = $request->getLocale() === 'en' ? 'en' : 'uk';
+        $grouped = $this->districts->findActiveByCityGrouped($city, $groupLocale);
         /** @var list<string> $suburbNames пак: app.district_suburb_groups (group_uk) */
         $suburbNames = (array) $this->getParameter('app.district_suburb_groups');
 
@@ -55,7 +56,7 @@ final class DistrictController extends AbstractController
             $cityGroups = [];
             $suburbGroups = [];
             foreach ($grouped as $group) {
-                $name = $group['districts'][0]->getGroupUk();
+                $name = $group['districts'][0]->locRaw('group', $groupLocale);
                 $primaryOf = null;
                 foreach ($group['districts'] as $d) {
                     if ($d->isPrimary()) {
@@ -83,10 +84,10 @@ final class DistrictController extends AbstractController
 
         // Стара схема (перші сайти): картки primary-районів; групи без своєї сторінки-району (передмістя) -
         // списком тут, бо інакше на них не було б жодного посилання
-        $primaryGroups = array_map(static fn ($d) => $d->getGroupUk(), $primary);
+        $primaryGroups = array_map(static fn ($d) => $d->locRaw('group', $groupLocale), $primary);
         $orphanGroups = array_values(array_filter(
             $grouped,
-            static fn (array $group) => !\in_array($group['districts'][0]->getGroupUk(), $primaryGroups, true),
+            static fn (array $group) => !\in_array($group['districts'][0]->locRaw('group', $groupLocale), $primaryGroups, true),
         ));
 
         return $this->render('services/district/index.html.twig', [
@@ -120,8 +121,8 @@ final class DistrictController extends AbstractController
             'calcTypes' => $this->calculator->isArea($this->serviceSite($request), $city) ? $this->calcTypes->findActiveForCity($this->serviceSite($request), $city) : [],
             'calcFactors' => $this->calcFactors->findActiveBySiteGrouped($this->serviceSite($request)),
             // всередині району - його місцевості, всередині місцевості - сусіди
-            'siblings' => $this->districts->findInGroup($district, $district->isPrimary() ? 40 : 12),
-            'parent' => $district->isPrimary() ? null : $this->parentDistrict($district),
+            'siblings' => $this->districts->findInGroup($district, $district->isPrimary() ? 40 : 12, $request->getLocale()),
+            'parent' => $district->isPrimary() ? null : $this->parentDistrict($district, $request->getLocale()),
             // район без власного FAQ показує міський (пак: app.district_faq_fallback)
             'faq' => $district->loc('faq', $request->getLocale())
                 ?: ($this->getParameter('app.district_faq_fallback') ? ($city->loc('faq', $request->getLocale()) ?? []) : []),
@@ -130,10 +131,15 @@ final class DistrictController extends AbstractController
     }
 
     /** Сторінка адмінрайону, до якого належить місцевість. */
-    private function parentDistrict(ServiceDistrict $district): ?ServiceDistrict
+    private function parentDistrict(ServiceDistrict $district, string $locale): ?ServiceDistrict
     {
+        $groupLocale = $locale === 'en' ? 'en' : 'uk';
+        $group = $district->locRaw('group', $groupLocale);
+        if ($locale === 'en' && ($group === null || $group === '')) {
+            return null;
+        }
         foreach ($this->districts->findPrimaryByCity($district->getCity()) as $primary) {
-            if ($primary->getGroupUk() === $district->getGroupUk()) {
+            if ($primary->locRaw('group', $groupLocale) === $group) {
                 return $primary;
             }
         }

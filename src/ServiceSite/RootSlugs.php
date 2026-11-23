@@ -198,12 +198,12 @@ final class RootSlugs implements ResetInterface
             return null;
         }
         /** @var ServicePage|ServiceCategory|ServiceItem $record */
-        $slug = self::effectiveSlug($record->getSlugUk(), $record->getSlugRu(), $locale);
+        $slug = self::effectiveSlug($record->getSlugUk(), $record->getSlugRu(), $locale, $record->getSlugEn());
         if ($slug === '') {
             return null;
         }
         $address = $record instanceof ServicePage && $record->getParent() !== null
-            ? self::effectiveSlug($record->getParent()->getSlugUk(), $record->getParent()->getSlugRu(), $locale) . '/' . $slug
+            ? self::effectiveSlug($record->getParent()->getSlugUk(), $record->getParent()->getSlugRu(), $locale, $record->getParent()->getSlugEn()) . '/' . $slug
             : $slug;
 
         return ['kind' => $kind, 'id' => $record->getId(), 'title' => $record->getTitleUk(), 'locale' => $locale, 'address' => $address];
@@ -229,21 +229,21 @@ final class RootSlugs implements ResetInterface
         $out = [];
         foreach ($sources as $kind => $class) {
             $qb = $this->em->createQueryBuilder()
-                ->select('e.id, e.slugUk, e.slugRu, e.titleUk')
+                ->select('e.id, e.slugUk, e.slugRu, e.slugEn, e.titleUk')
                 ->from($class, 'e')
                 ->where('e.site = :site')->setParameter('site', $site)
                 ->orderBy('e.id', 'ASC');
             if ($kind === 'page') {
-                $qb->addSelect('parent.slugUk AS parentUk, parent.slugRu AS parentRu')->leftJoin('e.parent', 'parent');
+                $qb->addSelect('parent.slugUk AS parentUk, parent.slugRu AS parentRu, parent.slugEn AS parentEn')->leftJoin('e.parent', 'parent');
             }
             foreach ($qb->getQuery()->getArrayResult() as $row) {
                 foreach ($onlyLocale !== null ? [$onlyLocale] : ($this->siteLocales?->enabled($site) ?? LocalizedRoutes::DECLARED) as $locale) {
-                    $slug = self::effectiveSlug((string) $row['slugUk'], $row['slugRu'], $locale);
+                    $slug = self::effectiveSlug((string) $row['slugUk'], $row['slugRu'], $locale, $row['slugEn']);
                     if ($slug === '') {
                         continue;
                     }
                     if (($row['parentUk'] ?? null) !== null) {
-                        $slug = self::effectiveSlug((string) $row['parentUk'], $row['parentRu'], $locale) . '/' . $slug;
+                        $slug = self::effectiveSlug((string) $row['parentUk'], $row['parentRu'], $locale, $row['parentEn']) . '/' . $slug;
                     }
                     $out[] = ['kind' => $kind, 'id' => (int) $row['id'], 'title' => (string) $row['titleUk'], 'locale' => $locale, 'address' => $slug];
                 }
@@ -253,9 +253,13 @@ final class RootSlugs implements ResetInterface
         return $out;
     }
 
-    /** Слаг адреси в мові: ru порожній = uk (як генерує LocalizedFieldsTrait::loc і шукають репозиторії) */
-    private static function effectiveSlug(string $uk, ?string $ru, string $locale): string
+    /** Слаг адреси в мові: ru/en порожній = uk (як генерує LocalizedFieldsTrait::loc і шукають репозиторії) */
+    private static function effectiveSlug(string $uk, ?string $ru, string $locale, ?string $en = null): string
     {
+        if ($locale === 'en') {
+            return mb_strtolower(trim($en !== null && trim($en) !== '' ? $en : $uk, '/ '));
+        }
+
         return mb_strtolower(trim($locale === 'ru' && $ru !== null && trim($ru) !== '' ? $ru : $uk, '/ '));
     }
 

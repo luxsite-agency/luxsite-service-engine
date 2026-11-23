@@ -55,6 +55,9 @@ trait ExtraFieldsTrait
         if (!\is_array($vals)) {
             return null;
         }
+        if ($locale === 'en') {
+            return $vals['en'] ?? null;
+        }
         $lang = $locale === 'ru' ? 'ru' : 'uk';
 
         return $vals[$lang] ?? $vals['uk'] ?? null;

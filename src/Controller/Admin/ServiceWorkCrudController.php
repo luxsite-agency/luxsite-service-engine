@@ -22,6 +22,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
@@ -34,6 +35,12 @@ class ServiceWorkCrudController extends AbstractCrudController
     /** У списку виноситься наперед: назва роботи, а не місто */
     private const INDEX_PRIMARY = 'titleUk';
 
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServiceWork::class;
@@ -45,7 +52,7 @@ class ServiceWorkCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Наша робота')
             ->setEntityLabelInPlural('Наші роботи')
             ->setDefaultSort(['position' => 'ASC', 'id' => 'DESC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'captionUk', 'captionRu'])
+            ->setSearchFields(array_merge(['titleUk', 'titleRu', 'captionUk', 'captionRu'], \in_array('en', $this->locales, true) ? ['titleEn', 'captionEn'] : []))
             ->setHelp(
                 'index',
                 'Власні фото з об’єктів. Показуються на сторінках послуг і в галереї. '
@@ -80,12 +87,18 @@ class ServiceWorkCrudController extends AbstractCrudController
 
         yield FormField::addTab('Основне', 'fa fa-gear');
         yield FormField::addFieldset('Що це за робота');
-        yield TextField::new('titleUk', 'Назва uk')->setColumns(6)
+        yield TextField::new('titleUk', 'Назва uk')->setRequired(!\in_array('en', $this->locales, true) || \in_array('uk', $this->locales, true))->setFormTypeOption('empty_data', '')->setColumns(6)
             ->setHelp('Коротко, що на фото: «Хімчистка офісного крісла». Видно підписом під знімком.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('titleEn', 'Назва en')->setColumns(6)->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо = на російській сторінці покажемо українську назву.');
         yield TextField::new('captionUk', 'Уточнення uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Необовʼязковий рядок дрібним: район, тип обʼєкта, чим працювали.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('captionEn', 'Уточнення en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextField::new('captionRu', 'Уточнення ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addFieldset('Де показувати');

@@ -58,10 +58,16 @@ class ServiceReview implements TimestampableInterface
     private string $authorUk = '';
 
     #[ORM\Column(length: 128, nullable: true)]
+    private ?string $authorEn = null;
+
+    #[ORM\Column(length: 128, nullable: true)]
     private ?string $authorRu = null;
 
     #[ORM\Column(type: Types::TEXT)]
     private string $textUk = '';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $textEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $textRu = null;
@@ -281,6 +287,30 @@ class ServiceReview implements TimestampableInterface
     public function setLocation(?string $location): self
     {
         $this->location = $location;
+
+        return $this;
+    }
+
+    public function getAuthorEn(): ?string
+    {
+        return $this->authorEn;
+    }
+
+    public function setAuthorEn(?string $authorEn): self
+    {
+        $this->authorEn = $authorEn;
+
+        return $this;
+    }
+
+    public function getTextEn(): ?string
+    {
+        return $this->textEn;
+    }
+
+    public function setTextEn(?string $textEn): self
+    {
+        $this->textEn = $textEn;
 
         return $this;
     }

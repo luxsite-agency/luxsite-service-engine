@@ -48,7 +48,7 @@ final class LiveThemePolicy
         // форми анкет (app.applications)
         'application_form',
         // мови розгортання (app.locales): перемикач, hreflang, lang
-        'sv_default_locale', 'sv_locale', 'sv_locale_code', 'sv_locales', 'sv_path_locale',
+        'sv_default_locale', 'sv_district_groups', 'sv_locale', 'sv_locale_code', 'sv_locales', 'sv_path_locale',
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',

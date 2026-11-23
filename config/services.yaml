@@ -43,6 +43,9 @@ parameters:
     # кожна /ru/-сторінка «noindex, follow» (meta і X-Robots-Tag), без hreflang на обох мовах, sitemap лише з uk-адресами;
     # off — ru вимкнено: /ru/… → 404, перемикач мов і hreflang зникають, sitemap лише uk. App\EventSubscriber\RuModeSubscriber.
     app.ru_mode: full
+    # країна й валюта для розмітки schema.org (адреса, ціни); сайт у США — app.schema_country: US, app.currency: USD
+    app.schema_country: UA
+    app.currency: UAH
     # Префікс розділу статей: /blog/ (типово) або інший сегмент (/news/ — сайт з Joomla). Лише [a-z0-9-].
     app.blog_prefix: blog
     # Калькулятор (docs/site-pack.md «Калькулятор»): режим auto = «за площею», якщо в сайту є типи прибирання (service_calc_type),

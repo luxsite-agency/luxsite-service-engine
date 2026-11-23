@@ -19,6 +19,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /** Тексти категорії під місто (ServiceCategoryCity): /services/<категорія>/ на міському хості; порожні поля — з категорії. */
@@ -27,6 +28,12 @@ class ServiceCategoryCityCrudController extends AbstractCrudController
 {
     use CancelActionTrait;
     use FieldHintTrait;
+
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -39,7 +46,7 @@ class ServiceCategoryCityCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Тексти категорії під місто')
             ->setEntityLabelInPlural('Категорії: тексти по містах')
             ->setDefaultSort(['city' => 'ASC', 'category' => 'ASC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'category.titleUk', 'city.nameUk'])
+            ->setSearchFields(array_merge(['titleUk', 'titleRu', 'category.titleUk', 'city.nameUk'], \in_array('en', $this->locales, true) ? ['titleEn'] : []))
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -71,20 +78,38 @@ class ServiceCategoryCityCrudController extends AbstractCrudController
             ->setHelp('Одна пара категорія+місто.');
         yield TextField::new('titleUk', 'Назва uk')->setColumns(6)
             ->setHelp('H1 і крихти сторінки категорії в цьому місті; порожньо = назва категорії. Меню — завжди назва категорії.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('titleEn', 'Назва en')->setColumns(6)->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addTab('Тексти', 'fa fa-align-left');
         yield TextEditorField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextEditorField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextEditorField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
         yield TextEditorField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextEditorField::new('desc2En', 'Опис 2 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextEditorField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
         yield TextEditorField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextEditorField::new('desc3En', 'Опис 3 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextEditorField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addTab('SEO', 'fa fa-magnifying-glass');
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('metaTitleEn', 'Meta title en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextField::new('metaTitleRu', 'Meta title ru')->hideOnIndex()->setColumns(6);
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('metaDescEn', 'Meta description en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
     }
 }

@@ -300,7 +300,7 @@ final class Bitrix24Crm extends AbstractLeadCrm
             return null;
         }
 
-        $locale = $lead->getLocale() === 'ru' ? 'ru' : 'uk';
+        $locale = \in_array($lead->getLocale(), ['ru', 'en'], true) ? $lead->getLocale() : 'uk';
         $item = $this->items->findOneActiveBySiteAndSlug($site, $slug, $locale);
         $title = $item !== null ? trim((string) $item->loc('title', $locale)) : '';
 

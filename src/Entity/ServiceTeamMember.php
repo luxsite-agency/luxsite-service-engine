@@ -43,6 +43,9 @@ class ServiceTeamMember implements TimestampableInterface
     private string $nameUk = '';
 
     #[ORM\Column(length: 128, nullable: true)]
+    private ?string $nameEn = null;
+
+    #[ORM\Column(length: 128, nullable: true)]
     private ?string $nameRu = null;
 
     /** Роль/спеціалізація («Електромонтажник, стаж 12 років») */
@@ -50,10 +53,16 @@ class ServiceTeamMember implements TimestampableInterface
     private ?string $roleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $roleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $roleRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -230,5 +239,41 @@ class ServiceTeamMember implements TimestampableInterface
     public function __toString(): string
     {
         return $this->nameUk;
+    }
+
+    public function getNameEn(): ?string
+    {
+        return $this->nameEn;
+    }
+
+    public function setNameEn(?string $nameEn): self
+    {
+        $this->nameEn = $nameEn;
+
+        return $this;
+    }
+
+    public function getRoleEn(): ?string
+    {
+        return $this->roleEn;
+    }
+
+    public function setRoleEn(?string $roleEn): self
+    {
+        $this->roleEn = $roleEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
     }
 }

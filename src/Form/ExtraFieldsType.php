@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\ServiceSite\CustomFields;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -20,8 +21,11 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ExtraFieldsType extends AbstractType
 {
-    public function __construct(private readonly CustomFields $fields)
-    {
+    public function __construct(
+        private readonly CustomFields $fields,
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -41,6 +45,12 @@ final class ExtraFieldsType extends AbstractType
                     'label' => $def['label']['ru'] . ' (ru)',
                     'required' => false,
                     'help' => 'Порожньо = як uk',
+                ]);
+            }
+            if (\in_array('en', $this->locales, true)) {
+                $builder->add($def['key'] . '__en', TextType::class, [
+                    'label' => $def['label']['en'] . ' (en)',
+                    'required' => false,
                 ]);
             }
         }
@@ -71,7 +81,7 @@ final class ExtraFieldsType extends AbstractType
                         continue;
                     }
                     [$key, $lang] = explode('__', (string) $name, 2);
-                    if ($lang !== 'uk' && isset($localized[$key]) && !$localized[$key]) {
+                    if ($lang !== 'uk' && $lang !== 'en' && isset($localized[$key]) && !$localized[$key]) {
                         continue;
                     }
                     $value = trim((string) $value);
