@@ -38,9 +38,9 @@ final class SeedEnglishTest extends SeoTestCase
             cities:
               - {slug: main, host: seed-en-$s.example, apex: true, name_nom_uk: 'Hamptons', name_nom_en: 'Hamptons', districts_intro_en: 'Our districts', about_where_en: 'Across the Hamptons', price_note_en: 'Minimum call-out USD 100', address_en: '123 Main Street'}
             categories:
-              - {slug: pereizd-$s, slug_en: moving-$s, title_uk: 'Переїзд', title_en: 'Moving', meta_title_en: 'Moving services'}
+              - {slug: pereizd-$s, slug_en: moving-$s, title_uk: 'Переїзд', title_en: 'Moving', meta_title_en: 'Moving services', lead_en: 'Plan your move', faq_en: [{q: 'How long?', a: 'One day.'}]}
             items:
-              - {slug: mistsevyi-$s, slug_en: local-$s, category: pereizd-$s, title_uk: 'Місцевий', title_en: 'Local moving', lead_en: 'Across town'}
+              - {slug: mistsevyi-$s, slug_en: local-$s, category: pereizd-$s, title_uk: 'Місцевий', title_en: 'Local moving', name_en: 'Local', lead_en: 'Across town'}
             districts:
               - {city: main, slug: sauthempton-$s, slug_en: southampton-$s, name_uk: 'Саутгемптон', name_en: 'Southampton', group_en: 'Southampton Town'}
             pages:
@@ -67,8 +67,10 @@ final class SeedEnglishTest extends SeoTestCase
         self::assertSame('Our districts', $city->loc('districtsIntro', 'en'));
         $cat = $em->getRepository(ServiceCategory::class)->findOneBy(['site' => $site, 'slugUk' => "pereizd-$s"]);
         self::assertSame(["moving-$s", 'Moving', 'Moving services'], [$cat?->getSlugEn(), $cat?->getTitleEn(), $cat?->getMetaTitleEn()]);
+        self::assertEquals(['Plan your move', [['q' => 'How long?', 'a' => 'One day.']]], [$cat?->getLeadEn(), $cat?->getFaqEn()]);
         $item = $em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => "mistsevyi-$s"]);
-        self::assertSame(["local-$s", 'Local moving', 'Across town'], [$item?->getSlugEn(), $item?->getTitleEn(), $item?->getLeadEn()]);
+        // name_* послуги seed не пише (site-csm: name_uk/name_ru з меню старого сайту лишаються поза БД, як і до en)
+        self::assertSame(["local-$s", 'Local moving', 'Across town', null], [$item?->getSlugEn(), $item?->getTitleEn(), $item?->getLeadEn(), $item?->getNameEn()]);
         $dist = $em->getRepository(ServiceDistrict::class)->findOneBy(['slugUk' => "sauthempton-$s"]);
         self::assertSame(["southampton-$s", 'Southampton', 'Southampton Town'], [$dist?->getSlugEn(), $dist?->getNameEn(), $dist?->getGroupEn()]);
         $page = $em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => "yak-tse-pratsiuie-$s"]);

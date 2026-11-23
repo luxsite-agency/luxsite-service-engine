@@ -64,8 +64,9 @@ final class SitemapController extends AbstractController
 
         $entries = [];
         // запис карти: URL сторінки мовами бренду (мова → URL) + lastmod; параметри, що різняться між мовами, — функцією від мови
-        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null) use (&$entries): void {
-            $urls = $this->altUrls($route, $params);
+        // $content — запис сторінки: мовами, якими його нема (en без перекладу), адреси в карті нема
+        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null, ?object $content = null) use (&$entries): void {
+            $urls = $this->altUrls($route, $params, $content);
             if ($urls !== []) {
                 $entries[] = ['urls' => $urls, 'lastmod' => $lastmod];
             }
@@ -92,7 +93,7 @@ final class SitemapController extends AbstractController
                 if (!$category->isLanding() || $category->isNoindex() || !isset($catsWithItems[$category->getId()])) {
                     continue; // не посадкова: noindex, у карті сайту їй не місце
                 }
-                $add('sv_category', static fn (string $l): array => ['category' => $category->slug($l)]);
+                $add('sv_category', static fn (string $l): array => ['category' => $category->slug($l)], null, $category);
             }
         }
         foreach ($siteItems as $item) {
@@ -100,6 +101,7 @@ final class SitemapController extends AbstractController
                 'sv_service',
                 fn (string $l): array => $this->catalogUrls->itemParams($item, $l),
                 $newest($item->getUpdatedAt(), $textDates[$item->getId()] ?? null),
+                $item,
             );
         }
         // сайт без районів — порожнього /districts/ у карті не показуємо
@@ -108,7 +110,7 @@ final class SitemapController extends AbstractController
             $add('sv_districts');
         }
         foreach ($districts as $district) {
-            $add('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)], $district->getUpdatedAt());
+            $add('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)], $district->getUpdatedAt(), $district);
         }
         // Блогу може не бути зовсім - порожнього розділу в карті сайту не показуємо.
         // На міських хостах блог теж не показуємо: статті там ті самі, що на
@@ -139,7 +141,7 @@ final class SitemapController extends AbstractController
                 if (!$page->isMapped()) {
                     continue;
                 }
-                $add('sv_page', static fn (string $l): array => ['path' => $page->path($l)], $page->getUpdatedAt());
+                $add('sv_page', static fn (string $l): array => ['path' => $page->path($l)], $page->getUpdatedAt(), $page);
             }
         }
         // калькулятор є, де він наповнений (типи прибирання або позиції прайсу з in_calculator); адреса — дійсна для режиму
@@ -152,8 +154,10 @@ final class SitemapController extends AbstractController
         // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія; на неапексних містах пак може
         // закрити їх від індексу (app.legal_noindex_cities) — тоді й у карті їм не місце
         if (!$this->getParameter('app.legal_noindex_cities') || $apex === null || $apex->getId() === $city->getId()) {
-            $add('sv_privacy');
-            $add('sv_terms');
+            $locales = $this->container->get(SiteLocales::class);
+            foreach (['privacy' => 'sv_privacy', 'terms' => 'sv_terms'] as $field => $route) {
+                $add($route, static fn (string $l): ?array => $locales->legalLocale($site, $field, $l) !== null ? [] : null);
+            }
         }
 
         $response = $this->render('services/sitemap.xml.twig', ['entries' => $entries]);

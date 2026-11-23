@@ -109,9 +109,10 @@ final class CatalogController extends AbstractController
 
             throw $this->createNotFoundException('Категорію не знайдено.');
         }
+        $this->requireInLocale($cat, $request->getLocale());
 
         $city = $this->serviceCity($request);
-        $items = $this->items->findActiveByCategory($cat, $city);
+        $items = $this->container->get(\App\ServiceSite\SiteLocales::class)->only($this->items->findActiveByCategory($cat, $city));
         if ($items === []) {
             throw $this->createNotFoundException('У цьому місті послуг категорії нема.');
         }
@@ -124,7 +125,7 @@ final class CatalogController extends AbstractController
             'override' => $this->categoryTexts->findOneByCategoryAndCity($cat, $city),
             'items' => $items,
             'pageNoindex' => $cat->isNoindex(),
-            'altUrls' => $this->altUrls('sv_category', static fn (string $l): array => ['category' => $cat->slug($l)]),
+            'altUrls' => $this->altUrls('sv_category', static fn (string $l): array => ['category' => $cat->slug($l)], $cat),
         ]));
     }
 
@@ -140,6 +141,7 @@ final class CatalogController extends AbstractController
 
         $item = $this->items->findOneActiveBySiteAndSlug($site, $slug, $locale)
             ?? throw $this->createNotFoundException('Послугу не знайдено.');
+        $this->requireInLocale($item, $locale);
         $cat = $item->getCategory();
         $foreignCategory = $category !== null && $cat->slug($locale) !== $category;
         if ($foreignCategory && !$cat->isActive()) {
@@ -194,11 +196,11 @@ final class CatalogController extends AbstractController
             'calcTypes' => $calcTypes,
             'calcFactors' => $calcTypes !== [] ? $this->calcFactors->findActiveBySiteGrouped($site) : [],
             'related' => array_values(array_filter(
-                $this->items->findActiveByCategory($cat, $city),
+                $this->container->get(\App\ServiceSite\SiteLocales::class)->only($this->items->findActiveByCategory($cat, $city)),
                 static fn ($i) => $i->getId() !== $item->getId(),
             )),
             'pageNoindex' => $item->isNoindex(),
-            'altUrls' => $this->altUrls('sv_service', fn (string $l): array => $this->catalogUrls->itemParams($item, $l)),
+            'altUrls' => $this->altUrls('sv_service', fn (string $l): array => $this->catalogUrls->itemParams($item, $l), $item),
         ]));
     }
 
@@ -239,8 +241,11 @@ final class CatalogController extends AbstractController
     private function itemsByCategory(Request $request): array
     {
         $grouped = [];
-        foreach ($this->items->findActiveBySite($this->serviceSite($request), $this->serviceCity($request)) as $item) {
-            $grouped[$item->getCategory()->getId()][] = $item;
+        $locales = $this->container->get(\App\ServiceSite\SiteLocales::class);
+        foreach ($locales->only($this->items->findActiveBySite($this->serviceSite($request), $this->serviceCity($request))) as $item) {
+            if ($locales->has($item->getCategory())) {
+                $grouped[$item->getCategory()->getId()][] = $item;
+            }
         }
 
         return $grouped;

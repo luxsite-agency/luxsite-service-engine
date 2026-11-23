@@ -53,6 +53,7 @@ final class ServicePageController extends AbstractController
         $city = $this->serviceCity($request);
         $page = $this->rootSlugs->page($site, $path, $request->getLocale())
             ?? throw $this->createNotFoundException('Сторінку не знайдено.');
+        $this->requireInLocale($page, $request->getLocale());
         // сторінка не для цього міста (філії): 404, як і будь-яка відсутня
         if (!$page->isAvailableIn($city)) {
             throw $this->createNotFoundException('Сторінки в цьому місті нема.');
@@ -81,11 +82,11 @@ final class ServicePageController extends AbstractController
             'city' => $city,
             'page' => $page,
             'pageForm' => $pageForm,
-            'children' => $page->getParent() === null ? $this->pages->findLiveChildren($page, $city) : [],
+            'children' => $page->getParent() === null ? $this->container->get(\App\ServiceSite\SiteLocales::class)->only($this->pages->findLiveChildren($page, $city), $locale) : [],
             'hubItems' => $hubItems,
             'htmlSitemap' => $page->templateKind() === 'sitemap' ? $this->htmlSitemap->build($site, $city, $locale) : null,
             'pageNoindex' => $noindex,
-            'altUrls' => $this->altUrls('sv_page', static fn (string $l): array => ['path' => $page->path($l)]),
+            'altUrls' => $this->altUrls('sv_page', static fn (string $l): array => ['path' => $page->path($l)], $page),
         ]);
         if ($noindex) {
             // заголовок — і для паку чи живої теми, що перекриває base.html.twig без pageNoindex

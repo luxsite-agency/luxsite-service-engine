@@ -561,7 +561,28 @@ class ServiceCity implements TimestampableInterface
     /** Адреса мовою сторінки; ru порожня - беремо uk */
     public function address(string $locale): ?string
     {
-        return $this->loc('address', $locale) ?: $this->addressUk;
+        $own = $this->loc('address', $locale);
+        if (\in_array($locale, $this->ownContentLocales, true)) {
+            return $own ?: null;
+        }
+
+        return $own ?: $this->addressUk;
+    }
+
+    /**
+     * Мови, якими місто не падає на український текст (не мапиться; CityLocalesListener на postLoad з SiteLocales::needsOwnContent):
+     * en у [uk, ru, en] — без address_en адреси нема, без name_nom_en назва — латиницею зі slug міста (kyiv → Kyiv).
+     *
+     * @var list<string>
+     */
+    private array $ownContentLocales = [];
+
+    /** @param list<string> $locales */
+    public function markOwnContentLocales(array $locales): self
+    {
+        $this->ownContentLocales = $locales;
+
+        return $this;
     }
 
     public function getHours(): ?string
@@ -633,7 +654,13 @@ class ServiceCity implements TimestampableInterface
      */
     public function name(string $locale): string
     {
-        return (string) ($this->loc('nameNom', $locale) ?: $this->nameNomUk);
+        $own = $this->loc('nameNom', $locale);
+        if (!$own && \in_array($locale, $this->ownContentLocales, true)) {
+            // нейтрально, без кирилиці: slug міста словами (kyiv → Kyiv, ivano-frankivsk → Ivano Frankivsk)
+            return ucwords(str_replace('-', ' ', $this->slug));
+        }
+
+        return (string) ($own ?: $this->nameNomUk);
     }
 
     public function getNameNomUk(): string

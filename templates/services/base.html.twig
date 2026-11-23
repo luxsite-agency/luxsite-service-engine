@@ -688,8 +688,8 @@
                 <p class="footer-copyright">{{ 'footer.copyright'|trans({}, 'servicesite') }}</p>
                 {# юридичні сторінки є завжди: текст із адмінки (ServiceSite) або типовий текст рушія -#}
                 <p class="footer-legal">
-                    <a href="{{ path('sv_privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
-                    · <a href="{{ path('sv_terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>
+                    <a href="{{ sv_legal_path('privacy') }}">{{ 'footer.privacy'|trans({}, 'servicesite') }}</a>
+                    · <a href="{{ sv_legal_path('terms') }}">{{ 'footer.terms'|trans({}, 'servicesite') }}</a>
                 </p>
                 {% endblock %}
             </div>
@@ -879,7 +879,7 @@
             «Прийняти» — consent update granted і старт Clarity/Pixel (svTags 'consent'), «Відхилити» — denied. 180 днів. #}
         {%~ if _svTags.consentBanner %}
         <div id="sv-consent" role="dialog" aria-live="polite" aria-label="{{ 'consent.title'|trans({}, 'servicesite') }}" hidden style="position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;max-width:760px;margin:0 auto;background:#fff;color:#1a1f24;border:1px solid var(--border, #d5dce3);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;font-size:.95rem">
-            <span style="flex:1 1 280px">{{ 'consent.text'|trans({}, 'servicesite') }} <a href="{{ path('sv_privacy') }}">{{ 'consent.more'|trans({}, 'servicesite') }}</a></span>
+            <span style="flex:1 1 280px">{{ 'consent.text'|trans({}, 'servicesite') }} <a href="{{ sv_legal_path('privacy') }}">{{ 'consent.more'|trans({}, 'servicesite') }}</a></span>
             <button type="button" class="btn" data-consent="granted">{{ 'consent.accept'|trans({}, 'servicesite') }}</button>
             <button type="button" class="btn btn-ghost" data-consent="denied">{{ 'consent.decline'|trans({}, 'servicesite') }}</button>
         </div>

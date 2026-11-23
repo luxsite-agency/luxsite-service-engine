@@ -103,6 +103,60 @@ final class SiteLocales
         return null;
     }
 
+    /**
+     * Чи потрібен запису власний переклад, щоб існувати цією мовою: так для мов без фолбеку на uk (en), коли вона
+     * не основна в розгортанні. [uk, ru, en] — en-сторінка лише з англійськими полями; [en] — як і раніше, усі записи.
+     */
+    public function needsOwnContent(string $locale): bool
+    {
+        return $locale !== $this->default() && !\in_array($locale, ['uk', 'ru'], true);
+    }
+
+    /** Запис є мовою $locale (поточною, якщо не передано): перевірка LocalizedFieldsTrait::translatedIn, де вона потрібна */
+    public function has(object $entity, ?string $locale = null): bool
+    {
+        $locale ??= $this->current();
+
+        return !$this->needsOwnContent($locale) || !method_exists($entity, 'translatedIn') || $entity->translatedIn($locale);
+    }
+
+    /**
+     * Лише записи, що є мовою $locale (поточною, якщо не передано) — списки на /en/ без неперекладених послуг і сторінок.
+     *
+     * @template T of object
+     *
+     * @param iterable<T> $entities
+     *
+     * @return list<T>
+     */
+    public function only(iterable $entities, ?string $locale = null): array
+    {
+        $locale ??= $this->current();
+        $out = [];
+        foreach ($entities as $e) {
+            if ($this->has($e, $locale)) {
+                $out[] = $e;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Мова юридичної сторінки (privacy | terms): $locale, якщо типовий текст рушія нею є (uk, ru) або бренд має свій текст
+     * (ServiceSite.privacyEn…); інакше null — en-сторінки нема (типовий текст рушія лише uk/ru), посилання ведуть на
+     * основну мову (legalLocale(…) ?? default()).
+     */
+    public function legalLocale(ServiceSite $site, string $field, string $locale): ?string
+    {
+        if (!$this->needsOwnContent($locale)) {
+            return $locale;
+        }
+        $text = $site->loc($field, $locale);
+
+        return \is_string($text) && trim($text) !== '' ? $locale : null;
+    }
+
     /** Код мови для розмітки: hreflang (uk-UA), og (uk_UA), schema (uk-UA), label (UA); нема запису — сама мова */
     public function code(string $locale, string $kind): string
     {
