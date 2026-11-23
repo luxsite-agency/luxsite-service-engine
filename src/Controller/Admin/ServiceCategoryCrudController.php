@@ -24,7 +24,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -138,24 +137,24 @@ class ServiceCategoryCrudController extends AbstractCrudController
             yield TextareaField::new('leadEn', 'Лід en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
         yield TextareaField::new('leadRu', 'Лід ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Текст угорі сторінки категорії, над переліком послуг.');
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Другий блок тексту - під переліком послуг.');
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('desc2En', 'Опис 2 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('desc2En', 'Опис 2 en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Третій блок - у самому низу сторінки.');
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('desc3En', 'Опис 3 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('desc3En', 'Опис 3 en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addTab('FAQ', 'fa fa-circle-question');
         yield CollectionField::new('faqUk', 'FAQ uk')->hideOnIndex()->setColumns(6)
