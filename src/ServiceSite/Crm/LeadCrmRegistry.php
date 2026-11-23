@@ -13,7 +13,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
- * Активний конектор за параметром паку app.crm.system (none | pipedrive | bitrix24 | auto).
+ * Активний конектор за параметром паку app.crm.system (none | pipedrive | bitrix24 | telegram | auto).
  *
  * auto (дефолт рушія, пак app.crm не задав) = поведінка до конекторів: Pipedrive, якщо в .env.local є
  * PIPEDRIVE_API_TOKEN, інакше none. Так сайти, що вже були на Pipedrive, лишаються на ньому без правок паку.

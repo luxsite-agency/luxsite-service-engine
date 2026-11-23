@@ -235,8 +235,8 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
         if not isinstance(crm, dict):
             err(f"{where}: app.crm — мапа {{system: …}}")
         else:
-            if str(crm.get("system", "auto")) not in ("auto", "none", "pipedrive", "bitrix24"):
-                err(f"{where}: app.crm.system має бути auto|none|pipedrive|bitrix24")
+            if str(crm.get("system", "auto")) not in ("auto", "none", "pipedrive", "bitrix24", "telegram"):
+                err(f"{where}: app.crm.system має бути auto|none|pipedrive|bitrix24|telegram")
             if re.search(r"/rest/\d+/[A-Za-z0-9]{6,}", json.dumps(crm, ensure_ascii=False)):
                 err(f"{where}: app.crm — схоже на адресу вебхука Bitrix24 з токеном; це секрет, лише BITRIX24_WEBHOOK_URL у .env.local")
     theme = pp.get("app.theme") or {}
