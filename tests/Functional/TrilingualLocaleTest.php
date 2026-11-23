@@ -189,6 +189,34 @@ final class TrilingualLocaleTest extends SeoTestCase
         self::assertStringContainsString('/en/privacy-policy/', $this->get('/sitemap.xml')[1]);
     }
 
+    public function testCityNameAndAddressNotInUkrainianOnEnglishPages(): void
+    {
+        // рев'ю gls-rev W1: ServiceCity::name()/address() падали на uk — /en/ показував «Головне» і українську адресу
+        $this->city($this->apexCityId)->setAddressUk('вул. Берковецька, 1');
+        $this->em()->flush();
+        $this->em()->clear();
+        foreach (['/en/services/', '/en/ceramic-chimneys/', '/en/'] as $path) {
+            [$status, $html] = $this->get($path);
+            self::assertSame(200, $status, $path);
+            preg_match('~<title>(.*?)</title>~s', $html, $t);
+            self::assertStringNotContainsString('Головне', $t[1] ?? '', $path . ': title');
+            foreach (['og:title', 'og:description'] as $og) {
+                self::assertDoesNotMatchRegularExpression('~property="' . $og . '" content="[^"]*Головне~u', $html, $path . ': ' . $og);
+            }
+            self::assertDoesNotMatchRegularExpression('~name="description" content="[^"]*Головне~u', $html, $path . ': description');
+            self::assertStringNotContainsString('Берковецька', $html, $path . ': адреса');
+        }
+        [, $uk] = $this->get('/services/');
+        self::assertStringContainsString('Берковецька', $uk, 'uk — як раніше');
+
+        $this->city($this->apexCityId)->setNameNomEn('Kyiv')->setAddressEn('1 Berkovetska St');
+        $this->em()->flush();
+        $this->em()->clear();
+        [, $en] = $this->get('/en/services/');
+        self::assertStringContainsString('1 Berkovetska St', $en);
+        self::assertStringContainsString('Kyiv', (string) preg_replace('~<script.*?</script>~s', '', $en));
+    }
+
     public function testPagePathByUkrainianSlugForPacks(): void
     {
         $paths = [];
