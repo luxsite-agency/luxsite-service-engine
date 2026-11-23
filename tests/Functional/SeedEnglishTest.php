@@ -69,7 +69,8 @@ final class SeedEnglishTest extends SeoTestCase
         self::assertSame(["moving-$s", 'Moving', 'Moving services'], [$cat?->getSlugEn(), $cat?->getTitleEn(), $cat?->getMetaTitleEn()]);
         self::assertEquals(['Plan your move', [['q' => 'How long?', 'a' => 'One day.']]], [$cat?->getLeadEn(), $cat?->getFaqEn()]);
         $item = $em->getRepository(ServiceItem::class)->findOneBy(['site' => $site, 'slugUk' => "mistsevyi-$s"]);
-        self::assertSame(["local-$s", 'Local moving', 'Across town', 'Local'], [$item?->getSlugEn(), $item?->getTitleEn(), $item?->getLeadEn(), $item?->getNameEn()]);
+        // name_* послуги seed не пише (site-csm: name_uk/name_ru з меню старого сайту лишаються поза БД, як і до en)
+        self::assertSame(["local-$s", 'Local moving', 'Across town', null], [$item?->getSlugEn(), $item?->getTitleEn(), $item?->getLeadEn(), $item?->getNameEn()]);
         $dist = $em->getRepository(ServiceDistrict::class)->findOneBy(['slugUk' => "sauthempton-$s"]);
         self::assertSame(["southampton-$s", 'Southampton', 'Southampton Town'], [$dist?->getSlugEn(), $dist?->getNameEn(), $dist?->getGroupEn()]);
         $page = $em->getRepository(ServicePage::class)->findOneBy(['site' => $site, 'slugUk' => "yak-tse-pratsiuie-$s"]);

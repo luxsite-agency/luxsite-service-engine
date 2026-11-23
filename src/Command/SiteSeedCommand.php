@@ -37,7 +37,7 @@ use Symfony\Component\Yaml\Yaml;
  *             hours?, address_uk?, meta_title_uk?, meta_desc_uk?, intro_title_uk?, intro_text_uk?, text2_uk?, text3_uk?,
  *             faq_uk?: [{q,a}], districts_intro_uk?, noindex?: bool, gtm_id?}]
  *   categories: [{slug, slug_en?, title_uk, title_ru?, title_en?, lead_uk?, faq_uk?, desc_uk?, position?, landing?, noindex?}]
- *   items: [{slug, slug_en?, category, title_uk, title_ru?, title_en?, name_uk?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
+ *   items: [{slug, slug_en?, category, title_uk, title_ru?, title_en?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
  *            meta_desc_uk?, faq_uk?: [{q,a}], position?, utp?, noindex?, hidden_cities?: [slug], price_hidden_cities?: [slug],
  *            prices?: [{city, name_uk, name_ru?, price?, prefix?, text_uk?, unit_uk?, per_unit?, calculator?}]}]
  *   districts: [{city, slug, name_uk, name_ru?, title_uk?, lead_uk?, desc_uk?, group_uk?, sub_areas_uk?, primary?, min_price?, faq_uk?}]
@@ -239,7 +239,9 @@ final class SiteSeedCommand
         $item ??= (new ServiceItem())->setSite($site)->setSlugUk($d['slug']);
         $item->setCategory($cat);
         $this->slugEn($item, $d);
-        $this->loc($item, $d, ['title' => 'title', 'name' => 'name', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'tab_title' => 'tabTitle',
+        // name_* (коротка назва) свідомо не з seed: site-csm має name_uk/name_ru з меню старого сайту, що досі ігнорувались —
+        // повторний seed змінив би назви в меню й картках (23.11.2026); коротка назва — в адмінці
+        $this->loc($item, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'tab_title' => 'tabTitle',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
         $item->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['utp'])) {
