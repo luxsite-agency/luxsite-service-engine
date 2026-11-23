@@ -46,6 +46,7 @@ final class RootSlugs implements ResetInterface
         private readonly EntityManagerInterface $em,
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -65,7 +66,7 @@ final class RootSlugs implements ResetInterface
         if (!$site instanceof ServiceSite) {
             return false;
         }
-        $locale = ($params['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = (string) ($params['_locale'] ?? 'uk');
 
         return match ($kind) {
             'item' => $this->item($site, (string) ($params['slug'] ?? ''), $locale) !== null,
@@ -133,7 +134,7 @@ final class RootSlugs implements ResetInterface
                 continue;
             }
             [$locale, $path] = explode(' ', $address, 2);
-            $out[] = sprintf('%s %s: %s%s', $locale, self::url($locale, $path), implode(', ', array_map(self::label(...), $entries)),
+            $out[] = sprintf('%s %s: %s%s', $locale, $this->url($locale, $path), implode(', ', array_map(self::label(...), $entries)),
                 $reserved ? ' — адреса фіксованого розділу сайту' : '');
         }
 
@@ -158,11 +159,11 @@ final class RootSlugs implements ResetInterface
         }
         $out = [];
         if (\in_array($candidate['address'], $this->reservedSegments(), true)) {
-            $out[] = sprintf('Адреса %s зайнята фіксованим розділом сайту (%s).', self::url($locale, $candidate['address']), implode(', ', $this->reservedSegments()));
+            $out[] = sprintf('Адреса %s зайнята фіксованим розділом сайту (%s).', $this->url($locale, $candidate['address']), implode(', ', $this->reservedSegments()));
         }
         foreach ($this->entries($site, $locale) as $e) {
             if ($e['address'] === $candidate['address'] && !($e['kind'] === $candidate['kind'] && $e['id'] === $candidate['id'])) {
-                $out[] = sprintf('Адреса %s уже зайнята: %s.', self::url($locale, $e['address']), self::label($e));
+                $out[] = sprintf('Адреса %s уже зайнята: %s.', $this->url($locale, $e['address']), self::label($e));
             }
         }
 
@@ -236,7 +237,7 @@ final class RootSlugs implements ResetInterface
                 $qb->addSelect('parent.slugUk AS parentUk, parent.slugRu AS parentRu')->leftJoin('e.parent', 'parent');
             }
             foreach ($qb->getQuery()->getArrayResult() as $row) {
-                foreach ($onlyLocale !== null ? [$onlyLocale] : ['uk', 'ru'] as $locale) {
+                foreach ($onlyLocale !== null ? [$onlyLocale] : ($this->siteLocales?->enabled($site) ?? LocalizedRoutes::DECLARED) as $locale) {
                     $slug = self::effectiveSlug((string) $row['slugUk'], $row['slugRu'], $locale);
                     if ($slug === '') {
                         continue;
@@ -258,9 +259,9 @@ final class RootSlugs implements ResetInterface
         return mb_strtolower(trim($locale === 'ru' && $ru !== null && trim($ru) !== '' ? $ru : $uk, '/ '));
     }
 
-    private static function url(string $locale, string $address): string
+    private function url(string $locale, string $address): string
     {
-        return ($locale === 'ru' ? '/ru/' : '/') . $address . '/';
+        return ($locale === ($this->siteLocales?->default() ?? 'uk') ? '/' : '/' . $locale . '/') . $address . '/';
     }
 
     /** @param array{kind: string, id: ?int, title: string} $e */

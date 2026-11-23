@@ -30,6 +30,7 @@ final class CrossCityDistricts
         private readonly ServiceCityRepository $cities,
         private readonly ServiceDistrictRepository $districts,
         #[Autowire('%app.clean_urls%')] private readonly array $clean = [],
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -44,10 +45,14 @@ final class CrossCityDistricts
      */
     public function target(Request $request, ServiceSite $site, ServiceCity $city, string $path): ?string
     {
-        if (!$this->enabled() || !preg_match(self::PATH_RE, $path, $m)) {
+        $locales = $this->siteLocales?->enabled($site) ?? LocalizedRoutes::DECLARED;
+        $default = $this->siteLocales?->default() ?? 'uk';
+        $prefixes = implode('|', array_map(static fn (string $l): string => preg_quote($l, '~'), array_values(array_diff($locales, [$default]))));
+        $pattern = '~^/' . ($prefixes !== '' ? '(?:(' . $prefixes . ')/)?' : '()') . 'districts/([^/]+)/?$~';
+        if (!$this->enabled() || !preg_match($pattern, $path, $m)) {
             return null;
         }
-        $locale = $m[1] !== '' ? 'ru' : 'uk';
+        $locale = $m[1] !== '' ? $m[1] : $default;
         $slug = $m[2];
         if ($this->districts->findOneActiveBySlug($city, $slug, $locale) !== null) {
             return null; // свій район — звичайна сторінка (або лише слеш)
@@ -58,7 +63,7 @@ final class CrossCityDistricts
             }
 
             return $request->getScheme() . '://' . $this->hostFor($other, $site, $request)
-                . ($locale === 'ru' ? '/ru' : '') . '/districts/' . $slug . '/';
+                . ($locale === $default ? '' : '/' . $locale) . '/districts/' . $slug . '/';
         }
 
         return null;

@@ -47,6 +47,8 @@ final class LiveThemePolicy
         'lead_files',
         // форми анкет (app.applications)
         'application_form',
+        // мови розгортання (app.locales): перемикач, hreflang, lang
+        'sv_default_locale', 'sv_locale', 'sv_locale_code', 'sv_locales', 'sv_path_locale',
         'calculator_available', 'city_in', 'city_switcher', 'custom_fields', 'footer_catalog', 'item_text', 'ov', 'page_meta', 'reviews_title_city',
         'service_path', 'site_brand', 'site_has_blog', 'site_has_calculator', 'site_lead_js', 'site_tags',
         'footer_pages',
@@ -89,7 +91,7 @@ final class LiveThemePolicy
         'enabled', 'accept', 'max_files', 'max_file_mb', 'max_total_mb',
         // форма анкети (application_form()): поля з конфігурації паку
         'title', 'consent', 'files', 'required', 'fields', 'type', 'options',
-        'a', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',
+        'a', 'aboutFor', 'aboutUk', 'address', 'apexDomain', 'avatarUrl', 'avg', 'base', 'beforeAlt', 'beforeName', 'bingVerification',
         'calcType', 'category', 'city', 'clarityId', 'colors', 'configured', 'consentBanner', 'consultation_cost', 'count', 'cssVars',
         'dirt_level', 'displayName', 'districts', 'email', 'experience', 'extraValue', 'filter', 'first', 'fleet', 'founder', 'get',
         'googleVerification', 'gtagIds', 'gtagLoaderId', 'gtmId', 'hasMessengers', 'hasPair', 'heroImagePath', 'host', 'hours',

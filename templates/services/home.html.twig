@@ -38,7 +38,7 @@
         '@type': 'WebSite',
         'name': site.name,
         'url': app.request.schemeAndHttpHost ~ '/',
-        'inLanguage': locale == 'ru' ? 'ru-UA' : 'uk-UA',
+        'inLanguage': sv_locale_code(locale, 'schema'),
     }) }}
 {% endblock %}
 
