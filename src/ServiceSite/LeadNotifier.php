@@ -66,7 +66,7 @@ final class LeadNotifier
             }
             $this->mailer->send($message
                 ->text(sprintf(
-                    ($email !== null ? 'Email: ' . $email . "\n" : '') . "Телефон: %s\nІм'я: %s\nПовідомлення:\n%s\n\nДжерело: %s\nСторінка: %s\nМісто: %s",
+                    ($email !== null ? 'Email: ' . $email . "\n" : '') . "Телефон: %s\nІм'я: %s\n" . self::extraLines($lead) . "Повідомлення:\n%s\n\nДжерело: %s\nСторінка: %s\nМісто: %s",
                     $lead->getPhone() !== '' ? $lead->getPhone() : '-',
                     $lead->getName() ?? '-',
                     $lead->getMessage() ?? '-',
@@ -78,6 +78,27 @@ final class LeadNotifier
             // заявка вже в БД (черга в адмінці) - мейл лише дублює
             $this->logger->error('Не вдалося надіслати мейл заявки: ' . $e->getMessage(), ['lead_id' => $lead->getId()]);
         }
+    }
+
+    /** Рядки лідгену (послуга, місто/ZIP, терміни, власник, згода, звідки): лише заповнені; % екрануються для sprintf */
+    private static function extraLines(ServiceLead $lead): string
+    {
+        $rows = [
+            'Послуга' => $lead->getService(),
+            'Місто/ZIP' => $lead->getTownZip(),
+            'Терміни' => $lead->getTimeline(),
+            'Власник житла' => $lead->getOwnerOccupied() === null ? null : ($lead->getOwnerOccupied() ? 'так' : 'ні'),
+            'Згода на передачу контакту' => $lead->isConsent() ? 'так' : null,
+            'Звідки' => $lead->getContext(),
+        ];
+        $out = '';
+        foreach ($rows as $label => $value) {
+            if ($value !== null) {
+                $out .= $label . ': ' . str_replace('%', '%%', $value) . "\n";
+            }
+        }
+
+        return $out;
     }
 
     /** Повне посилання на сторінку заявки: у пошті відносний шлях некликабельний. */

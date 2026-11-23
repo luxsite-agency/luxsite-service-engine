@@ -134,8 +134,15 @@ final class LeadController extends AbstractController
         $email = trim((string) $request->request->get('email', ''));
         $name = trim((string) $request->request->get('name', ''));
         $message = trim((string) $request->request->get('message', ''));
+        // лідген: повідомлення необов'язкове; додаткові поля короткі, без тегів і переносів рядка
+        $service = self::line($request->request->get('service', ''));
+        $townZip = self::line($request->request->get('town_zip', ''), 64);
+        $timeline = self::line($request->request->get('timeline', ''), 64);
+        $context = self::line($request->request->get('context', ''));
+        $owner = self::flag($request->request->get('owner_occupied'));
+        $consent = self::flag($request->request->get('consent')) === true;
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190 || mb_strlen($name) > 128
-            || $message === '' || mb_strlen($message) > 3000) {
+            || mb_strlen($message) > 3000) {
             $this->addFlash('lead_error', $this->translator->trans('contact.invalid', [], 'servicesite'));
 
             return $this->redirect($back);
@@ -153,7 +160,13 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setEmail($email)
             ->setName($name !== '' ? $name : null)
-            ->setMessage($message)
+            ->setMessage($message !== '' ? $message : null)
+            ->setService($service)
+            ->setTownZip($townZip)
+            ->setTimeline($timeline)
+            ->setContext($context)
+            ->setOwnerOccupied($owner)
+            ->setConsent($consent)
             ->setPageUrl(mb_substr($back, 0, 512))
             ->setLocale($locale);
         $this->attribution->apply($request, $lead);
@@ -161,7 +174,29 @@ final class LeadController extends AbstractController
         $this->em->flush();
         $this->notifier->notify($lead, 'Повідомлення', $request->getHost());
 
-        return $this->redirectToRoute('sv_thanks', ['_locale' => $locale, 'src' => 'contact']);
+        // service і context — у адресу подяки: GA4 на /thank-you/ бере їх із query
+        return $this->redirectToRoute('sv_thanks', array_filter(
+            ['_locale' => $locale, 'src' => 'contact', 'service' => $service, 'context' => $context],
+            static fn ($v) => $v !== null,
+        ));
+    }
+
+    /** Однорядкове значення поля форми: без тегів і керівних символів, обрізане; порожнє → null */
+    private static function line(mixed $v, int $max = 255): ?string
+    {
+        $v = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', strip_tags(\is_scalar($v) ? (string) $v : '')));
+
+        return $v === '' ? null : mb_substr($v, 0, $max);
+    }
+
+    /** Чекбокс/радіо: так → true, ні → false, нема або інше → null */
+    private static function flag(mixed $v): ?bool
+    {
+        return match (strtolower(trim(\is_scalar($v) ? (string) $v : ''))) {
+            '1', 'on', 'yes', 'true', 'y' => true,
+            '0', 'off', 'no', 'false', 'n' => false,
+            default => null,
+        };
     }
 
     /**

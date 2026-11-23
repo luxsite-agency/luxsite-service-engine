@@ -43,13 +43,13 @@ use Symfony\Component\Yaml\Yaml;
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
  *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
- *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
+ *   pages: [{slug, slug_ru?, slug_en?, parent?: slug, title_uk, title_ru?, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, position?,
  *            footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
  */
 #[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
 {
-    private const array LOC = ['Uk', 'Ru'];
+    private const array LOC = ['Uk', 'Ru', 'En'];
 
     /** @var array<string, int> */
     private array $report = [];
@@ -341,6 +341,9 @@ final class SiteSeedCommand
         $page ??= (new ServicePage())->setSite($site)->setSlugUk($d['slug']);
         if (\array_key_exists('slug_ru', $d)) {
             $page->setSlugRu($d['slug_ru'] !== null ? (string) $d['slug_ru'] : null);
+        }
+        if (\array_key_exists('slug_en', $d)) {
+            $page->setSlugEn($d['slug_en'] !== null ? (string) $d['slug_en'] : null);
         }
         $this->loc($page, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $page->setPosition((int) ($d['position'] ?? ($i + 1) * 10));

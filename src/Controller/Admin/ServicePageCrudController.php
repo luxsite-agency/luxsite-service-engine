@@ -64,7 +64,7 @@ class ServicePageCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Сторінка')
             ->setEntityLabelInPlural('Сторінки')
             ->setDefaultSort(['site' => 'ASC', 'parent' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['titleUk', 'titleRu', 'slugUk', 'slugRu'])
+            ->setSearchFields(['titleUk', 'titleRu', 'titleEn', 'slugUk', 'slugRu', 'slugEn'])
             ->setEntityPermission('ROLE_MODERATOR');
     }
 
@@ -120,6 +120,8 @@ class ServicePageCrudController extends AbstractCrudController
             ->setHelp('H1 сторінки і назва в списках, футері, хлібних крихтах.');
         yield TextField::new('titleRu', 'Заголовок ru')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - показується український заголовок.');
+        yield TextField::new('titleEn', 'Заголовок en')->hideOnIndex()->setColumns(6)
+            ->setHelp('Англомовний сайт. Порожньо - показується український заголовок.');
         yield TextField::new('slugUk', 'Слаг uk')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('uk'))
             ->setHelp('Частина адреси латиницею: licenzii-i-sertifikaty → /licenzii-i-sertifikaty/. ⚠️ Зміна ламає посилання, які вже є в Google. '
@@ -127,6 +129,8 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextField::new('slugRu', 'Слаг ru')->hideOnIndex()->setColumns(6)
             ->setFormTypeOption('constraints', $this->rootSlugConstraints('ru'))
             ->setHelp('Порожньо = український слаг: /ru/<слаг uk>/.');
+        yield TextField::new('slugEn', 'Слаг en')->hideOnIndex()->setColumns(6)
+            ->setHelp('Порожньо = український слаг.');
         yield TextField::new('slugUk', 'Адреса')->onlyOnIndex()
             ->formatValue(static fn ($v, ?ServicePage $p) => $p !== null ? '/' . $p->path('uk') . '/' : '');
         yield FormField::addFieldset('Показ');
@@ -146,9 +150,11 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextareaField::new('leadUk', 'Вступ uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Абзац під заголовком; він же опис у списку дочірніх і meta description, якщо свого нема.');
         yield TextareaField::new('leadRu', 'Вступ ru')->hideOnIndex()->setColumns(6);
+        yield TextareaField::new('leadEn', 'Вступ en')->hideOnIndex()->setColumns(6);
         yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
             ->setHelp('Основний текст сторінки.');
         yield TextEditorField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
+        yield TextEditorField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12);
 
         yield FormField::addTab('Галерея', 'fa fa-images');
         yield CollectionField::new('images', 'Зображення')->hideOnIndex()->setColumns(12)
@@ -168,9 +174,11 @@ class ServicePageCrudController extends AbstractCrudController
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6)
             ->setHelp('До ~60 символів; порожньо = «Заголовок - назва сайту».');
         yield TextField::new('metaTitleRu', 'Meta title ru')->hideOnIndex()->setColumns(6);
+        yield TextField::new('metaTitleEn', 'Meta title en')->hideOnIndex()->setColumns(6);
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів; порожньо = вступ.');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+        yield TextareaField::new('metaDescEn', 'Meta description en')->hideOnIndex()->setColumns(6);
 
         yield TextField::new('titleRu', 'ru')->onlyOnIndex()
             ->formatValue(static fn ($v) => $v !== null && $v !== '' ? '✓' : '—');

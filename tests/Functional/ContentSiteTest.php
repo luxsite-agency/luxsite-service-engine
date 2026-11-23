@@ -167,6 +167,42 @@ final class ContentSiteTest extends HttpKernelTestCase
         self::assertSame(200, $this->http('GET', $base . '/thank-you/?src=contact')->getStatusCode());
     }
 
+    /**
+     * Лідген (23.11.2026): message необов'язкове; service, town_zip, timeline, owner_occupied, consent, context
+     * зберігаються в заявці, service і context — у адресі /thank-you/ (для GA4).
+     */
+    public function testLeadgenFieldsStoredAndPassedToThanks(): void
+    {
+        $base = 'https://' . $this->host;
+        $page = (string) $this->http('GET', $base . '/contacts/')->getContent();
+        self::assertSame(1, preg_match('/name="_token" value="([^"]+)"/', $page, $m));
+        $ip = sprintf('198.51.100.%d', random_int(1, 254));
+        $ok = $this->http('POST', $base . '/lead', [
+            '_token' => html_entity_decode($m[1]), 'name' => 'Ann', 'email' => 'ann-' . bin2hex(random_bytes(3)) . '@example.com',
+            'service' => 'Deck <b>repair</b>', 'town_zip' => 'Springfield 62701', 'timeline' => '1-3 months',
+            'owner_occupied' => 'yes', 'consent' => '1', 'context' => 'hero',
+        ], ['HTTP_REFERER' => $base . '/contacts/', 'REMOTE_ADDR' => $ip]);
+        self::assertTrue($ok->isRedirect(), 'без message заявка приймається');
+        $location = (string) $ok->headers->get('Location');
+        self::assertStringContainsString('/thank-you/', $location);
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $q);
+        self::assertSame('Deck repair', $q['service'] ?? null);
+        self::assertSame('hero', $q['context'] ?? null);
+
+        $em = $this->em();
+        $em->clear();
+        $city = $em->getRepository(ServiceCity::class)->findOneBy(['host' => $this->host]);
+        $lead = $em->getRepository(ServiceLead::class)->findOneBy(['city' => $city], ['id' => 'DESC']);
+        self::assertNotNull($lead);
+        self::assertNull($lead->getMessage());
+        self::assertSame('Deck repair', $lead->getService());
+        self::assertSame('Springfield 62701', $lead->getTownZip());
+        self::assertSame('1-3 months', $lead->getTimeline());
+        self::assertTrue($lead->getOwnerOccupied());
+        self::assertTrue($lead->isConsent());
+        self::assertSame('hero', $lead->getContext());
+    }
+
     private function em(): EntityManagerInterface
     {
         /** @var EntityManagerInterface $em */

@@ -51,6 +51,30 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
 
+    /** Послуга (поле service форми) */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $service = null;
+
+    /** Місто або ZIP (поле town_zip) */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $townZip = null;
+
+    /** Терміни (поле timeline) */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $timeline = null;
+
+    /** Звідки заявка (поле context: блок/кнопка) */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $context = null;
+
+    /** Власник живе в будинку (owner_occupied): так/ні/не вказано */
+    #[ORM\Column(type: Types::BOOLEAN, nullable: true)]
+    private ?bool $ownerOccupied = null;
+
+    /** Згода на передачу контакту виконавцю (consent) */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $consent = false;
+
     /** Сторінка, з якої відправлено форму */
     #[ORM\Column(length: 512, nullable: true)]
     private ?string $pageUrl = null;
@@ -179,6 +203,78 @@ class ServiceLead implements TimestampableInterface
     public function setMessage(?string $message): self
     {
         $this->message = $message;
+
+        return $this;
+    }
+
+    public function getService(): ?string
+    {
+        return $this->service;
+    }
+
+    public function setService(?string $service): self
+    {
+        $this->service = $service;
+
+        return $this;
+    }
+
+    public function getTownZip(): ?string
+    {
+        return $this->townZip;
+    }
+
+    public function setTownZip(?string $townZip): self
+    {
+        $this->townZip = $townZip;
+
+        return $this;
+    }
+
+    public function getTimeline(): ?string
+    {
+        return $this->timeline;
+    }
+
+    public function setTimeline(?string $timeline): self
+    {
+        $this->timeline = $timeline;
+
+        return $this;
+    }
+
+    public function getContext(): ?string
+    {
+        return $this->context;
+    }
+
+    public function setContext(?string $context): self
+    {
+        $this->context = $context;
+
+        return $this;
+    }
+
+    public function getOwnerOccupied(): ?bool
+    {
+        return $this->ownerOccupied;
+    }
+
+    public function setOwnerOccupied(?bool $ownerOccupied): self
+    {
+        $this->ownerOccupied = $ownerOccupied;
+
+        return $this;
+    }
+
+    public function isConsent(): bool
+    {
+        return $this->consent;
+    }
+
+    public function setConsent(bool $consent): self
+    {
+        $this->consent = $consent;
 
         return $this;
     }
