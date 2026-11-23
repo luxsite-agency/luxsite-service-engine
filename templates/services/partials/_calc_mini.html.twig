@@ -87,6 +87,7 @@
 
             <input type="tel" name="phone" required placeholder="{{ 'lead.phone'|trans({}, 'servicesite') }}" aria-label="{{ 'lead.phone'|trans({}, 'servicesite') }}">
             <input type="text" name="name" placeholder="{{ 'lead.name'|trans({}, 'servicesite') }}" maxlength="128" aria-label="{{ 'lead.name'|trans({}, 'servicesite') }}">
+            {{- include('services/partials/_lead_consent.html.twig') }}
             <button type="submit" class="btn">{{ 'calc.mini_order'|trans({}, 'servicesite') }}</button>
 
             <a class="calc-mini-full" href="{{ path('sv_calculator') }}" id="calc-mini-order">{{ 'calc.mini_full'|trans({}, 'servicesite') }} →</a>

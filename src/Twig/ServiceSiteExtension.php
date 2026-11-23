@@ -22,6 +22,8 @@ use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
 use App\ServiceSite\SiteLocales;
+use App\ServiceSite\LeadConsent;
+use App\ServiceSite\LeadFields;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -65,6 +67,8 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly bool $pagesEnabled = false,
         private readonly ?SiteLocales $siteLocales = null,
         private readonly ?ServiceDistrictRepository $districts = null,
+        private readonly ?LeadFields $leadFields = null,
+        private readonly ?LeadConsent $leadConsent = null,
     ) {
     }
 
@@ -125,6 +129,8 @@ final class ServiceSiteExtension extends AbstractExtension
             // посилання на privacy | terms: мовою сторінки, якщо нею є текст, інакше основною мовою розгортання
             new TwigFunction('sv_legal_path', $this->legalPath(...)),
             new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
+            new TwigFunction('lead_fields', $this->leadFieldsFor(...)),
+            new TwigFunction('lead_consent', $this->leadConsentFor(...)),
         ];
     }
 
@@ -326,6 +332,35 @@ final class ServiceSiteExtension extends AbstractExtension
     public function customFieldsOf(object $entity, string $locale): array
     {
         return $this->customFields?->display($entity, $locale) ?? [];
+    }
+
+    /**
+     * Додаткові поля форми заявки з паку (app.lead_fields) мовою сторінки, варіанти select — для міста запиту; [] — форма
+     * як була. $preset — заздалегідь обраний варіант за джерелом: {services: item.slugUk} на сторінці послуги.
+     *
+     * @param array<string, string> $preset
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function leadFieldsFor(string $locale, array $preset = []): array
+    {
+        if ($this->leadFields === null || !$this->leadFields->enabled()) {
+            return [];
+        }
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+
+        return $this->leadFields->forForm($locale, $city instanceof ServiceCity ? $city : null, $preset);
+    }
+
+    /**
+     * Чекбокс згоди на обробку персональних даних (app.lead_consent): {text, policy_text, policy_url} мовою сторінки
+     * (порожнє — дефолт рушія в шаблоні); null — вимкнено.
+     *
+     * @return array{text: string, policy_text: string, policy_url: string}|null
+     */
+    public function leadConsentFor(string $locale): ?array
+    {
+        return $this->leadConsent?->forForm($locale);
     }
 
     /**

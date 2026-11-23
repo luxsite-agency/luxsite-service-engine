@@ -65,12 +65,15 @@ final class LeadNotifier
                     $lead->getPhone(),
                     $lead->getName() ?? '-',
                     $this->extraLines($lead),
+                    // додаткові поля форми (app.lead_fields) уже в кінці message рядками «Поле: значення»
                     $lead->getMessage() ?? '-',
                     $this->fileLines($lead),
                     LeadAttribution::summary($lead),
                     self::pageLink($lead, $city->getHost()),
                     $city->getHost(),
-                )));
+                ) . ($lead->getConsentAt() !== null
+                    ? "\nЗгода на обробку персональних даних: так (" . $lead->getConsentAt()->format('d.m.Y H:i') . ')'
+                    : '')));
         } catch (\Throwable $e) {
             // заявка вже в БД (черга в адмінці) - мейл лише дублює
             $this->logger->error('Не вдалося надіслати мейл заявки: ' . $e->getMessage(), ['lead_id' => $lead->getId()]);
