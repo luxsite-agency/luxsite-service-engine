@@ -18,6 +18,7 @@ t() { # t <опис> <очікуваний код: 0|!0> <команда…>
     LAST="$out"
 }
 has() { if grep -qF -- "$1" <<<"$LAST"; then pass=$((pass + 1)); echo "ok     ↳ є «$1»"; else fail=$((fail + 1)); echo "FAIL   ↳ нема «$1»"; fi; }
+hasnt() { if grep -qF -- "$1" <<<"$LAST"; then fail=$((fail + 1)); echo "FAIL   ↳ є «$1»"; else pass=$((pass + 1)); echo "ok     ↳ нема «$1»"; fi; }
 
 sc_files=(bin/site bin/site.d/*.sh tests/site/run.sh)
 if command -v shellcheck >/dev/null; then t "shellcheck" 0 shellcheck -x "${sc_files[@]}"
@@ -48,6 +49,9 @@ t "validate: app.blog_prefix = зарезервований розділ — в�
 has "зарезервований"
 printf 'parameters:\n    app.blog_prefix: news\n    app.catalog.url_scheme: root\n' > "$bad/config/parameters.yaml"; rm -f "$bad/.env.local"
 t "validate: app.blog_prefix news + схема root — ок" 0 bin/site validate "$bad"
+printf 'CLOUDFLARE_DNS_TOKEN=abcdefghijk1234\n' > "$bad/notes.md"
+t "validate: токен Cloudflare у паку — відмова" '!0' bin/site validate "$bad"
+has "схоже на секрет"; rm -f "$bad/notes.md"
 printf 'parameters:\n    app.calculator.mode: area\n    app.calculator.path: { uk: "/kalkuliator/", ru: "/ru/kalkuliator/" }\n' > "$bad/config/parameters.yaml"
 t "validate: app.calculator.* коректні — ок" 0 bin/site validate "$bad"
 printf 'parameters:\n    app.calculator.mode: table\n    app.calculator.path: { uk: "/kalkuliator", ru: "/kalkuliator/" }\n' > "$bad/config/parameters.yaml"
@@ -129,6 +133,7 @@ t "_remote.sh deploy: docker/edge (сухий прогін на сервері)"
 has "рантайм docker/edge"; has "shared/db.env"; has "docker-compose.edge.yml"
 t "_remote.sh deploy: docker/traefik — типовий compose і хости стенда" 0 env SITE_RUNTIME=docker SITE_CRON=0 SITE_HOST=alpha.stand.example.net bash bin/site.d/_remote.sh deploy alpha /tmp/nonexistent/site-alpha t1
 has "docker-compose.traefik.yml"; has "app:html:strip-static public/themes"
+has "build --pull"; hasnt "up -d --build"
 t "_remote.sh deploy: fastpanel — статика теми абсолютним шляхом релізу" 0 env SITE_RUNTIME=fastpanel SITE_CRON=0 bash bin/site.d/_remote.sh deploy client /tmp/nonexistent/site-client t1
 has "app:html:strip-static /tmp/nonexistent/site-client/releases/t1/public/themes"
 t "_remote.sh deploy: SITE_COMPOSE_FILE замість типового" 0 env SITE_RUNTIME=docker SITE_CRON=0 SITE_COMPOSE_FILE=/opt/stand/compose/beta.yml bash bin/site.d/_remote.sh deploy beta /tmp/nonexistent/site-beta t1
