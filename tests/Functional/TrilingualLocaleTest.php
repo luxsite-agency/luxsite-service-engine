@@ -189,6 +189,29 @@ final class TrilingualLocaleTest extends SeoTestCase
         self::assertStringContainsString('/en/privacy-policy/', $this->get('/sitemap.xml')[1]);
     }
 
+    public function testPagePathByUkrainianSlugForPacks(): void
+    {
+        $paths = [];
+        foreach (['uk' => '/', 'ru' => '/ru/', 'en' => '/en/'] as $locale => $home) {
+            $request = \Symfony\Component\HttpFoundation\Request::create('https://' . $this->apex . $home);
+            $request->attributes->set('service_city', $this->city($this->apexCityId));
+            $request->attributes->set(\App\EventSubscriber\ServiceHostSubscriber::ATTR_SITE, $this->site());
+            $request->setLocale($locale);
+            $stack = static::getContainer()->get('request_stack');
+            $stack->push($request);
+            try {
+                $ext = static::getContainer()->get(\App\Twig\ServiceSiteExtension::class);
+                $paths[$locale] = [$ext->pagePath('proektuvalnykam'), $ext->pagePath('tilky-uk'), $ext->pagePath('nema-takoi')];
+            } finally {
+                $stack->pop();
+            }
+        }
+        // посилання паку на сторінку за uk-слагом: мовою сторінки, null — сторінки цією мовою нема (en без перекладу, нема взагалі)
+        self::assertSame(['/proektuvalnykam/', '/tilky-uk/', null], $paths['uk']);
+        self::assertSame(['/ru/proektuvalnykam/', '/ru/tilky-uk/', null], $paths['ru']);
+        self::assertSame(['/en/designers/', null, null], $paths['en']);
+    }
+
     public function testAdminSavesEnglishFieldsOfItemCategoryAndPage(): void
     {
         $this->login($this->adminHost, $this->moderatorEmail, $this->password);

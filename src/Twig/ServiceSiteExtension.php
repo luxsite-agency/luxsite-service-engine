@@ -128,6 +128,8 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('sv_has', fn (object $entity, ?string $locale = null): bool => $this->locales()->has($entity, $locale)),
             // посилання на privacy | terms: мовою сторінки, якщо нею є текст, інакше основною мовою розгортання
             new TwigFunction('sv_legal_path', $this->legalPath(...)),
+            // посилання паку на сторінку app.pages за її uk-слагом (uk-шляхом «батько/слаг»): адреса мовою сторінки або null
+            new TwigFunction('sv_page_path', $this->pagePath(...)),
             new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
             new TwigFunction('lead_fields', $this->leadFieldsFor(...)),
             new TwigFunction('lead_consent', $this->leadConsentFor(...)),
@@ -384,6 +386,36 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    /** @var array<string, array<string, \App\Entity\ServicePage>> memo: id міста → uk-шлях → сторінка */
+    private array $pagesByUkPath = [];
+
+    /**
+     * Адреса сторінки app.pages за її uk-шляхом (`proektantam`, `batko/slug`) мовою поточної сторінки — для посилань у шаблонах
+     * паку замість path('sv_page', {path: '<uk-слаг>'}): на /en/ uk-слаг не є адресою, а неперекладеної сторінки там нема.
+     * null — сторінки нема в цьому місті, вона вимкнена або не має перекладу цією мовою (посилання не виводити).
+     */
+    public function pagePath(string $ukPath, ?string $locale = null): ?string
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if (!$this->pagesEnabled || $this->pages === null || !$city instanceof ServiceCity) {
+            return null;
+        }
+        $key = (string) $city->getId();
+        if (!isset($this->pagesByUkPath[$key])) {
+            $this->pagesByUkPath[$key] = [];
+            foreach ($this->pages->findLiveBySite($city->getSite(), $city) as $p) {
+                $this->pagesByUkPath[$key][$p->path('uk')] = $p;
+            }
+        }
+        $page = $this->pagesByUkPath[$key][trim($ukPath, '/')] ?? null;
+        $locale ??= $this->locales()->current();
+        if ($page === null || !$this->locales()->has($page, $locale)) {
+            return null;
+        }
+
+        return $this->urls->generate('sv_page', ['path' => $page->path($locale), '_locale' => $locale]);
     }
 
     /** Адреса юридичної сторінки (privacy | terms) мовою поточної сторінки або, якщо нею тексту нема, основною мовою */
