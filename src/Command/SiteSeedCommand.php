@@ -30,20 +30,21 @@ use Symfony\Component\Yaml\Yaml;
  * збіг за slug (сайт, місто, категорія, послуга, район, пост, сторінка) чи за парою назва+місто (прайс, відгук, команда) —
  * оновлює поля з файлу, нічого не дублює; --purge-missing не робимо (видаляти — в адмінці).
  *
- * Схема файлу (усі тексти — uk, ru необов'язково; порожнє = не чіпати):
+ * Схема файлу (усі тексти — uk, ru необов'язково; порожнє = не чіпати). Кожне поле `<key>_uk` має пару `<key>_ru` і `<key>_en`,
+ * адреси — `slug_en` (категорії, послуги, райони, сторінки); en-запис існує на [uk, ru, en], коли заповнено title_en (name_en):
  *   site: {slug, name, apex, schema_type?, hero_image?, about_title_uk?, about_uk?, about_ru?}
  *   cities: [{slug, host, apex: true|false, name_nom_uk, name_gen_uk?, name_dat_uk?, name_loc_uk?, name_*_ru?, phone?, email?,
  *             hours?, address_uk?, meta_title_uk?, meta_desc_uk?, intro_title_uk?, intro_text_uk?, text2_uk?, text3_uk?,
  *             faq_uk?: [{q,a}], districts_intro_uk?, noindex?: bool, gtm_id?}]
- *   categories: [{slug, title_uk, title_ru?, desc_uk?, position?, landing?, noindex?}]
- *   items: [{slug, category, title_uk, title_ru?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
+ *   categories: [{slug, slug_en?, title_uk, title_ru?, title_en?, lead_uk?, faq_uk?, desc_uk?, position?, landing?, noindex?}]
+ *   items: [{slug, slug_en?, category, title_uk, title_ru?, title_en?, lead_uk?, desc_uk?, desc2_uk?, desc3_uk?, tab_title_uk?, meta_title_uk?,
  *            meta_desc_uk?, faq_uk?: [{q,a}], position?, utp?, noindex?, hidden_cities?: [slug], price_hidden_cities?: [slug],
  *            prices?: [{city, name_uk, name_ru?, price?, prefix?, text_uk?, unit_uk?, per_unit?, calculator?}]}]
  *   districts: [{city, slug, name_uk, name_ru?, title_uk?, lead_uk?, desc_uk?, group_uk?, sub_areas_uk?, primary?, min_price?, faq_uk?}]
  *   reviews: [{city, author_uk, text_uk, stars?, date?}]
  *   team: [{city, name_uk, role_uk?, desc_uk?, position?}]
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
- *   pages: [{slug, slug_ru?, parent?: slug, title_uk, title_ru?, h1_uk?, lead_uk?, desc_uk? (або body_uk?), meta_title_uk?,
+ *   pages: [{slug, slug_ru?, slug_en?, parent?: slug, title_uk, title_ru?, title_en?, h1_uk?, lead_uk?, desc_uk? (або body_uk?), meta_title_uk?,
  *            meta_desc_uk?, template?: page|hub|sitemap|form:<ключ>, items?: [slug послуги] (hub), noindex?, in_sitemap?,
  *            position?, footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
  */
@@ -212,7 +213,7 @@ final class SiteSeedCommand
         $new = $cat === null;
         $cat ??= (new ServiceCategory())->setSite($site)->setSlugUk($d['slug']);
         $this->slugEn($cat, $d);
-        $this->loc($cat, $d, ['title' => 'title', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
+        $this->loc($cat, $d, ['title' => 'title', 'lead' => 'lead', 'faq' => 'faq', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc']);
         $cat->setPosition((int) ($d['position'] ?? ($i + 1) * 10));
         if (isset($d['landing'])) {
             $cat->setLanding((bool) $d['landing']);
@@ -238,6 +239,8 @@ final class SiteSeedCommand
         $item ??= (new ServiceItem())->setSite($site)->setSlugUk($d['slug']);
         $item->setCategory($cat);
         $this->slugEn($item, $d);
+        // name_* (коротка назва) свідомо не з seed: site-csm має name_uk/name_ru з меню старого сайту, що досі ігнорувались —
+        // повторний seed змінив би назви в меню й картках (23.11.2026); коротка назва — в адмінці
         $this->loc($item, $d, ['title' => 'title', 'lead' => 'lead', 'desc' => 'desc', 'desc2' => 'desc2', 'desc3' => 'desc3', 'tab_title' => 'tabTitle',
             'meta_title' => 'metaTitle', 'meta_desc' => 'metaDesc', 'faq' => 'faq']);
         $item->setPosition((int) ($d['position'] ?? ($i + 1) * 10));

@@ -53,8 +53,12 @@ final class HomeController extends AbstractController
         $city = $this->serviceCity($request);
 
         $itemsByCategory = [];
-        foreach ($this->items->findActiveBySite($site, $city) as $item) {
-            $itemsByCategory[$item->getCategory()->getId()][] = $item;
+        // на /en/ — лише послуги з перекладом у категоріях з перекладом (SiteLocales::has)
+        $locales = $this->container->get(\App\ServiceSite\SiteLocales::class);
+        foreach ($locales->only($this->items->findActiveBySite($site, $city)) as $item) {
+            if ($locales->has($item->getCategory())) {
+                $itemsByCategory[$item->getCategory()->getId()][] = $item;
+            }
         }
 
         // Прайс міста, згрупований по послугах (таби)

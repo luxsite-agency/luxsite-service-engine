@@ -38,6 +38,26 @@ trait LocalizedFieldsTrait
         return $value;
     }
 
+    /**
+     * Чи є запис цією мовою (23.11.2026): uk і ru — завжди (ru падає на uk); en — коли заповнено англійську назву
+     * (title або name). Лише для розгортання, де en не основна мова (SiteLocales::needsOwnContent): запис без перекладу
+     * там не має /en/-адреси, hreflang, пункту в перемикачі й sitemap.
+     */
+    public function translatedIn(string $locale): bool
+    {
+        if ($locale !== 'en') {
+            return true;
+        }
+        foreach (['title', 'name'] as $property) {
+            $value = $this->locRaw($property, $locale);
+            if (\is_string($value) && trim($value) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** Catalog addresses may reuse uk; posts override this because an en post requires its own slug. */
     protected function englishSlugFallsBack(): bool
     {

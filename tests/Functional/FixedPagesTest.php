@@ -40,6 +40,18 @@ final class FixedPagesTest extends SeoTestCase
         foreach (['faq', 'contacts', 'reviews', 'privacy-policy', 'terms-of-service'] as $path) {
             self::assertStringNotContainsString('/' . $path . '/', $xml);
         }
+        // sv_legal_path (паки, #71) теж зважає на app.fixed_pages: вимкнена — null, адреса — та сама, що fixed_page_path
+        $request = \Symfony\Component\HttpFoundation\Request::create('https://' . $this->apex . '/');
+        $request->attributes->set('service_city', $this->city($this->apexCityId));
+        $request->attributes->set(\App\EventSubscriber\ServiceHostSubscriber::ATTR_SITE, $this->site());
+        $request->setLocale('uk');
+        static::getContainer()->get('request_stack')->push($request);
+        try {
+            $ext = static::getContainer()->get(\App\Twig\ServiceSiteExtension::class);
+            self::assertSame(['/legal/', null], [$ext->legalPath('privacy'), $ext->legalPath('terms')]);
+        } finally {
+            static::getContainer()->get('request_stack')->pop();
+        }
         $map = static::getContainer()->get(\App\ServiceSite\HtmlSitemap::class)->build($this->site(), $this->city($this->apexCityId), 'uk');
         self::assertEmpty(array_intersect(array_column($map['fixed'], 'url'), ['/faq/', '/reviews/', '/contacts/', '/our-office/', '/legal/']));
     }

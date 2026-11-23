@@ -111,6 +111,7 @@ final class DistrictController extends AbstractController
         $city = $this->serviceCity($request);
         $district = $this->districts->findOneActiveBySlug($city, $slug, $request->getLocale())
             ?? throw $this->createNotFoundException('Район не знайдено.');
+        $this->requireInLocale($district, $request->getLocale());
 
         return $this->render('services/district/show.html.twig', [
             'site' => $this->serviceSite($request),
@@ -126,7 +127,7 @@ final class DistrictController extends AbstractController
             // район без власного FAQ показує міський (пак: app.district_faq_fallback)
             'faq' => $district->loc('faq', $request->getLocale())
                 ?: ($this->getParameter('app.district_faq_fallback') ? ($city->loc('faq', $request->getLocale()) ?? []) : []),
-            'altUrls' => $this->altUrls('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)]),
+            'altUrls' => $this->altUrls('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)], $district),
         ]);
     }
 
