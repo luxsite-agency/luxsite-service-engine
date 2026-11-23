@@ -42,6 +42,11 @@ final class FixedPages extends AbstractExtension
             return null;
         }
         if ($value === true) {
+            // privacy/terms (#71): типовий текст рушія лише uk/ru — мовою без тексту бренду (en у [uk, ru, en]) посилання на основну мову
+            if (\in_array($key, ['privacy', 'terms'], true) && ($site = $this->locales->currentSite()) !== null) {
+                $locale = $this->locales->legalLocale($site, $key, $locale) ?? $this->locales->default();
+            }
+
             return $this->urls->generate('sv_' . $key, ['_locale' => $locale]);
         }
         $target = RedirectPath::normalizeTarget($value);

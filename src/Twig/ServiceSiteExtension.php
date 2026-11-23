@@ -64,6 +64,7 @@ final class ServiceSiteExtension extends AbstractExtension
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
         private readonly ?SiteLocales $siteLocales = null,
+        private readonly ?\App\ServiceSite\FixedPages $fixedPages = null,
         private readonly ?ServiceDistrictRepository $districts = null,
     ) {
     }
@@ -122,7 +123,7 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
             // запис є мовою сторінки (en без англійських полів — ні): меню й списки паків
             new TwigFunction('sv_has', fn (object $entity, ?string $locale = null): bool => $this->locales()->has($entity, $locale)),
-            // посилання на privacy | terms: мовою сторінки, якщо нею є текст, інакше основною мовою розгортання
+            // посилання на privacy | terms: мовою сторінки, якщо нею є текст, інакше основною мовою; null — вимкнена (app.fixed_pages)
             new TwigFunction('sv_legal_path', $this->legalPath(...)),
             // посилання паку на сторінку app.pages за її uk-слагом (uk-шляхом «батько/слаг»): адреса мовою сторінки або null
             new TwigFunction('sv_page_path', $this->pagePath(...)),
@@ -384,8 +385,12 @@ final class ServiceSiteExtension extends AbstractExtension
     }
 
     /** Адреса юридичної сторінки (privacy | terms) мовою поточної сторінки або, якщо нею тексту нема, основною мовою */
-    public function legalPath(string $field): string
+    public function legalPath(string $field): ?string
     {
+        // app.fixed_pages (#57): вимкнена — null, адреса паку — вона; мовна частина — там же (FixedPages::path)
+        if ($this->fixedPages !== null) {
+            return $this->fixedPages->path($field);
+        }
         $locales = $this->locales();
         $site = $locales->currentSite();
         $locale = $locales->current();
