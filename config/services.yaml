@@ -128,8 +128,9 @@ parameters:
         trailing_slash: true
         skip_prefixes: ['/api/', '/admin', '/account', '/_', '/connect/']
         strip_query: true
-        # порожньо = за схемою каталогу, префіксом блогу й app.locales (LegacyUrls)
-        strip_query_paths: ''
+        # дефолт — той самий літерал, що до мов розгортання: /services/, /districts/, /blog/ (група (ru/)? LegacyUrls замінює на
+        # префікси app.locales, для [uk, ru] значення байт-у-байт це); '' = за схемою каталогу (root/slug — і кореневі сторінки)
+        strip_query_paths: '#^/(ru/)?(services|districts|blog)(/|$)#'
         keep_query: ['utm_*', 'gclid', 'fbclid', 'yclid', 'msclkid', 'dclid', 'wbraid', 'gbraid', 'ttclid', 'x', 'src']
         # 404 району на хості одного міста, а район з таким slug є в іншому місті сайту → 301 туди (CrossCityDistrictSubscriber)
         cross_city: true
