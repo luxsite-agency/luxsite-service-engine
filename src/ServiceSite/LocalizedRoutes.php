@@ -22,6 +22,8 @@ use Symfony\Component\Routing\RouteCollection;
  * Без префіксів (app.locale_prefix: false, 24.10.2026): усі мовні варіанти мають ту саму безпрефіксну адресу, тож
  * генерація будь-якою мовою дає один шлях, а зіставлення вибирає варіант мови бренду умовою
  * service('brand_routes').locale(request) (App\ServiceSite\BrandRoutes). Одна мова розгортання — умова не потрібна.
+ * Друга мова бренду (25.11.2026): до кожної мови є ще варіант `<name>.<мова>.sub` на /<мова>/… з умовою
+ * service('brand_routes').secondary(request, '<мова>'); генерацію таких адрес вмикає App\Routing\BrandRouter.
  */
 final class LocalizedRoutes
 {
@@ -29,6 +31,10 @@ final class LocalizedRoutes
     public const DECLARED = ['uk', 'ru'];
     /** Мова варіанта без префікса в оголошеннях */
     private const UNPREFIXED = 'uk';
+    /** Суфікс імені варіанта другої мови бренду */
+    public const SUB = '.sub';
+    /** Варіанти під /<мова>/ перевіряються раніше за безпрефіксні, інакше їх перехопили б маршрути-«ловці» /{slug}/ */
+    private const SUB_PRIORITY = 1000;
 
     /** @param list<string> $locales app.locales, перша — без префікса (або всі без префікса, коли $prefixed = false) */
     public static function apply(RouteCollection $routes, array $locales, bool $prefixed = true): RouteCollection
@@ -65,6 +71,14 @@ final class LocalizedRoutes
                 $variant->setDefaults(['_locale' => $target] + $route->getDefaults());
                 $variant->setRequirement('_locale', preg_quote($target));
                 $out->add($canonical . '.' . $target, $variant, $routes->getPriority($name) ?? 0);
+                if (!$prefixed && \count($locales) > 1) {
+                    $second = clone $variant;
+                    $second->setPath('/' . $target . $route->getPath());
+                    $own = $route->getCondition();
+                    $brand = sprintf("service('brand_routes').secondary(request, '%s')", $target);
+                    $second->setCondition($own === '' ? $brand : '(' . $own . ') and ' . $brand);
+                    $out->add($canonical . '.' . $target . self::SUB, $second, ($routes->getPriority($name) ?? 0) + self::SUB_PRIORITY);
+                }
             }
         }
         foreach ($routes->getAliases() as $alias => $target) {
