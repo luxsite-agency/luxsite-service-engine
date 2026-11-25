@@ -53,6 +53,7 @@ setting:
     google: Вхід через Google
     analytics: Аналітика
     seo: Верифікація
+    noindex: Не індексувати
     html: HTML-коди
     forms: Форми
     site: Адмінка
@@ -89,6 +90,16 @@ setting:
       consent_banner:
         label: Банер згоди на cookie
         help: 'Увімкнено — Consent Mode v2: до згоди Google-теги працюють без cookie (denied), Clarity й Meta Pixel не вантажаться; банер «Прийняти / Відхилити» внизу сторінки, вибір — на 180 днів. Потрібно для відвідувачів з ЄС. Вимкнено — як раніше, без банера.'
+    noindex:
+      services:
+        label: 'Сторінка «Послуги» (/services/)'
+        help: 'Увімкнено: сторінка відкривається, але отримує noindex і прибирається з sitemap.xml (усі мови).'
+      reviews:
+        label: 'Сторінка «Відгуки» (/reviews/)'
+        help: 'Увімкнено: сторінка відкривається, але отримує noindex і прибирається з sitemap.xml (усі мови).'
+      terms:
+        label: 'Сторінка «Умови» (/terms-of-service/)'
+        help: 'Увімкнено: сторінка відкривається, але отримує noindex і прибирається з sitemap.xml (усі мови).'
     seo:
       google_site_verification:
         label: Google Search Console — код верифікації
