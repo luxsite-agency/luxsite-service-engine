@@ -46,9 +46,16 @@ final class SiteSettingKeys
     public const string HTML_BODY_START = 'html.body_start';
     public const string HTML_BODY_END = 'html.body_end';
     public const string APPLICATIONS_EMAIL = 'forms.applications_email';
+    /** Галочки «не індексувати» для сторінок рушія, у яких немає власного запису в БД. */
+    public const string NOINDEX_SERVICES = 'noindex.services';
+    public const string NOINDEX_REVIEWS = 'noindex.reviews';
+    public const string NOINDEX_TERMS = 'noindex.terms';
+
+    /** Маршрут сторінки → її галочка noindex. */
+    public const array NOINDEX_ROUTES = ['sv_services' => self::NOINDEX_SERVICES, 'sv_reviews' => self::NOINDEX_REVIEWS, 'sv_terms' => self::NOINDEX_TERMS];
 
     /** Порядок груп у списку налаштувань і в підписах «група → поле». */
-    public const array GROUPS = ['google', 'analytics', 'seo', 'html', 'forms', 'site'];
+    public const array GROUPS = ['google', 'analytics', 'seo', 'noindex', 'html', 'forms', 'site'];
 
     /** @var array<string, array{type: string, group: string}> */
     private const array KEYS = [
@@ -65,6 +72,9 @@ final class SiteSettingKeys
         self::GOOGLE_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::BING_SITE_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
         self::GOOGLE_DNS_VERIFICATION => ['type' => self::TYPE_TEXT, 'group' => 'seo'],
+        self::NOINDEX_SERVICES => ['type' => self::TYPE_BOOL, 'group' => 'noindex'],
+        self::NOINDEX_REVIEWS => ['type' => self::TYPE_BOOL, 'group' => 'noindex'],
+        self::NOINDEX_TERMS => ['type' => self::TYPE_BOOL, 'group' => 'noindex'],
         self::HTML_HEAD => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_START => ['type' => self::TYPE_HTML, 'group' => 'html'],
         self::HTML_BODY_END => ['type' => self::TYPE_HTML, 'group' => 'html'],

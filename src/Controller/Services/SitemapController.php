@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Services;
 
+use App\Repository\ServiceCategoryCityRepository;
 use App\Repository\ServiceCategoryRepository;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceDistrictRepository;
@@ -14,10 +15,13 @@ use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
 use App\Repository\ServicePostRepository;
+use App\Repository\ServiceReviewRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\ServiceCityAware;
 use App\ServiceSite\SiteLocales;
+use App\Settings\SiteSettingKeys;
+use App\Settings\SiteSettings;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,7 +30,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Автогенерована карта сайту тенанта: збирається з БД на кожен запит,
  * тож нові послуги/райони/статті потрапляють у неї одразу після публікації.
- * URL — тільки індексовані сторінки (без /lead, /thank-you, /connect).
+ * URL — тільки індексовані сторінки (без /lead, /thank-you, /connect і сторінок з галочкою «Не індексувати»).
  * robots.txt тут же: на сервісному хості віддає посилання на карту,
  * на всіх інших (адмінка) — повну заборону.
  */
@@ -45,6 +49,9 @@ final class SitemapController extends AbstractController
         private readonly CalculatorAvailability $calculator,
         private readonly ServicePageRepository $pages,
         private readonly \App\ServiceSite\FixedPages $fixedPages,
+        private readonly ServiceCategoryCityRepository $categoryTexts,
+        private readonly ServiceReviewRepository $reviews,
+        private readonly SiteSettings $settings,
     ) {
     }
 
@@ -67,8 +74,11 @@ final class SitemapController extends AbstractController
         // запис карти: URL сторінки мовами бренду (мова → URL) + lastmod; параметри, що різняться між мовами, — функцією від мови
         // $content — запис сторінки: мовами, якими його нема (en без перекладу), адреси в карті нема (#71);
         // вимкнена фіксована сторінка (app.fixed_pages: false або адреса) — поза картою (#57)
-        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null, ?object $content = null) use (&$entries): void {
+        $add = function (string $route, array|\Closure $params = [], ?\DateTimeInterface $lastmod = null, ?object $content = null) use (&$entries, $site): void {
             if (str_starts_with($route, 'sv_') && in_array(substr($route, 3), \App\ServiceSite\FixedPages::KEYS, true) && !$this->fixedPages->enabled(substr($route, 3))) {
+                return;
+            }
+            if (isset(SiteSettingKeys::NOINDEX_ROUTES[$route]) && $this->settings->getBool($site, SiteSettingKeys::NOINDEX_ROUTES[$route])) {
                 return;
             }
             $urls = $this->altUrls($route, $params, $content);
@@ -82,9 +92,17 @@ final class SitemapController extends AbstractController
         $textDates = $this->itemTexts->updatedAtByItem($city);
         $newest = static fn (?\DateTimeInterface $a, ?\DateTimeInterface $b): ?\DateTimeInterface
             => $a === null ? $b : ($b === null ? $a : ($a > $b ? $a : $b));
+        $changed = static fn (object $record): ?\DateTimeInterface => $record->getUpdatedAt() ?? $record->getCreatedAt();
+        $newestOf = static fn (array $records): ?\DateTimeInterface
+            => array_reduce($records, static fn ($date, $record) => $newest($date, $changed($record)), null);
+        $categoryTextDates = [];
+        foreach ($this->categoryTexts->findBy(['city' => $city]) as $text) {
+            $categoryTextDates[(int) $text->getCategory()->getId()] = $changed($text);
+        }
+        $siteDate = $changed($site);
+        $cityDate = $changed($city);
 
-        $add('sv_home', [], $city->getUpdatedAt());
-        $add('sv_services');
+        $add('sv_home', [], $cityDate);
         // у схемах nested, root і slug у карті є й сторінки категорій
         // послуги, що надаються в цьому місті (sitemap — на хост міста); категорії без них — поза картою
         // послуги з noindex (сторінки без власного змісту) живі, але в карті їм не місце
@@ -93,12 +111,25 @@ final class SitemapController extends AbstractController
         foreach ($siteItems as $item) {
             $catsWithItems[$item->getCategory()->getId()] = true;
         }
+        // список послуг: найновіша зміна послуг, їхніх міських текстів і категорій
+        $servicesDate = null;
+        foreach ($siteItems as $item) {
+            $servicesDate = $newest($servicesDate, $newest($changed($item), $textDates[$item->getId()] ?? null));
+            $category = $item->getCategory();
+            $servicesDate = $newest($servicesDate, $newest($changed($category), $categoryTextDates[$category->getId()] ?? null));
+        }
+        $add('sv_services', [], $servicesDate);
         if ($this->catalogUrls->hasCategoryPages()) {
             foreach ($this->categories->findActiveBySite($site) as $category) {
                 if (!$category->isLanding() || $category->isNoindex() || !isset($catsWithItems[$category->getId()])) {
                     continue; // не посадкова: noindex, у карті сайту їй не місце
                 }
-                $add('sv_category', static fn (string $l): array => ['category' => $category->slug($l)], null, $category);
+                $add(
+                    'sv_category',
+                    static fn (string $l): array => ['category' => $category->slug($l)],
+                    $newest($changed($category), $categoryTextDates[$category->getId()] ?? null),
+                    $category,
+                );
             }
         }
         foreach ($siteItems as $item) {
@@ -112,7 +143,7 @@ final class SitemapController extends AbstractController
         // сайт без районів — порожнього /districts/ у карті не показуємо
         $districts = $this->districts->findActiveByCity($city);
         if ($districts !== []) {
-            $add('sv_districts');
+            $add('sv_districts', [], $newestOf($districts));
         }
         foreach ($districts as $district) {
             $add('sv_district', static fn (string $l): array => ['slug' => $district->slug($l)], $district->getUpdatedAt(), $district);
@@ -133,12 +164,19 @@ final class SitemapController extends AbstractController
         $apex = $this->cities->findActiveApex($site);
         $blogBelongsHere = $apex === null || $apex->getId() === $city->getId();
         if ($posts !== [] && $blogBelongsHere) {
-            $add('sv_blog', static fn (string $l): ?array => isset($blogLocales[$l]) ? [] : null);
+            $published = array_reduce($posts, static fn ($date, $post) => $newest($date, $post->getPublishedAt()), null);
+            $add('sv_blog', static fn (string $l): ?array => isset($blogLocales[$l]) ? [] : null, $published);
             foreach ($posts as $post) {
                 $add('sv_blog_post', static fn (string $l): ?array => $post->existsIn($l) ? ['slug' => $post->slug($l)] : null, $post->getPublishedAt());
             }
         }
-        $add('sv_about', static fn (string $l): ?array => $site->aboutFor($l) !== null || $city->aboutFor($l) !== null ? [] : null);
+        // «Про нас»: текст бренду; місто з власним текстом — новіша з двох дат
+        $ownAbout = $city->aboutFor($this->container->get(SiteLocales::class)->default()) !== null;
+        $add(
+            'sv_about',
+            static fn (string $l): ?array => $site->aboutFor($l) !== null || $city->aboutFor($l) !== null ? [] : null,
+            $ownAbout ? $newest($siteDate, $cityDate) : $siteDate,
+        );
         // сторінки app.pages, видимі в цьому місті (своя карта на кожен хост, як у послуг)
         if ($this->getParameter('app.pages')) {
             foreach ($this->pages->findLiveBySite($site, $city) as $page) {
@@ -153,15 +191,15 @@ final class SitemapController extends AbstractController
         if ($this->calculator->isAvailable($site, $city)) {
             $add('sv_calculator');
         }
-        $add('sv_faq');
-        $add('sv_contacts');
-        $add('sv_reviews');
+        $add('sv_faq', [], $cityDate);
+        $add('sv_contacts', [], $cityDate);
+        $add('sv_reviews', [], $newestOf($this->reviews->findActiveByCity($city, 100)));
         // юридичні сторінки є завжди: текст з адмінки або типовий текст рушія; на неапексних містах пак може
         // закрити їх від індексу (app.legal_noindex_cities) — тоді й у карті їм не місце
         if (!$this->getParameter('app.legal_noindex_cities') || $apex === null || $apex->getId() === $city->getId()) {
             $locales = $this->container->get(SiteLocales::class);
             foreach (['privacy' => 'sv_privacy', 'terms' => 'sv_terms'] as $field => $route) {
-                $add($route, static fn (string $l): ?array => $locales->legalLocale($site, $field, $l) !== null ? [] : null);
+                $add($route, static fn (string $l): ?array => $locales->legalLocale($site, $field, $l) !== null ? [] : null, $siteDate);
             }
         }
 

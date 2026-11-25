@@ -12,6 +12,8 @@ use App\Repository\ServiceReviewRepository;
 use App\Repository\ServiceTeamMemberRepository;
 use App\ServiceSite\ServiceCityAware;
 use App\ServiceSite\SiteLocales;
+use App\Settings\SiteSettingKeys;
+use App\Settings\SiteSettings;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,6 +33,7 @@ final class PageController extends AbstractController
         private readonly ServiceReviewRepository $reviews,
         private readonly \App\ServiceSite\ReviewsRating $reviewsRating,
         private readonly ServiceTeamMemberRepository $team,
+        private readonly SiteSettings $settings,
     ) {
     }
 
@@ -132,9 +135,11 @@ final class PageController extends AbstractController
             return $target === null ? throw $this->createNotFoundException() : $this->redirect(\App\ServiceSite\Redirect\RedirectPath::encode($target), 301);
         }
         $city = $this->serviceCity($request);
+        $noindex = $this->settings->getBool($this->serviceSite($request), SiteSettingKeys::NOINDEX_REVIEWS);
 
-        return $this->render('services/page/reviews.html.twig', [
+        $response = $this->render('services/page/reviews.html.twig', [
             'site' => $this->serviceSite($request),
+            'pageNoindex' => $noindex,
             'city' => $city,
             'reviews' => $this->reviews->findActiveByCity($city, 100),
             // загальна оцінка (рядок + aggregateRating): з віджета gbp-manager, якщо підключений, інакше власна (ReviewsRating)
@@ -143,6 +148,12 @@ final class PageController extends AbstractController
             'gbpToken' => $this->reviewsRating->gbpToken($city),
             'altUrls' => $this->altUrls('sv_reviews'),
         ]);
+        // заголовок — щоб працювало й з паком, що перекриває base.html.twig без pageNoindex
+        if ($noindex) {
+            $response->headers->set('X-Robots-Tag', 'noindex, follow');
+        }
+
+        return $response;
     }
 
     /** Політика конфіденційності: обовязкова для Google OAuth і форм заявок. */
@@ -188,7 +199,7 @@ final class PageController extends AbstractController
         $city = $this->serviceCity($request);
         // текст однаковий на всіх хостах: на неапексних містах — noindex, follow (пак: app.legal_noindex_cities). Заголовок
         // X-Robots-Tag — щоб працювало й з паком/живою темою, що перекриває base.html.twig без pageNoindex.
-        $noindex = $this->legalNoindex($city);
+        $noindex = $this->legalNoindex($city) || ($route === 'sv_terms' && $this->settings->getBool($site, SiteSettingKeys::NOINDEX_TERMS));
         // en у [uk, ru, en] без власного тексту бренду — 404: типовий текст рушія лише uk/ru
         $locales = $this->container->get(SiteLocales::class);
         if ($locales->legalLocale($site, $field, $request->getLocale()) === null) {

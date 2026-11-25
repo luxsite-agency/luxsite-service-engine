@@ -26,6 +26,8 @@ use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CrossCityDistricts;
 use App\ServiceSite\LegacyUrls;
 use App\ServiceSite\ServiceCityAware;
+use App\Settings\SiteSettingKeys;
+use App\Settings\SiteSettings;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -61,6 +63,7 @@ final class CatalogController extends AbstractController
         private readonly ServiceCityRepository $cityRepo,
         private readonly CrossCityDistricts $crossCity,
         private readonly LegacyUrls $legacy,
+        private readonly SiteSettings $settings,
     ) {
     }
 
@@ -75,15 +78,17 @@ final class CatalogController extends AbstractController
         $site = $this->serviceSite($request);
 
         $itemsByCategory = $this->itemsByCategory($request);
+        $noindex = $this->settings->getBool($site, SiteSettingKeys::NOINDEX_SERVICES);
 
-        return $this->render('services/catalog/index.html.twig', [
+        return $this->noindex($noindex, $this->render('services/catalog/index.html.twig', [
+            'pageNoindex' => $noindex,
             'site' => $site,
             'city' => $this->serviceCity($request),
             // категорії без жодної послуги в цьому місті не показуємо
             'categories' => array_values(array_filter($this->categories->findActiveBySite($site), static fn ($c) => isset($itemsByCategory[$c->getId()]))),
             'itemsByCategory' => $itemsByCategory,
             'altUrls' => $this->altUrls('sv_services'),
-        ]);
+        ]));
     }
 
     /**
