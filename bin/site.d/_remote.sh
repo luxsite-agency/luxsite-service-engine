@@ -133,7 +133,7 @@ composer_install() {
 smoke() {
     local rel="$1" site="${SITE_HOST:-}" admin="${SITE_ADMIN:-}" urls=()
     [ -n "$site" ] || { warn "SITE_HOST не задано — smoke пропущено"; return 0; }
-    # головна, каталог, райони, sitemap, robots (FAQ - ні: його вимикає app.fixed_pages) (+ smoke.php сам додає з sitemap першу послугу/район/пост і першу
+    # головна, каталог, райони, sitemap, robots (FAQ додає smoke.php за app.fixed_pages: вимкнений не відкриває) (+ smoke.php сам додає з sitemap першу послугу/район/пост і першу
     # картинку Liip зі сторінки послуги) — сторінки з різними шаблонами, щоб зламаний twig не доїхав до перемикання
     urls+=("https://$site/" "https://$site/services/" "https://$site/districts/" "https://$site/sitemap.xml" "https://$site/robots.txt")
     # другий домен міста (domains.extra): головна, карта (smoke.php відкриває з неї сторінки саме цього хоста) і robots

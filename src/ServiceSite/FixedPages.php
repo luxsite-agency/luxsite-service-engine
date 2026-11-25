@@ -16,6 +16,30 @@ use Twig\TwigFunction;
 final class FixedPages extends AbstractExtension
 {
     public const KEYS = ['faq', 'contacts', 'reviews', 'privacy', 'terms'];
+    /** Що з фіксованих сторінок відкриває bin/smoke.php (типова адреса основною мовою) */
+    public const SMOKE = ['faq' => '/faq/'];
+
+    /**
+     * Адреси для bin/smoke.php за app.fixed_pages: увімкнена — типова, адреса паку — вона (без 301), вимкнена — нічого
+     * (її 404 валив деплой). $origin — https://<хост> без слеша в кінці.
+     *
+     * @param array<string, bool|string> $pages
+     *
+     * @return list<string>
+     */
+    public static function smokeUrls(array $pages, string $origin): array
+    {
+        $urls = [];
+        foreach (self::SMOKE as $key => $default) {
+            $value = $pages[$key] ?? true;
+            if ($value === false) {
+                continue;
+            }
+            $urls[] = $origin . ($value === true ? $default : (RedirectPath::normalizeTarget((string) $value) ?? $default));
+        }
+
+        return $urls;
+    }
 
     public function __construct(
         private readonly SiteLocales $locales,

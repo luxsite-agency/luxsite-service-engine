@@ -39,10 +39,12 @@ parameters:
     # від кореня одним сегментом (старі CMS, де кожна сторінка жила на /<слаг>/). Усі схеми в індексі живих сайтів, тому
     # вибирає пак; див. src/Kernel.php::configureRoutes, config/routes/catalog/*.yaml і App\ServiceSite\RootSlugs.
     app.catalog.url_scheme: flat
+    # Фіксовані сторінки рушія (App\ServiceSite\FixedPages): true — як є; false — 404 і поза sitemap, HTML-картою й
+    # посиланнями рушія; '/шлях/' — 301 туди, посилання рушія ведуть туди ж. Див. docs/site-pack.md.
+    app.fixed_pages: { faq: true, contacts: true, reviews: true, privacy: true, terms: true }
     # Довільні сторінки (адмінка → «Сторінки»: вакансії, ліцензії, будь-який текст) від кореня сайту: /<слаг>/ і
     # /<батько>/<слаг>/, ru — /ru/…; у sitemap, футері (позначка «У футері»), галерея зображень. false = вимкнено
     # (маршрут не спрацьовує, меню адмінки без пункту) — як на сайтах до v0.9.34.
-    app.fixed_pages: { faq: true, contacts: true, reviews: true, privacy: true, terms: true }
     app.pages: false
     # Російська версія сайту (/ru/…): full — як є (типово); noindex — ru ще без перекладу (тексти записів падають на uk):
     # кожна /ru/-сторінка «noindex, follow» (meta і X-Robots-Tag), без hreflang на обох мовах, sitemap лише з uk-адресами;

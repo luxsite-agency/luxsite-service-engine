@@ -55,4 +55,12 @@ final class FixedPagesTest extends SeoTestCase
         $map = static::getContainer()->get(\App\ServiceSite\HtmlSitemap::class)->build($this->site(), $this->city($this->apexCityId), 'uk');
         self::assertEmpty(array_intersect(array_column($map['fixed'], 'url'), ['/faq/', '/reviews/', '/contacts/', '/our-office/', '/legal/']));
     }
+
+    /** Адмінка → «Вхід через Google»: кнопка «Спробувати» не веде на /reviews/, коли app.fixed_pages.reviews: false (там 404) */
+    public function testGoogleSignInTryUrlSkipsDisabledReviews(): void
+    {
+        $view = static::getContainer()->get(\App\Settings\GoogleSignInPanel::class)->view($this->site());
+        self::assertNotEmpty($view['hosts']);
+        self::assertNull($view['tryUrl']);
+    }
 }

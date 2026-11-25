@@ -78,6 +78,16 @@ $fail = 0;
 $queue = $urls;
 $seen = [];
 $auto = [];
+// фіксовані сторінки (FAQ) за app.fixed_pages паку: увімкнена — типова адреса, адреса паку — вона, вимкнена — не відкриваємо
+if (preg_match('~^(https?://[^/]+)~', $urls[0], $origin) === 1) {
+    $fixed = (array) $kernel->getContainer()->getParameter('app.fixed_pages');
+    foreach (\App\ServiceSite\FixedPages::smokeUrls($fixed, $origin[1]) as $extra) {
+        if (!in_array($extra, $queue, true)) {
+            $queue[] = $extra;
+            $auto[$extra] = 'fixed';
+        }
+    }
+}
 while (($url = array_shift($queue)) !== null) {
     if (isset($seen[$url])) {
         continue;

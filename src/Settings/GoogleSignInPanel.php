@@ -12,6 +12,7 @@ use App\Repository\ServiceCityRepository;
 use App\Security\GoogleKeySource;
 use App\Security\GoogleOAuthClientFactory;
 use App\Security\GoogleOAuthCredentials;
+use App\ServiceSite\FixedPages;
 use App\ServiceSite\SiteLocales;
 use League\OAuth2\Client\Provider\Google;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -41,6 +42,7 @@ final class GoogleSignInPanel
         private readonly TranslatorInterface $translator,
         #[Autowire(service: 'app.google_probe_http_client')] private readonly HttpClientInterface $http,
         private readonly ?SiteLocales $locales = null,
+        private readonly ?FixedPages $fixedPages = null,
     ) {
     }
 
@@ -51,7 +53,7 @@ final class GoogleSignInPanel
     {
         $resolved = $this->credentials->resolve($site);
         $callback = $this->path(GoogleOAuthClientFactory::CHECK_ROUTE, [], '/connect/google/check');
-        $reviews = $this->path('sv_reviews', ['_locale' => $this->locales?->default() ?? 'uk'], '/reviews/');
+        $reviews = $this->reviewsPath();
         $hosts = [];
         $try = null;
         foreach ($this->cities->findBy(['site' => $site], ['isApex' => 'DESC', 'id' => 'ASC']) as $city) {
@@ -60,7 +62,9 @@ final class GoogleSignInPanel
             }
             $origin = 'https://' . $city->getHost();
             $hosts[] = ['city' => $city->name('uk'), 'host' => $city->getHost(), 'origin' => $origin, 'redirectUri' => $origin . $callback, 'active' => true];
-            $try ??= $origin . $reviews;
+            if (null !== $reviews) {
+                $try ??= $origin . $reviews;
+            }
         }
 
         return [
@@ -141,6 +145,21 @@ final class GoogleSignInPanel
             'endpointsMatch' => ($doc['authorization_endpoint'] ?? null) === $provider->getBaseAuthorizationUrl()
                 && ($doc['token_endpoint'] ?? null) === $provider->getBaseAccessTokenUrl([]),
         ];
+    }
+
+    /** Сторінка відгуків з кнопкою входу за app.fixed_pages: вимкнена — null (там 404), адреса паку — вона */
+    private function reviewsPath(): ?string
+    {
+        $locale = $this->locales?->default() ?? 'uk';
+        if (null !== $this->fixedPages) {
+            try {
+                return $this->fixedPages->path('reviews', $locale);
+            } catch (\Throwable) {
+                return $this->fixedPages->enabled('reviews') ? '/reviews/' : null;
+            }
+        }
+
+        return $this->path('sv_reviews', ['_locale' => $locale], '/reviews/');
     }
 
     /** @param array<string, string> $params */
