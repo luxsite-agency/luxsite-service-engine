@@ -45,10 +45,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $titleUk = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    private ?string $titleEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $titleRu = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleUk = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $metaTitleEn = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $metaTitleRu = null;
@@ -57,10 +63,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $metaDescUk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $metaDescEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $metaDescRu = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descUk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $descEn = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $descRu = null;
@@ -69,10 +81,16 @@ class ServiceCategoryCity implements TimestampableInterface
     private ?string $desc2Uk = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc2En = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc2Ru = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Uk = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desc3En = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $desc3Ru = null;
@@ -253,5 +271,77 @@ class ServiceCategoryCity implements TimestampableInterface
     public function __toString(): string
     {
         return ($this->category?->getTitleUk() ?? '?') . ' / ' . ($this->city?->getName('uk') ?? '?');
+    }
+
+    public function getTitleEn(): ?string
+    {
+        return $this->titleEn;
+    }
+
+    public function setTitleEn(?string $titleEn): self
+    {
+        $this->titleEn = $titleEn;
+
+        return $this;
+    }
+
+    public function getMetaTitleEn(): ?string
+    {
+        return $this->metaTitleEn;
+    }
+
+    public function setMetaTitleEn(?string $metaTitleEn): self
+    {
+        $this->metaTitleEn = $metaTitleEn;
+
+        return $this;
+    }
+
+    public function getMetaDescEn(): ?string
+    {
+        return $this->metaDescEn;
+    }
+
+    public function setMetaDescEn(?string $metaDescEn): self
+    {
+        $this->metaDescEn = $metaDescEn;
+
+        return $this;
+    }
+
+    public function getDescEn(): ?string
+    {
+        return $this->descEn;
+    }
+
+    public function setDescEn(?string $descEn): self
+    {
+        $this->descEn = $descEn;
+
+        return $this;
+    }
+
+    public function getDesc2En(): ?string
+    {
+        return $this->desc2En;
+    }
+
+    public function setDesc2En(?string $desc2En): self
+    {
+        $this->desc2En = $desc2En;
+
+        return $this;
+    }
+
+    public function getDesc3En(): ?string
+    {
+        return $this->desc3En;
+    }
+
+    public function setDesc3En(?string $desc3En): self
+    {
+        $this->desc3En = $desc3En;
+
+        return $this;
     }
 }

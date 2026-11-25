@@ -18,8 +18,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\CollectionField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_ADMIN')]
@@ -30,6 +30,13 @@ class ServiceCityCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва міста, а не хост */
     private const INDEX_PRIMARY = 'nameNomUk';
+
+    /** @param list<string> $locales app.locales — вкладка English лише там, де en увімкнено (22.10.2026) */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -107,16 +114,25 @@ class ServiceCityCrudController extends AbstractCrudController
             ->setHelp('Показується у футері. Кілька адрес - кожна з нового рядка; у розмітку Google іде лише перший рядок. Порожньо - адреси на сайті немає.');
         yield TextareaField::new('addressRu', 'Адреса (ru)')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - на ru-сторінках буде українська.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('addressEn', 'Адреса (en)')->hideOnIndex()->setColumns(6);
+        }
         yield TextareaField::new('aboutWhereUk', '«Про нас»: де працюємо (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Абзац під заголовком «Де ми працюємо» на сторінці «Про нас»: райони й передмістя цього міста. Порожньо - розділу не буде.');
         yield TextareaField::new('aboutWhereRu', '«Про нас»: де працюємо (ru)')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('aboutUk', '«Про нас» для міста (uk)')->hideOnIndex()->setColumns(6)
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('aboutWhereEn', '«Про нас»: де працюємо (en)')->hideOnIndex()->setColumns(6);
+        }
+        yield HtmlField::new('aboutUk', '«Про нас» для міста (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Повний текст сторінки «Про нас» лише для цього міста (можна з маркером <!--city-where-->). Порожньо = спільний текст бренду.');
-        yield TextEditorField::new('aboutRu', '«Про нас» для міста (ru)')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('aboutRu', '«Про нас» для міста (ru)')->hideOnIndex()->setColumns(6);
         yield TextField::new('priceNoteUk', 'Умова про ціни для міста (uk)')->hideOnIndex()->setColumns(6)
             ->setHelp('Один рядок лише для цього міста, напр. «Мінімальний виклик — від 1500 грн»: під таблицями цін на головній і сторінці послуги, біля підсумку калькулятора й під заголовком форми заявки. Порожньо - рядка нема.');
         yield TextField::new('priceNoteRu', 'Умова про ціни для міста (ru)')->hideOnIndex()->setColumns(6)
             ->setHelp('Порожньо - на ru-сторінках буде українська.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('priceNoteEn', 'Умова про ціни для міста (en)')->hideOnIndex()->setColumns(6);
+        }
         yield TextField::new('mapEmbedUrl', 'Карта: посилання для вставки')->hideOnIndex()->setColumns(12)
             ->setHelp('Google Maps: «Поділитися → Вставити карту», скопіювати адресу з src="…". Порожньо - блок карти на контактах не показуємо');
         yield TextField::new('mapLinkUrl', 'Карта: посилання на листинг')->hideOnIndex()->setColumns(12)
@@ -140,19 +156,22 @@ class ServiceCityCrudController extends AbstractCrudController
         yield TextField::new('introTitleUk', 'H1 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Заголовок H1 головної сторінки міста.');
         yield TextField::new('introTitleRu', 'H1 ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('introTextUk', 'Інтро uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('introTextUk', 'Інтро uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Текст під заголовком на головній.');
-        yield TextEditorField::new('introTextRu', 'Інтро ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('text2Uk', 'Блок 2 uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('introTextRu', 'Інтро ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('text2Uk', 'Блок 2 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Другий блок тексту головної - під переліком послуг.');
-        yield TextEditorField::new('text2Ru', 'Блок 2 ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('text3Uk', 'Блок 3 uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('text2Ru', 'Блок 2 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('text3Uk', 'Блок 3 uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Третій блок - під таблицею цін.');
-        yield TextEditorField::new('text3Ru', 'Блок 3 ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('districtsIntroUk', 'Інтро районів uk')->hideOnIndex()->setColumns(6)
+        yield HtmlField::new('text3Ru', 'Блок 3 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('districtsIntroUk', 'Інтро районів uk')->hideOnIndex()->setColumns(6)
             ->setHelp('Вступний текст на сторінці переліку районів.');
-        yield TextEditorField::new('districtsIntroRu', 'Інтро районів ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('districtsIntroRu', 'Інтро районів ru')->hideOnIndex()->setColumns(6);
 
+        if (\in_array('en', $this->locales, true)) {
+            yield HtmlField::new('districtsIntroEn', 'Інтро районів en')->hideOnIndex()->setColumns(6);
+        }
         yield FormField::addTab('FAQ', 'fa fa-circle-question');
         yield CollectionField::new('faqUk', 'FAQ uk')->hideOnIndex()->setColumns(6)
             ->setEntryType(ServiceFaqItemType::class)
@@ -170,5 +189,21 @@ class ServiceCityCrudController extends AbstractCrudController
         yield TextareaField::new('metaDescUk', 'Meta description uk')->hideOnIndex()->setColumns(6)
             ->setHelp('~150-160 символів');
         yield TextareaField::new('metaDescRu', 'Meta description ru')->hideOnIndex()->setColumns(6);
+
+        if (\in_array('en', $this->locales, true)) {
+            yield FormField::addTab('English', 'fa fa-language');
+            yield TextField::new('nameNomEn', 'Назва міста en')->hideOnIndex()->setColumns(6)
+                ->setHelp('Без фолбеку на uk: порожньо — назва з поля uk.');
+            yield TextField::new('introTitleEn', 'H1 en')->hideOnIndex()->setColumns(6);
+            yield HtmlField::new('introTextEn', 'Інтро en')->hideOnIndex()->setColumns(12);
+            yield HtmlField::new('text2En', 'Блок 2 en')->hideOnIndex()->setColumns(6);
+            yield HtmlField::new('text3En', 'Блок 3 en')->hideOnIndex()->setColumns(6);
+            yield HtmlField::new('aboutEn', '«Про нас» для міста (en)')->hideOnIndex()->setColumns(12);
+            yield CollectionField::new('faqEn', 'FAQ en')->hideOnIndex()->setColumns(12)
+                ->setEntryType(ServiceFaqItemType::class)
+                ->allowAdd()->allowDelete();
+            yield TextField::new('metaTitleEn', 'Meta title en')->hideOnIndex()->setColumns(6);
+            yield TextareaField::new('metaDescEn', 'Meta description en')->hideOnIndex()->setColumns(6);
+        }
     }
 }

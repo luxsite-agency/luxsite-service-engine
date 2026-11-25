@@ -11,7 +11,9 @@ use App\Entity\ServiceItem;
 use App\Entity\ServiceSite;
 use App\Entity\ServiceCity;
 use App\EventSubscriber\ServiceHostSubscriber;
+use App\Entity\ServiceDistrict;
 use App\Repository\ServiceCityRepository;
+use App\Repository\ServiceDistrictRepository;
 use App\Repository\ServiceItemCityRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePageRepository;
@@ -19,6 +21,7 @@ use App\Repository\ServicePostRepository;
 use App\ServiceSite\CalculatorAvailability;
 use App\ServiceSite\CatalogUrls;
 use App\ServiceSite\CustomFields;
+use App\ServiceSite\SiteLocales;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -32,7 +35,7 @@ use Twig\TwigFunction;
  */
 final class ServiceSiteExtension extends AbstractExtension
 {
-    /** @var array<int, bool> memo на запит: меню рендериться двічі (шапка + підвал) */
+    /** @var array<string, bool> memo на запит: сайт + мова, меню рендериться двічі (шапка + підвал) */
     private array $hasBlog = [];
 
     /** @var array<int, int> memo на запит: активних міст сайту (title і H1 відгуків) */
@@ -60,7 +63,37 @@ final class ServiceSiteExtension extends AbstractExtension
         private readonly ?ServicePageRepository $pages = null,
         #[Autowire('%app.pages%')]
         private readonly bool $pagesEnabled = false,
+        private readonly ?SiteLocales $siteLocales = null,
+        private readonly ?ServiceDistrictRepository $districts = null,
     ) {
+    }
+
+    /**
+     * Активні райони поточного міста (атрибут запиту service_city), згруповані за `group` мовою сторінки: [{name, districts}].
+     * Порядок — position районів; група без назви (`name` = '') — ті, у кого групи нема. Район без назви цією мовою пропускається
+     * (англійська сторінка не показує українського тексту). Без міста — [].
+     *
+     * @return list<array{name: string, districts: list<ServiceDistrict>}>
+     */
+    public function districtGroups(?string $locale = null): array
+    {
+        $request = $this->requests->getCurrentRequest();
+        $city = $request?->attributes->get('service_city');
+        if (!$city instanceof ServiceCity || $this->districts === null) {
+            return [];
+        }
+        $locale ??= $request->getLocale();
+        $groups = [];
+        foreach ($this->districts->findActiveByCity($city) as $district) {
+            if (trim((string) $district->loc('name', $locale)) === '') {
+                continue;
+            }
+            $name = trim((string) $district->loc('group', $locale));
+            $groups[$name] ??= ['name' => $name, 'districts' => []];
+            $groups[$name]['districts'][] = $district;
+        }
+
+        return array_values($groups);
     }
 
     public function getFunctions(): array
@@ -72,6 +105,8 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('service_path', $this->servicePath(...)),
             new TwigFunction('city_switcher', $this->citySwitcher(...)),
             new TwigFunction('city_in', $this->cityIn(...)),
+            // райони поточного міста групами мовою сторінки — мегаменю «Локації», хаб, футер (05.11.2026)
+            new TwigFunction('sv_district_groups', $this->districtGroups(...)),
             new TwigFunction('ov', $this->ov(...)),
             new TwigFunction('item_text', $this->itemText(...)),
             new TwigFunction('footer_catalog', $this->footerCatalog(...)),
@@ -80,6 +115,18 @@ final class ServiceSiteExtension extends AbstractExtension
             new TwigFunction('reviews_title_city', $this->reviewsTitleCity(...)),
             new TwigFunction('page_meta', $this->pageMeta(...)),
             new TwigFunction('custom_fields', $this->customFieldsOf(...)),
+            // мови розгортання й бренду (app.locales, ServiceSite.locales; 22.10.2026) — замість зашитих uk/ru
+            new TwigFunction('sv_locale', fn (): string => $this->locales()->current()),
+            new TwigFunction('sv_locales', fn (?ServiceSite $site = null): array => $this->locales()->enabled($site)),
+            new TwigFunction('sv_default_locale', fn (): string => $this->locales()->default()),
+            new TwigFunction('sv_locale_code', fn (string $locale, string $kind): string => $this->locales()->code($locale, $kind)),
+            // запис є мовою сторінки (en без англійських полів — ні): меню й списки паків
+            new TwigFunction('sv_has', fn (object $entity, ?string $locale = null): bool => $this->locales()->has($entity, $locale)),
+            // посилання на privacy | terms: мовою сторінки, якщо нею є текст, інакше основною мовою розгортання
+            new TwigFunction('sv_legal_path', $this->legalPath(...)),
+            // посилання паку на сторінку app.pages за її uk-слагом (uk-шляхом «батько/слаг»): адреса мовою сторінки або null
+            new TwigFunction('sv_page_path', $this->pagePath(...)),
+            new TwigFunction('sv_path_locale', fn (): string => $this->locales()->fromPath()),
         ];
     }
 
@@ -118,7 +165,12 @@ final class ServiceSiteExtension extends AbstractExtension
     {
         $groups = [];
         $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
-        foreach ($this->items->findActiveBySite($site, $city instanceof ServiceCity ? $city : null) as $item) {
+        // мовою без власного перекладу (en у [uk, ru, en]) — лише перекладені послуги й категорії
+        $locales = $this->locales();
+        foreach ($locales->only($this->items->findActiveBySite($site, $city instanceof ServiceCity ? $city : null)) as $item) {
+            if (!$locales->has($item->getCategory())) {
+                continue;
+            }
             $cid = (int) $item->getCategory()->getId();
             $groups[$cid] ??= ['category' => $item->getCategory(), 'items' => []];
             $groups[$cid]['items'][] = $item;
@@ -127,7 +179,7 @@ final class ServiceSiteExtension extends AbstractExtension
         return array_values($groups);
     }
 
-    /** @var array<int, list<\App\Entity\ServicePage>> memo: id міста → сторінки футера (smoke ганяє кілька хостів одним ядром) */
+    /** @var array<string, list<\App\Entity\ServicePage>> memo: id міста:мова → сторінки футера (smoke ганяє кілька хостів одним ядром) */
     private array $footerPages = [];
 
     /**
@@ -142,10 +194,12 @@ final class ServiceSiteExtension extends AbstractExtension
             return [];
         }
 
-        return $this->footerPages[(int) $city->getId()] ??= array_values(array_filter(
+        $locale = $this->locales()->current();
+
+        return $this->footerPages[(int) $city->getId() . ':' . $locale] ??= $this->locales()->only(array_filter(
             $this->pages->findLiveBySite($site, $city),
             static fn (\App\Entity\ServicePage $p): bool => $p->isInFooter(),
-        ));
+        ), $locale);
     }
 
     /** @var array<int, array<int, \App\Entity\ServiceItemCity>> кеш перевизначень на запит: id міста → (id послуги → тексти) */
@@ -188,7 +242,7 @@ final class ServiceSiteExtension extends AbstractExtension
         if (method_exists($base, 'locRaw') && $filled($v = $base->locRaw($property, $locale))) {
             return $v;
         }
-        if ($locale !== 'uk' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
+        if ($locale === 'ru' && $hasOverride && $override->locFallsBack($property) && $filled($v = $override->locRaw($property, 'uk'))) {
             return $v;
         }
 
@@ -205,6 +259,9 @@ final class ServiceSiteExtension extends AbstractExtension
     public function cityIn(ServiceCity $city, string $locale, ?string $after = null): string
     {
         $name = trim((string) ($city->loc('nameLoc', $locale) ?? $city->name($locale)));
+        if ($locale === 'en') {
+            return 'in';
+        }
         if ($locale !== 'uk') {
             return preg_match('/^(В[^аеёиоуыэюяАЕЁИОУЫЭЮЯ]|Ф[^аеёиоуыэюя]|Льв|Мн)/u', $name) === 1 ? 'во' : 'в';
         }
@@ -235,7 +292,9 @@ final class ServiceSiteExtension extends AbstractExtension
 
     public function siteHasBlog(ServiceSite $site): bool
     {
-        return $this->hasBlog[$site->getId()] ??= $this->posts->countPublishedBySite($site) > 0;
+        $locale = $this->locales()->current();
+
+        return $this->hasBlog[$site->getId() . ':' . $locale] ??= $this->posts->countPublishedBySite($site, $locale) > 0;
     }
 
     /**
@@ -283,7 +342,7 @@ final class ServiceSiteExtension extends AbstractExtension
             return null;
         }
         $route = (string) ($request->attributes->get('_canonical_route') ?? $request->attributes->get('_route') ?? '');
-        $value = $this->pageMeta[$route][$field . '_' . ($request->getLocale() === 'ru' ? 'ru' : 'uk')] ?? null;
+        $value = $this->pageMeta[$route][$field . '_' . $this->locales()->current()] ?? null;
 
         return \is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
@@ -292,5 +351,53 @@ final class ServiceSiteExtension extends AbstractExtension
     public function servicePath(ServiceItem $item, string $locale): string
     {
         return $this->urls->generate('sv_service', $this->catalogUrls->itemParams($item, $locale) + ['_locale' => $locale]);
+    }
+
+    /** @var array<string, array<string, \App\Entity\ServicePage>> memo: id міста → uk-шлях → сторінка */
+    private array $pagesByUkPath = [];
+
+    /**
+     * Адреса сторінки app.pages за її uk-шляхом (`proektantam`, `batko/slug`) мовою поточної сторінки — для посилань у шаблонах
+     * паку замість path('sv_page', {path: '<uk-слаг>'}): на /en/ uk-слаг не є адресою, а неперекладеної сторінки там нема.
+     * null — сторінки нема в цьому місті, вона вимкнена або не має перекладу цією мовою (посилання не виводити).
+     */
+    public function pagePath(string $ukPath, ?string $locale = null): ?string
+    {
+        $city = $this->requests->getCurrentRequest()?->attributes->get('service_city');
+        if (!$this->pagesEnabled || $this->pages === null || !$city instanceof ServiceCity) {
+            return null;
+        }
+        $key = (string) $city->getId();
+        if (!isset($this->pagesByUkPath[$key])) {
+            $this->pagesByUkPath[$key] = [];
+            foreach ($this->pages->findLiveBySite($city->getSite(), $city) as $p) {
+                $this->pagesByUkPath[$key][$p->path('uk')] = $p;
+            }
+        }
+        $page = $this->pagesByUkPath[$key][trim($ukPath, '/')] ?? null;
+        $locale ??= $this->locales()->current();
+        if ($page === null || !$this->locales()->has($page, $locale)) {
+            return null;
+        }
+
+        return $this->urls->generate('sv_page', ['path' => $page->path($locale), '_locale' => $locale]);
+    }
+
+    /** Адреса юридичної сторінки (privacy | terms) мовою поточної сторінки або, якщо нею тексту нема, основною мовою */
+    public function legalPath(string $field): string
+    {
+        $locales = $this->locales();
+        $site = $locales->currentSite();
+        $locale = $locales->current();
+        if ($site !== null) {
+            $locale = $locales->legalLocale($site, $field, $locale) ?? $locales->default();
+        }
+
+        return $this->urls->generate('sv_' . $field, ['_locale' => $locale]);
+    }
+
+    private function locales(): SiteLocales
+    {
+        return $this->siteLocales ?? new SiteLocales($this->requests);
     }
 }

@@ -24,7 +24,7 @@
             '@type': 'Offer',
             'name': price.loc('name', locale),
             'price': price.price|number_format(0, '.', ''),
-            'priceCurrency': 'UAH',
+            'priceCurrency': currency_code,
             'availability': 'https://schema.org/InStock',
             'url': altUrls[locale],
         } %}
@@ -34,7 +34,7 @@
             {% set offer = offer|merge({'priceSpecification': {
                 '@type': 'UnitPriceSpecification',
                 'price': price.price|number_format(0, '.', ''),
-                'priceCurrency': 'UAH',
+                'priceCurrency': currency_code,
                 'unitText': price.loc('unit', locale),
             }}) %}
         {% endif %}
@@ -91,7 +91,7 @@
     {% if offers is not empty %}
         {% set svc = svc|merge({'offers': {
             '@type': 'AggregateOffer',
-            'priceCurrency': 'UAH',
+            'priceCurrency': currency_code,
             'offerCount': offers|length,
             'lowPrice': amounts|first|number_format(0, '.', ''),
             'highPrice': amounts|last|number_format(0, '.', ''),

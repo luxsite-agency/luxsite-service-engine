@@ -126,7 +126,7 @@ request), тож будь-який контролер ішов би без вх�
 | Метод і шлях | Що |
 |---|---|
 | `GET /me` | користувач, токен (без значення), дозволи, активні сайти з містами і `studio_api_url` |
-| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`, `works` (роботи), `team` (команда), `reviews` (відгуки), `pages` (сторінки `app.pages`: тексти, H1, SEO, `template`, `noindex`, `in_sitemap`; слаг і батько — лише в адмінці). Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти, works, team, reviews), `?item=<id>` (prices, works) |
+| `GET /{site}/{kind}` | список; `kind` = `items`, `categories`, `districts`, `posts`, `prices`, `item-texts`, `category-texts`, `works` (роботи), `team` (команда), `reviews` (відгуки), `pages` (сторінки `app.pages`: тексти, H1, SEO, `template`, `noindex`, `in_sitemap`; батько — лише в адмінці; slug_en — через API). Фільтри: `?q=` (назва/слаг), `?category=<id>` (items), `?city=<slug>` (districts, prices, тексти, works, team, reviews), `?item=<id>` (prices, works) |
 | `GET /{site}/{kind}/{id}` | запис з усіма дозволеними полями; у items, categories, posts, works, team, reviews — ще блок `image` (див. «Зображення») |
 | `PATCH /{site}/{kind}/{id}` | JSON `{поле: значення}` лише з дозволених полів (перелік у 422 на невідоме поле); FAQ — `[{"q":"…","a":"…"}]`; відповідь — запис після змін + `changed` |
 | `POST /{site}/item-texts` | `{item_id, city_id, …поля}` — створити/оновити тексти послуги для міста (upsert) |
@@ -138,7 +138,7 @@ request), тож будь-який контролер ішов би без вх�
 | `PUT\|POST /{site}/{kind}/{id}/image` | фото запису: multipart `file` (лише POST), JSON `{url}` або `{data, filename}`; `alt`, `alt_ru` — див. «Зображення» |
 | `DELETE /{site}/{kind}/{id}/image` | прибрати фото й alt |
 
-`{site}` — slug сайту з `/me`. Зміни пишуться одразу (як збереження в адмінці); slug, категорія послуги, порядок послуг,
+`{site}` — slug сайту з `/me`. Зміни пишуться одразу (як збереження в адмінці); uk/ru slug, категорія послуги, порядок послуг,
 фото «до» у роботах і міста (де надається, де ціни) — лише в адмінці. Робота без міста й послуги (показується всюди)
 доступна через будь-який сайт інсталяції.
 
@@ -211,3 +211,5 @@ app.admin_api_image_rate_limit: 30    # завантажень фото чере
   (анонімізований; оновлюється не частіше ніж раз на хвилину), `created_at`.
 - Токен у логах не буває: лише префікс і причина. Значення після створення живе лише в сесії адмінки до першого показу.
 - Після оновлення сайту до тега з цією функцією: міграція йде в `bin/site deploy`; у паку нічого не міняти.
+
+Англійський каталог: `*_en` для всіх контентних видів; `slug_en` для items/categories/districts/pages. Порожній `slug_en` використовує uk-адресу; порожній текст en не підставляє uk. Деталі — [site-pack.md](site-pack.md#англійський-каталог-і-контентні-блоки).

@@ -64,6 +64,15 @@ class ServiceSite implements TimestampableInterface
     private bool $active = true;
 
     /**
+     * Мови бренду (22.10.2026): підмножина мов розгортання app.locales у їхньому порядку; null = усі мови розгортання
+     * (так працюють сайти, створені до цього поля). Мова не з набору → 404, hreflang/sitemap/перемикач — лише ці мови.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $locales = null;
+
+    /**
      * Ілюстрація хіро головної (шлях від кореня public, напр. /themes/<key>/hero.webp).
      * Векторна бренд-графіка живе в репо; фото-контент піде через Vich окремо.
      */
@@ -97,6 +106,31 @@ class ServiceSite implements TimestampableInterface
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $termsRu = null;
+
+    // англійська версія (22.10.2026): без фолбеку на uk
+    #[ORM\Column(length: 128, nullable: true)]
+    private ?string $brandNameEn = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $aboutTitleEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $aboutEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $privacyEn = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $termsEn = null;
+
+    /**
+     * Сирий текст «Про нас» для мови сторінки: uk і ru — українське поле (так сторінку й пункт меню вмикали до 22.10.2026),
+     * en — англійське, без фолбеку. null = сторінки цією мовою нема.
+     */
+    public function aboutFor(string $locale): ?string
+    {
+        return $this->locRaw('about', $locale === 'ru' ? 'uk' : $locale);
+    }
 
     public function getId(): ?int
     {
@@ -191,6 +225,37 @@ class ServiceSite implements TimestampableInterface
         $this->active = $active;
 
         return $this;
+    }
+
+    /** @return list<string>|null */
+    public function getLocales(): ?array
+    {
+        return $this->locales;
+    }
+
+    /** @param list<string>|null $locales порожній список = null (усі мови розгортання) */
+    public function setLocales(?array $locales): self
+    {
+        $locales = $locales === null ? [] : array_values(array_unique(array_filter($locales, 'is_string')));
+        $this->locales = $locales === [] ? null : $locales;
+
+        return $this;
+    }
+
+    /**
+     * Увімкнені мови бренду в порядку мов розгортання (перша — без префікса).
+     *
+     * @param list<string> $deployment app.locales
+     *
+     * @return list<string>
+     */
+    public function enabledLocales(array $deployment): array
+    {
+        if ($this->locales === null) {
+            return $deployment;
+        }
+
+        return array_values(array_intersect($deployment, $this->locales));
     }
 
     public function getHeroImagePath(): ?string
@@ -297,6 +362,66 @@ class ServiceSite implements TimestampableInterface
     public function setTermsRu(?string $termsRu): self
     {
         $this->termsRu = $termsRu;
+
+        return $this;
+    }
+
+    public function getBrandNameEn(): ?string
+    {
+        return $this->brandNameEn;
+    }
+
+    public function setBrandNameEn(?string $brandNameEn): self
+    {
+        $this->brandNameEn = $brandNameEn === '' ? null : $brandNameEn;
+
+        return $this;
+    }
+
+    public function getAboutTitleEn(): ?string
+    {
+        return $this->aboutTitleEn;
+    }
+
+    public function setAboutTitleEn(?string $aboutTitleEn): self
+    {
+        $this->aboutTitleEn = $aboutTitleEn === '' ? null : $aboutTitleEn;
+
+        return $this;
+    }
+
+    public function getAboutEn(): ?string
+    {
+        return $this->aboutEn;
+    }
+
+    public function setAboutEn(?string $aboutEn): self
+    {
+        $this->aboutEn = $aboutEn === '' ? null : $aboutEn;
+
+        return $this;
+    }
+
+    public function getPrivacyEn(): ?string
+    {
+        return $this->privacyEn;
+    }
+
+    public function setPrivacyEn(?string $privacyEn): self
+    {
+        $this->privacyEn = $privacyEn === '' ? null : $privacyEn;
+
+        return $this;
+    }
+
+    public function getTermsEn(): ?string
+    {
+        return $this->termsEn;
+    }
+
+    public function setTermsEn(?string $termsEn): self
+    {
+        $this->termsEn = $termsEn === '' ? null : $termsEn;
 
         return $this;
     }

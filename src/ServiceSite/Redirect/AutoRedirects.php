@@ -15,6 +15,7 @@ use App\Entity\ServicePage;
 use App\Entity\ServicePost;
 use App\Entity\ServiceSite;
 use App\ServiceSite\CatalogUrls;
+use App\ServiceSite\SiteLocales;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Event\OnFlushEventArgs;
@@ -25,7 +26,7 @@ use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Авто-301 (модель shop-engine E3): зміна slug (uk або ru) послуги, категорії, поста, району чи сторінки app.pages через ORM (адмінка,
+ * Авто-301 (модель shop-engine E3): зміна slug (uk, ru або en) послуги, категорії, поста, району чи сторінки app.pages через ORM (адмінка,
  * імпорт, API) → правило auto зі старої адреси на нову по кожній мові. Адреси будуються тими ж маршрутами, що й сайт
  * (sv_service, sv_category, sv_blog_post, sv_district — з урахуванням app.catalog.url_scheme і app.blog_prefix).
  * Послуги, категорії й пости живуть на всіх хостах сайту — правило на сайт (city null); район — лише на хості свого
@@ -38,7 +39,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[AsDoctrineListener(event: Events::postFlush)]
 final class AutoRedirects
 {
-    /** @var array<int, array{0: object, 1: array{uk: string, ru: string}|null, 2: list<array{0: ServiceItem|ServicePage, 1: array{uk: string, ru: string}}>}> null — вставка */
+    /** @var array<int, array{0: object, 1: array{uk: string, ru: string, en: string}|null, 2: list<array{0: ServiceItem|ServicePage, 1: array{uk: string, ru: string, en: string}}>}> null — вставка */
     private array $changed = [];
 
     public function __construct(
@@ -46,6 +47,7 @@ final class AutoRedirects
         private readonly UrlGeneratorInterface $urls,
         private readonly CatalogUrls $catalogUrls,
         private readonly LoggerInterface $logger,
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
     }
 
@@ -63,23 +65,25 @@ final class AutoRedirects
                 continue;
             }
             $set = $uow->getEntityChangeSet($entity);
-            if (!\array_key_exists('slugUk', $set) && !\array_key_exists('slugRu', $set)) {
+            if (!\array_key_exists('slugUk', $set) && !\array_key_exists('slugRu', $set) && !\array_key_exists('slugEn', $set)) {
                 continue;
             }
             $oldUk = (string) ($set['slugUk'][0] ?? $entity->getSlugUk());
             $oldRu = \array_key_exists('slugRu', $set) ? $set['slugRu'][0] : $entity->getSlugRu();
-            $old = ['uk' => $oldUk, 'ru' => \is_string($oldRu) && $oldRu !== '' ? $oldRu : $oldUk];
+            $oldEn = \array_key_exists('slugEn', $set) ? $set['slugEn'][0] : $entity->getSlugEn();
+            $old = ['uk' => $oldUk, 'ru' => \is_string($oldRu) && $oldRu !== '' ? $oldRu : $oldUk,
+                'en' => $entity instanceof ServicePost ? (string) $oldEn : (\is_string($oldEn) && $oldEn !== '' ? $oldEn : $oldUk)];
             $items = [];
             if ($entity instanceof ServiceCategory && $this->catalogUrls->isNested()) {
                 // послуги категорії переїжджають разом з нею; їхні slug беремо як є (якщо змінюються в тому ж flush — своїм записом)
                 foreach ($em->getRepository(ServiceItem::class)->findBy(['category' => $entity]) as $item) {
-                    $items[] = [$item, ['uk' => $item->slug('uk'), 'ru' => $item->slug('ru')]];
+                    $items[] = [$item, ['uk' => $item->slug('uk'), 'ru' => $item->slug('ru'), 'en' => $item->slug('en')]];
                 }
             }
             if ($entity instanceof ServicePage) {
                 // дочірні сторінки переїжджають разом з батьком; їхні slug — як є
                 foreach ($entity->getChildren() as $child) {
-                    $items[] = [$child, ['uk' => $child->slug('uk'), 'ru' => $child->slug('ru')]];
+                    $items[] = [$child, ['uk' => $child->slug('uk'), 'ru' => $child->slug('ru'), 'en' => $child->slug('en')]];
                 }
             }
             $this->changed[spl_object_id($entity)] ??= [$entity, $old, $items];
@@ -103,7 +107,7 @@ final class AutoRedirects
             }
             $key = $site->getId() . ':' . ($city?->getId() ?? 0);
             $batches[$key] ??= [$site, $city, [], []];
-            foreach (['uk', 'ru'] as $locale) {
+            foreach ($this->siteLocales?->enabled($site) ?? ['uk', 'ru'] as $locale) {
                 $new = $this->path($entity, $locale, null);
                 if ($new === null) {
                     continue;
@@ -116,7 +120,7 @@ final class AutoRedirects
             }
             if ($old !== null && $entity instanceof ServicePage) {
                 foreach ($items as [$child, $childSlugs]) {
-                    foreach (['uk', 'ru'] as $locale) {
+                    foreach ($this->siteLocales?->enabled($site) ?? ['uk', 'ru'] as $locale) {
                         $new = $this->generate('sv_page', ['path' => $entity->slug($locale) . '/' . $child->slug($locale), '_locale' => $locale]);
                         $oldPath = $this->generate('sv_page', ['path' => $old[$locale] . '/' . $childSlugs[$locale], '_locale' => $locale]);
                         if ($new !== null && $oldPath !== null && $oldPath !== $new) {
@@ -127,7 +131,7 @@ final class AutoRedirects
             }
             if ($old !== null && $entity instanceof ServiceCategory) {
                 foreach ($items as [$item, $itemSlugs]) {
-                    foreach (['uk', 'ru'] as $locale) {
+                    foreach ($this->siteLocales?->enabled($site) ?? ['uk', 'ru'] as $locale) {
                         $new = $this->itemPath($item, $locale, $entity->slug($locale), $item->slug($locale));
                         $oldPath = $this->itemPath($item, $locale, $old[$locale], $itemSlugs[$locale]);
                         if ($new !== null && $oldPath !== null && $oldPath !== $new) {
@@ -158,7 +162,8 @@ final class AutoRedirects
 
         return match (true) {
             $entity instanceof ServiceItem => $this->itemPath($entity, $locale, $entity->getCategory()?->slug($locale) ?? '', $slug),
-            $entity instanceof ServiceCategory => $this->catalogUrls->isNested() ? $this->generate('sv_category', ['category' => $slug, '_locale' => $locale]) : null,
+            $entity instanceof ServiceCategory => ($this->catalogUrls->isNested() || ($locale === 'en' && $this->catalogUrls->isSlug()))
+                ? $this->generate('sv_category', ['category' => $slug, '_locale' => $locale]) : null,
             $entity instanceof ServiceDistrict => $this->generate('sv_district', ['slug' => $slug, '_locale' => $locale]),
             $entity instanceof ServicePost => $this->generate('sv_blog_post', ['slug' => $slug, '_locale' => $locale]),
             $entity instanceof ServicePage => $this->pagePath($entity, $locale, $slug),

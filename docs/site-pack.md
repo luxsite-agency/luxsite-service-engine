@@ -35,7 +35,7 @@ site-<key>/
 |---|---|---|
 | `config/parameters.yaml` | `config/site/parameters.local.yaml` | `src/Kernel.php::configureContainer` імпортує файл після `services.yaml` (ігнорує відсутність; у `test` не вантажиться). Дефолти всіх ключів — у `config/services.yaml`, зразок — `config/site/parameters.local.yaml.dist`. |
 | `themes/<key>/*` | `public/themes/<key>/` | `App\ServiceSite\SiteTheme` (`app.theme`, лише відмінні ключі; невідомий ключ — виняток). Twig-глобал `theme`: `theme.url('logo')`, `theme.cssVars()`, `theme.get('key')` → клас `body.theme-<key>`, `stylesheet` — додатковий CSS. |
-| `translations/servicesite.{uk,ru}.yaml` | `translations/site/` | `framework.translator.paths` (`config/packages/translation.yaml`). Файли вантажаться в порядку повного шляху: `servicesite.*` < `site/…`, тож ключі паку перекривають дефолти рушія. **Теку не перейменовувати**: ім'я має сортуватися після `servicesite`. Порожнє значення ключа = елемент не показується (слоган, переваги, футерний рядок міст, `about.legal`, напрями робіт району). |
+| `translations/servicesite.{uk,ru,en}.yaml` | `translations/site/` | `framework.translator.paths` (`config/packages/translation.yaml`). Файли вантажаться в порядку повного шляху: `servicesite.*` < `site/…`, тож ключі паку перекривають дефолти рушія. **Теку не перейменовувати**: ім'я має сортуватися після `servicesite`. Порожнє значення ключа = елемент не показується (слоган, переваги, футерний рядок міст, `about.legal`, напрями робіт району). |
 | `templates/**` | `templates/site/` | `twig.paths` (`config/packages/twig.yaml`): `templates/site` стоїть перед `templates`, тож однойменний шаблон паку перекриває шаблон рушія; рушій доступний ще й як `@engine/…` для `extends`. На сервері перед smoke — `lint:twig templates/site`. |
 | секрети | `.env.local` на сервері | `DATABASE_URL`, `MAILER_DSN`, `MAIL_FROM`, `ADMIN_HOST`, `DEFAULT_URI`, `STUDIO_API_TOKEN`, `GOOGLE_CLIENT_*` (запасне джерело — див. нижче), `PIPEDRIVE_API_TOKEN`, `BITRIX24_WEBHOOK_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `LEAD_RATE_LIMIT_ALLOWLIST`, `SETTINGS_SECRET_KEY` (ключ шифрування секретів «Налаштування сайту»; `bin/site deploy` дописує сам), `CLOUDFLARE_DNS_TOKEN` (Zone:Read + DNS:Edit — TXT підтвердження GSC з адмінки бренду; порожньо — вручну) — у пак не потрапляють. |
 
@@ -120,6 +120,8 @@ live (токен) > пак > рушій.
 | `app.home_lead_position` | `after_works` | Форма заявки на головній (один блок): `after_works` (як було) або `after_hero` — лід-магніт одразу під першим екраном. На головній форма має ключі паку `lead.subtitle` (абзац під заголовком) і `lead.messengers_hint` (підпис до месенджерів міста під формою); порожні = нема. На `/thank-you/` з неї `lead_type: magnet`. |
 | `app.footer_catalog` | `false` | `true` = у футері повний каталог: категорії (посилання в nested) з усіма послугами колонками, назви без міста; на мобільному категорії згорнуті (`details`). Заголовок — ключ `footer.catalog_title` (порожній = без). Футер обгорнуто в `{% block footer %}` — пак може дописати своє через `extends '@engine/services/base.html.twig'`. |
 | `app.home_districts` | `{}` | Чипи районів на головній: `{kyiv: [pozniaky, obolon, …], chernivtsi: '*'}` — slug міста → список `slug_uk` у порядку показу або `'*'` (усі активні). Нема ключа = лише primary-райони. |
+| `app.locales` | `[uk, ru]` | Мови розгортання (з 22.10.2026): перша — **без префікса** в адресі, решта — `/<мова>/`. Маршрути рушія оголошені як `uk` + `/ru/`; інший набір (англомовні сайти: `[en]`) переписує їх один раз при компіляції роутера (`App\ServiceSite\LocalizedRoutes`, `Kernel::loadRoutes`): варіант без префікса стає першою мовою, мови поза набором зникають (404). Бренд вмикає підмножину в адмінці (Сайти-бренди → «Мови сайту», `ServiceSite.locales`; порожньо = усі): вимкнена мова → 404, hreflang, sitemap і перемикач мов — лише увімкнені мови, бренд з однією мовою — без hreflang. На хостах брендів мова розгортання за замовчуванням діє й там, де маршрут мови не має (404, `/lead`, sitemap); адмінка лишається українською. Усі бренди розгортання мають одну мову без префікса — бренд з іншою = окреме розгортання. Тексти записів англійською — поля `*En` (бренд, міста, статті, каталог, райони, сторінки та контентні блоки). |
+| `app.locale_codes` | uk/ru/en | Коди мови для розмітки: `{ <мова>: { hreflang, og, schema, label } }` — `hreflang` (`uk-UA`), `og:locale` (`uk_UA`), `inLanguage` JSON-LD (`uk-UA`), підпис у перемикачі (`UA`). Дефолти дають колишні значення uk/ru, для `en` — `en`/`en_US`/`en`/`EN`. Пак перекриває мапу цілком (`en_GB` — тут). |
 | `app.blog_prefix` | `blog` | Сегмент розділу статей: `/blog/` або інший (`news` → `/news/`, `/ru/news/`). |
 | `app.page_meta` | `{}` | `<title>`/description фіксованих сторінок 1:1 зі старого сайту: `{ sv_blog: { title_uk, title_ru, desc_uk, desc_ru }, sv_about: {…}, sv_privacy: {…} }` (ключ — маршрут без локалі). Порожньо = як будує шаблон. |
 | `app.pages` | `false` | Сторінки від кореня (адмінка → «Сторінки»): вакансії, ліцензії, будь-який текст поза каталогом на `/<слаг>/` і `/<батько>/<слаг>/` (ru — `/ru/…`), без `/page/`. Див. «Адреси від кореня» нижче. `false` — маршрут не спрацьовує, пункту меню нема, футер і карта як були. |
@@ -502,3 +504,64 @@ bin/console app:joomla:import --mapping=<пак>/seo/joomla-mapping.yaml [--sour
 - FAQ-маркери Seblod: `template_faq_*` і `tmpl_faq_*`.
 - `app.clean_urls.prefix_redirects: { '/uk/': '/' }` — префіксні 301 (мовний префікс Joomla для мови за замовчуванням).
 Тека `local/` у паку (дамп джерела) git-ignored і `bin/site validate` її не перевіряє.
+
+## Англійський каталог і контентні блоки
+
+Для англомовного розгортання задайте `app.locales: [en]`: адреси без `/en/`.
+Після міграції `Version20261106100000` поля `*En` є в `ServiceItem`, `ServiceCategory`,
+`ServiceDistrict`, `ServicePage`, `ServiceItemCity`, `ServiceCategoryCity`, `ServicePrice`,
+`ServiceTeamMember`, `ServiceReview`, `ServiceWork`; раніше додані `ServiceSite`, `ServiceCity`, `ServicePost`
+також підтримують англійську. Нові поля повторюють типи й довжини uk, усі nullable; FAQ — JSON `[{q, a}, …]`.
+
+В адмінці заповніть поля з підписом «… en». Вони з'являються лише коли `en` є в `app.locales`.
+Поля uk/ru залишаються видимими. На розгортанні без uk обов'язковість uk у формі знята;
+`ServicePage` дозволяє порожні uk-слаг/заголовок за наявності відповідних en-полів.
+Старі uk-колонки та індекси не змінюються: для кількох англомовних записів задавайте різні технічні `slugUk`,
+оскільки порожній рядок uk теж підпадає під UNIQUE(site/city, slug_uk). Це не переклад і не текст сторінки.
+
+REST admin API та MCP `get/update` використовують `*_en` (наприклад `title_en`, `meta_desc_en`, `faq_en`).
+Слаги категорій, послуг, районів і сторінок доступні як `slug_en` (читання та PATCH/update);
+формат, унікальність у межах сайту/міста і конфлікти кореневих адрес перевіряються перед записом.
+Приклад PATCH для послуги: `{"slug_en":"local-movers","title_en":"Local movers","lead_en":"Plan your move"}`.
+Для `item-texts/category-texts` англійські тексти можна заповнювати тим самим upsert API, що й uk/ru.
+Пошук `q` у списках враховує англійські назви та слаги; GET повертає доступні поля.
+
+**Порожній slugEn = адреса з slugUk.** Це працює для категорій, послуг, районів, сторінок,
+кожного сегмента вкладеної сторінки, sitemap, перемикача мов і hreflang.
+Заповнений `slugEn` використовується і для генерації, і для пошуку; старий uk-слаг не стає другою живою en-адресою.
+Зміна слага через ORM створює auto-301 для увімкнених мов, як для uk/ru. Статті зберігають правило #10: для існування en-статті потрібні власні slugEn і titleEn.
+
+**Порожній текст en = порожньо, не українською.** Це стосується H1, SEO, FAQ та міських перевизначень:
+`override.en → base.en`, без `override.uk/base.uk`. Шаблон може згенерувати типовий текст англійською.
+Пак має читати тексти через `loc(field, locale)`, `item_text()`, `ov()`, адреси — через `slug(locale)/path(locale)`.
+Додаткові поля `extra` також мають значення `en` без uk-фолбеку; у паку можна задати `label.en/suffix.en`.
+Для `[uk, ru]` правила текстового фолбеку та форми залишаються попередніми.
+
+### Англійська третьою мовою: `[uk, ru, en]` (з 23.11.2026)
+
+```yaml
+parameters:
+    app.locales: [uk, ru, en]   # uk без префікса, /ru/…, /en/…
+```
+
+Бренд може вимкнути мову в адмінці (ServiceSite.locales). На розгортанні, де en не перша мова, **запис існує англійською лише
+з заповненим `title_en`** (у районів — `name_en`):
+
+- без перекладу `/en/<слаг>/` дає 404, навіть коли адреса збігається з uk-слагом (порожній `slugEn` бере uk-слаг лише для
+  перекладених записів);
+- на uk/ru-сторінці такого запису нема `hreflang="en"` і пункту EN у перемикачі; у sitemap.xml нема en-адреси;
+- у списках на `/en/` (головна, `/en/services/`, категорія, «інші послуги», дочірні сторінки, `footer_catalog()`, `footer_pages()`)
+  неперекладених послуг, категорій і сторінок нема;
+- юридичні сторінки: типовий текст рушія є лише uk/ru, тож `/en/privacy-policy/` і `/en/terms-of-service/` існують лише з
+  англійським текстом бренду (адмінка → бренд, поля privacy/terms en; seed `privacy_en`, `terms_en`). Без нього посилання
+  футера й банера згоди на en-сторінках ведуть на uk-версію (`sv_legal_path('privacy')`).
+
+Шаблони паку: перемикач і hreflang будуйте з `altUrls` (там уже нема мов без перекладу), підпис — `sv_locale_code(l, 'label')`
+(UA / RU / EN). Для власних меню й списків — `sv_has(entity)`: запис є мовою сторінки. Посилання на сторінки app.pages
+не будуйте як `path('sv_page', {path: '<uk-слаг>'})` (на `/en/` uk-слаг не адреса): `sv_page_path('<uk-шлях>')` дає адресу
+мовою сторінки або null, коли сторінки цією мовою нема — тоді посилання не виводьте. Назви й адреси міст англійською
+(`name_nom_en`, `address_en`) заповнюйте для всіх міст: без `name_nom_en` назва на en — зі slug міста латиницею (kyiv → Kyiv),
+без `address_en` адреси на en нема (українська не показується).
+
+Seed: кожне поле `<key>_uk` приймає пару `<key>_en`, адреси — `slug_en` (категорії, послуги, райони, сторінки).
+Розгортання `[uk, ru]` і `[en]` поводяться як раніше.

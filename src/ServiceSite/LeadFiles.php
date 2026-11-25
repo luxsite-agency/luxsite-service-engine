@@ -113,29 +113,30 @@ final class LeadFiles
             return null;
         }
         $ru = $locale === 'ru';
+        $en = $locale === 'en';
         $c = $this->config;
         if (\count($files) > $c['max_files']) {
-            return sprintf($ru ? 'Можно приложить не больше %d файлов.' : 'Можна додати не більше %d файлів.', $c['max_files']);
+            return sprintf($en ? 'You can attach up to %d files.' : ($ru ? 'Можно приложить не больше %d файлов.' : 'Можна додати не більше %d файлів.'), $c['max_files']);
         }
         $total = 0;
         foreach ($files as $file) {
             if (!$file->isValid()) {
                 return \in_array($file->getError(), [\UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE], true)
-                    ? sprintf($ru ? 'Файл «%s» слишком большой: до %s МБ.' : 'Файл «%s» завеликий: до %s МБ.', self::clientName($file), $c['max_file_mb'])
-                    : sprintf($ru ? 'Файл «%s» не загрузился, попробуйте ещё раз.' : 'Файл «%s» не завантажився, спробуйте ще раз.', self::clientName($file));
+                    ? sprintf($en ? 'File “%s” is too large. Maximum size: %s MB.' : ($ru ? 'Файл «%s» слишком большой: до %s МБ.' : 'Файл «%s» завеликий: до %s МБ.'), self::clientName($file), $c['max_file_mb'])
+                    : sprintf($en ? 'File “%s” could not be uploaded. Please try again.' : ($ru ? 'Файл «%s» не загрузился, попробуйте ещё раз.' : 'Файл «%s» не завантажився, спробуйте ще раз.'), self::clientName($file));
             }
             $size = (int) $file->getSize();
             if ($size > $c['max_file_mb'] * 1048576) {
-                return sprintf($ru ? 'Файл «%s» слишком большой: до %s МБ.' : 'Файл «%s» завеликий: до %s МБ.', self::clientName($file), $c['max_file_mb']);
+                return sprintf($en ? 'File “%s” is too large. Maximum size: %s MB.' : ($ru ? 'Файл «%s» слишком большой: до %s МБ.' : 'Файл «%s» завеликий: до %s МБ.'), self::clientName($file), $c['max_file_mb']);
             }
             $total += $size;
             // MIME — за вмістом файлу (finfo), не з імені й не з того, що надіслав браузер
             if (!\in_array(self::mime($file), $c['mime'], true)) {
-                return sprintf($ru ? 'Файл «%s»: можно лишь %s.' : 'Файл «%s»: можна лише %s.', self::clientName($file), self::kinds($c['mime'], $ru));
+                return sprintf($en ? 'File “%s”: allowed formats are %s.' : ($ru ? 'Файл «%s»: можно лишь %s.' : 'Файл «%s»: можна лише %s.'), self::clientName($file), self::kinds($c['mime'], $ru, $en));
             }
         }
         if ($total > $c['max_total_mb'] * 1048576) {
-            return sprintf($ru ? 'Файлы вместе — до %s МБ.' : 'Файли разом — до %s МБ.', $c['max_total_mb']);
+            return sprintf($en ? 'Total file size must not exceed %s MB.' : ($ru ? 'Файлы вместе — до %s МБ.' : 'Файли разом — до %s МБ.'), $c['max_total_mb']);
         }
 
         return null;
@@ -260,16 +261,16 @@ final class LeadFiles
     }
 
     /** «фото або PDF», «фото, PDF або DOC/DOCX» — для повідомлення про недозволений тип */
-    private static function kinds(array $mime, bool $ru): string
+    private static function kinds(array $mime, bool $ru, bool $en = false): string
     {
         $kinds = [];
         foreach ($mime as $m) {
-            $kinds[str_starts_with($m, 'image/') ? 'фото' : ($m === 'application/pdf' ? 'PDF' : 'DOC/DOCX')] = true;
+            $kinds[str_starts_with($m, 'image/') ? ($en ? 'photos' : 'фото') : ($m === 'application/pdf' ? 'PDF' : 'DOC/DOCX')] = true;
         }
         $kinds = array_keys($kinds);
         $last = array_pop($kinds);
 
-        return $kinds === [] ? (string) $last : implode(', ', $kinds) . ($ru ? ' или ' : ' або ') . $last;
+        return $kinds === [] ? (string) $last : implode(', ', $kinds) . ($en ? ' or ' : ($ru ? ' или ' : ' або ')) . $last;
     }
 
     /** Ім'я від людини без шляху й керівних символів, до 255 */

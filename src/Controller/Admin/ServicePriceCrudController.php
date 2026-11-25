@@ -22,6 +22,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -32,6 +33,12 @@ class ServicePriceCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: назва позиції, а не послуга з містом */
     private const INDEX_PRIMARY = 'nameUk';
+
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -44,7 +51,7 @@ class ServicePriceCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Позиція прайсу')
             ->setEntityLabelInPlural('Прайс')
             ->setDefaultSort(['city' => 'ASC', 'item' => 'ASC', 'position' => 'ASC'])
-            ->setSearchFields(['nameUk', 'nameRu'])
+            ->setSearchFields(array_merge(['nameUk', 'nameRu'], \in_array('en', $this->locales, true) ? ['nameEn'] : []))
             ->setPaginatorPageSize(60)
             ->setEntityPermission('ROLE_MODERATOR');
     }
@@ -86,10 +93,17 @@ class ServicePriceCrudController extends AbstractCrudController
                 . 'бачать лише відвідувачі цього міського сайту.'
             ));
         yield FormField::addFieldset('Назва і опис');
-        yield TextField::new('nameUk', 'Назва uk')->setColumns(6)
+        yield TextField::new('nameUk', 'Назва uk')->setRequired(!\in_array('en', $this->locales, true) || \in_array('uk', $this->locales, true))->setFormTypeOption('empty_data', '')->setColumns(6)
             ->setHtmlAttributes($this->hint('Перша колонка таблиці на сторінці: «Диван на 3 місця», «51-75 м²».'));
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('nameEn', 'Назва en')->setColumns(6)
+                ->setHtmlAttributes($this->hint('Перша колонка таблиці на сторінці: «Диван на 3 місця», «51-75 м²».'))->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('nameRu', 'Назва ru')->hideOnIndex()->setColumns(6);
         yield TextareaField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6);
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextareaField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
         yield FormField::addFieldset('Ціна');
         yield NumberField::new('price', 'Ціна, грн')
@@ -104,6 +118,9 @@ class ServicePriceCrudController extends AbstractCrudController
         yield FormField::addRow();
         yield TextField::new('priceTextUk', 'Текст замість ціни uk')->hideOnIndex()->setColumns(6)
             ->setHelp('«За домовленістю» тощо; використовується, коли числова ціна порожня');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('priceTextEn', 'Текст замість ціни en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextField::new('priceTextRu', 'Текст замість ціни ru')->hideOnIndex()->setColumns(6);
         yield FormField::addFieldset('Калькулятор');
         yield BooleanField::new('inCalculator', 'У калькуляторі')->setColumns(4)
@@ -117,6 +134,9 @@ class ServicePriceCrudController extends AbstractCrudController
         yield IntegerField::new('maxQty', 'Максимум кількості')->hideOnIndex()->setColumns(4);
         yield TextField::new('unitUk', 'Одиниця uk')->hideOnIndex()->setColumns(6)
             ->setHelp('«м²», «шт», «посадкове місце»');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('unitEn', 'Одиниця en')->hideOnIndex()->setColumns(6)->setRequired(false);
+        }
         yield TextField::new('unitRu', 'Одиниця ru')->hideOnIndex()->setColumns(6);
         yield FormField::addFieldset('Налаштування');
         yield IntegerField::new('position', 'Порядок')->setColumns(6)

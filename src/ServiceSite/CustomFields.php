@@ -49,8 +49,8 @@ final class CustomFields
                 $suffix = (array) ($f['suffix'] ?? []);
                 $defs[(string) $type][] = [
                     'key' => $key,
-                    'label' => ['uk' => (string) ($label['uk'] ?? $key), 'ru' => (string) ($label['ru'] ?? $label['uk'] ?? $key)],
-                    'suffix' => ['uk' => (string) ($suffix['uk'] ?? ''), 'ru' => (string) ($suffix['ru'] ?? $suffix['uk'] ?? '')],
+                    'label' => ['uk' => (string) ($label['uk'] ?? $key), 'ru' => (string) ($label['ru'] ?? $label['uk'] ?? $key), 'en' => (string) ($label['en'] ?? $key)],
+                    'suffix' => ['uk' => (string) ($suffix['uk'] ?? ''), 'ru' => (string) ($suffix['ru'] ?? $suffix['uk'] ?? ''), 'en' => (string) ($suffix['en'] ?? '')],
                     'localized' => (bool) ($f['localized'] ?? false),
                     'filter' => (bool) ($f['filter'] ?? false),
                     'categories' => array_values(array_map('strval', (array) ($f['categories'] ?? []))),
@@ -105,7 +105,7 @@ final class CustomFields
         if ($type === null || !method_exists($entity, 'extraValue')) {
             return [];
         }
-        $lang = $locale === 'ru' ? 'ru' : 'uk';
+        $lang = \in_array($locale, ['ru', 'en'], true) ? $locale : 'uk';
         $cat = $entity instanceof ServiceItem ? $entity->getCategory()?->getSlugUk() : ($entity instanceof ServiceCategory ? $entity->getSlugUk() : null);
         $out = [];
         foreach ($this->definitions($type, $cat) as $def) {

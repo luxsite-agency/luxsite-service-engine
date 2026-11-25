@@ -17,6 +17,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_MODERATOR')]
@@ -28,6 +29,12 @@ class ServiceTeamMemberCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: імʼя, а не місто */
     private const INDEX_PRIMARY = 'nameUk';
+
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -60,16 +67,25 @@ class ServiceTeamMemberCrudController extends AbstractCrudController
         yield IdField::new('id')->onlyOnIndex();
         yield AssociationField::new('city', 'Місто')
             ->setHelp('Людину видно лише на сайті цього міста, у блоці «Команда».');
-        yield TextField::new('nameUk', 'Ім\'я uk')
+        yield TextField::new('nameUk', 'Ім\'я uk')->setRequired(!\in_array('en', $this->locales, true) || \in_array('uk', $this->locales, true))->setFormTypeOption('empty_data', '')
             ->setHelp('Імʼя, як його бачить відвідувач. Прізвище зазвичай не пишемо.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('nameEn', 'Ім\'я en')->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('nameRu', 'Ім\'я ru')->hideOnIndex()
             ->setHelp('Порожньо - показується українське імʼя.');
         yield TextField::new('roleUk', 'Роль uk')
             ->setHelp('Посада під іменем: «Бригадир», «Клінер-універсал».');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('roleEn', 'Роль en')->hideOnIndex()->setRequired(false);
+        }
         yield TextField::new('roleRu', 'Роль ru')->hideOnIndex()
             ->setHelp('Порожньо - показується українська посада.');
         yield TextareaField::new('descUk', 'Опис uk')->hideOnIndex()
             ->setHelp('Кілька речень про досвід. Не обовʼязково: без опису картка теж виглядає нормально.');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextareaField::new('descEn', 'Опис en')->hideOnIndex()->setRequired(false);
+        }
         yield TextareaField::new('descRu', 'Опис ru')->hideOnIndex()
             ->setHelp('Порожньо - показується український опис.');
         yield from $this->imageFields('/media/service_team');

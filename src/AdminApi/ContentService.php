@@ -23,6 +23,7 @@ use App\Entity\ServiceTeamMember;
 use App\Entity\ServiceWork;
 use App\Repository\ServiceCityRepository;
 use App\Repository\ServiceSiteRepository;
+use App\ServiceSite\RootSlugs;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
@@ -31,7 +32,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 /**
  * Операції контенту для менеджерів — одне ядро для REST (/api/admin/v1) і MCP (/mcp). Лише те, що менеджер і так
  * править в адмінці: тексти, SEO, FAQ, активність послуг/категорій/районів/постів/робіт/команди/відгуків, тексти по
- * містах, прайс. Жодних заявок, користувачів, сайтів, міст, slug. Фото — ImageService (окремі маршрути …/image), у GET
+ * містах, прайс і slug_en каталогу. Жодних заявок, користувачів, сайтів, міст. Фото — ImageService (окремі маршрути …/image), у GET
  * записів з фото є блок image (ImageInfo). Дозволи перевіряються тут (ScopeVoter), зміни — одразу в БД з логом.
  */
 final class ContentService
@@ -43,31 +44,44 @@ final class ContentService
         'items' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
             'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru', 'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'tab_title_uk' => 'tabTitleUk', 'tab_title_ru' => 'tabTitleRu',
             'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu',
-            'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'noindex' => 'noindex'],
+            'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'noindex' => 'noindex',
+            'slug_en' => 'slugEn', 'title_en' => 'titleEn', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'desc2_en' => 'desc2En', 'desc3_en' => 'desc3En', 'tab_title_en' => 'tabTitleEn', 'name_en' => 'nameEn', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn', 'faq_en' => 'faqEn'],
         'categories' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru',
             'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
-            'meta_desc_ru' => 'metaDescRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'landing' => 'landing', 'noindex' => 'noindex'],
+            'meta_desc_ru' => 'metaDescRu', 'image_alt' => 'imageAlt', 'active' => 'active', 'landing' => 'landing', 'noindex' => 'noindex',
+            'lead_en' => 'leadEn', 'faq_en' => 'faqEn', 'slug_en' => 'slugEn', 'title_en' => 'titleEn', 'desc_en' => 'descEn', 'desc2_en' => 'desc2En', 'desc3_en' => 'desc3En', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn'],
         'districts' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu',
             'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
-            'meta_desc_ru' => 'metaDescRu', 'sub_areas_uk' => 'subAreasUk', 'sub_areas_ru' => 'subAreasRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'active' => 'active'],
+            'meta_desc_ru' => 'metaDescRu', 'sub_areas_uk' => 'subAreasUk', 'sub_areas_ru' => 'subAreasRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu', 'active' => 'active',
+            'group_en' => 'groupEn', 'slug_en' => 'slugEn', 'name_en' => 'nameEn', 'title_en' => 'titleEn', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn', 'sub_areas_en' => 'subAreasEn', 'faq_en' => 'faqEn'],
         'posts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
             'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu',
-            'image_alt' => 'imageAlt', 'image_alt_ru' => 'imageAltRu', 'active' => 'active'],
+            'image_alt' => 'imageAlt', 'image_alt_ru' => 'imageAltRu', 'active' => 'active',
+            // англійська (22.10.2026): без фолбеку на uk; слаг — як і uk/ru, лише в адмінці
+            'title_en' => 'titleEn', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'meta_title_en' => 'metaTitleEn',
+            'meta_desc_en' => 'metaDescEn', 'image_alt_en' => 'imageAltEn'],
         'prices' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'price' => 'price', 'price_prefix' => 'pricePrefix',
-            'price_text_uk' => 'priceTextUk', 'price_text_ru' => 'priceTextRu', 'unit_uk' => 'unitUk', 'unit_ru' => 'unitRu', 'position' => 'position', 'active' => 'active', 'in_calculator' => 'inCalculator'],
+            'price_text_uk' => 'priceTextUk', 'price_text_ru' => 'priceTextRu', 'unit_uk' => 'unitUk', 'unit_ru' => 'unitRu', 'position' => 'position', 'active' => 'active', 'in_calculator' => 'inCalculator',
+            'name_en' => 'nameEn', 'desc_en' => 'descEn', 'price_text_en' => 'priceTextEn', 'unit_en' => 'unitEn'],
         'item-texts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu',
             'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru', 'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'tab_title_uk' => 'tabTitleUk', 'tab_title_ru' => 'tabTitleRu',
-            'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu'],
+            'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu', 'faq_uk' => 'faqUk', 'faq_ru' => 'faqRu',
+            'title_en' => 'titleEn', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'desc2_en' => 'desc2En', 'desc3_en' => 'desc3En', 'tab_title_en' => 'tabTitleEn', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn', 'faq_en' => 'faqEn'],
         'category-texts' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'desc2_uk' => 'desc2Uk', 'desc2_ru' => 'desc2Ru',
-            'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu'],
-        'works' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'caption_uk' => 'captionUk', 'caption_ru' => 'captionRu', 'image_alt' => 'imageAlt', 'position' => 'position', 'active' => 'active'],
+            'desc3_uk' => 'desc3Uk', 'desc3_ru' => 'desc3Ru', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk', 'meta_desc_ru' => 'metaDescRu',
+            'title_en' => 'titleEn', 'desc_en' => 'descEn', 'desc2_en' => 'desc2En', 'desc3_en' => 'desc3En', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn'],
+        'works' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'caption_uk' => 'captionUk', 'caption_ru' => 'captionRu', 'image_alt' => 'imageAlt', 'position' => 'position', 'active' => 'active',
+            'title_en' => 'titleEn', 'caption_en' => 'captionEn'],
         'team' => ['name_uk' => 'nameUk', 'name_ru' => 'nameRu', 'role_uk' => 'roleUk', 'role_ru' => 'roleRu', 'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'image_alt' => 'imageAlt',
-            'position' => 'position', 'active' => 'active'],
+            'position' => 'position', 'active' => 'active',
+            'name_en' => 'nameEn', 'role_en' => 'roleEn', 'desc_en' => 'descEn'],
         'pages' => ['title_uk' => 'titleUk', 'title_ru' => 'titleRu', 'h1_uk' => 'h1Uk', 'h1_ru' => 'h1Ru', 'lead_uk' => 'leadUk', 'lead_ru' => 'leadRu',
             'desc_uk' => 'descUk', 'desc_ru' => 'descRu', 'meta_title_uk' => 'metaTitleUk', 'meta_title_ru' => 'metaTitleRu', 'meta_desc_uk' => 'metaDescUk',
             'meta_desc_ru' => 'metaDescRu', 'template' => 'template', 'noindex' => 'noindex', 'in_sitemap' => 'inSitemap', 'in_footer' => 'inFooter',
-            'position' => 'position', 'active' => 'active'],
-        'reviews' => ['author_uk' => 'authorUk', 'author_ru' => 'authorRu', 'text_uk' => 'textUk', 'text_ru' => 'textRu', 'location' => 'location', 'stars' => 'stars', 'image_alt' => 'imageAlt', 'active' => 'active'],
+            'position' => 'position', 'active' => 'active',
+            'slug_en' => 'slugEn', 'title_en' => 'titleEn', 'h1_en' => 'h1En', 'lead_en' => 'leadEn', 'desc_en' => 'descEn', 'meta_title_en' => 'metaTitleEn', 'meta_desc_en' => 'metaDescEn'],
+        'reviews' => ['author_uk' => 'authorUk', 'author_ru' => 'authorRu', 'text_uk' => 'textUk', 'text_ru' => 'textRu', 'location' => 'location', 'stars' => 'stars', 'image_alt' => 'imageAlt', 'active' => 'active',
+            'author_en' => 'authorEn', 'text_en' => 'textEn'],
     ];
     private const array ENTITY = [
         'items' => ServiceItem::class, 'categories' => ServiceCategory::class, 'districts' => ServiceDistrict::class, 'posts' => ServicePost::class,
@@ -85,6 +99,7 @@ final class ContentService
         private readonly LoggerInterface $logger,
         private readonly ImageInfo $images,
         private readonly ValidatorInterface $validator,
+        private readonly RootSlugs $rootSlugs,
     ) {
     }
 
@@ -164,7 +179,7 @@ final class ContentService
         $site = $this->site($siteSlug);
         $e = $this->find($site, $kind, $id);
         $changed = $this->apply($kind, $e, $data);
-        $this->validate($e);
+        $this->validate($e, isset($changed['slug_en']));
         $this->em->flush();
         $this->audit('update', $kind, $e, $changed);
 
@@ -255,7 +270,7 @@ final class ContentService
                     $qb->andWhere('e.category = :cat')->setParameter('cat', (int) $f['category']);
                 }
                 if ($q !== '') {
-                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.titleEn LIKE :q OR e.slugEn LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
             case 'categories':
@@ -263,7 +278,7 @@ final class ContentService
             case 'pages':
                 $qb->where('e.site = :site')->setParameter('site', $site)->orderBy('e.id', 'ASC');
                 if ($q !== '') {
-                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.titleEn LIKE :q OR e.slugEn LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
             case 'districts':
@@ -272,7 +287,7 @@ final class ContentService
                     $qb->andWhere('e.city = :city')->setParameter('city', $city);
                 }
                 if ($q !== '') {
-                    $qb->andWhere('e.nameUk LIKE :q OR e.nameRu LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere('e.nameUk LIKE :q OR e.nameRu LIKE :q OR e.nameEn LIKE :q OR e.slugEn LIKE :q OR e.slugUk LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
             case 'prices':
@@ -302,7 +317,7 @@ final class ContentService
                     $qb->andWhere('e.item = :item')->setParameter('item', (int) $f['item']);
                 }
                 if ($q !== '') {
-                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere('e.titleUk LIKE :q OR e.titleRu LIKE :q OR e.titleEn LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
             case 'team':
@@ -312,7 +327,7 @@ final class ContentService
                     $qb->andWhere('e.city = :city')->setParameter('city', $city);
                 }
                 if ($q !== '') {
-                    $qb->andWhere($kind === 'team' ? 'e.nameUk LIKE :q OR e.nameRu LIKE :q' : 'e.authorUk LIKE :q OR e.authorRu LIKE :q')->setParameter('q', '%' . $q . '%');
+                    $qb->andWhere($kind === 'team' ? 'e.nameUk LIKE :q OR e.nameRu LIKE :q OR e.nameEn LIKE :q' : 'e.authorUk LIKE :q OR e.authorRu LIKE :q OR e.authorEn LIKE :q')->setParameter('q', '%' . $q . '%');
                 }
                 break;
         }
@@ -382,15 +397,20 @@ final class ContentService
     }
 
     /** Ті самі обмеження, що у формі адмінки (Assert сутності: stars 1–5 тощо) — інакше 422 без запису. */
-    private function validate(object $e): void
+    private function validate(object $e, bool $englishSlugChanged = false): void
     {
         $violations = $this->validator->validate($e);
-        if (\count($violations) === 0) {
-            return;
-        }
         $messages = [];
         foreach ($violations as $v) {
             $messages[] = ($v->getPropertyPath() !== '' ? $v->getPropertyPath() . ': ' : '') . $v->getMessage();
+        }
+        if ($englishSlugChanged && ($e instanceof ServiceItem || $e instanceof ServiceCategory || $e instanceof ServicePage)) {
+            foreach ($this->rootSlugs->conflictsFor($e, 'en') as $message) {
+                $messages[] = 'slugEn: ' . $message;
+            }
+        }
+        if ($messages === []) {
+            return;
         }
         throw new ApiProblem('Значення не проходять перевірку: ' . implode('; ', array_unique($messages)), 422);
     }
@@ -421,6 +441,9 @@ final class ContentService
                 break;
             case 'posts':
                 $row += ['slug' => $e->getSlugUk(), 'title_uk' => $e->getTitleUk(), 'title_ru' => $e->getTitleRu(), 'active' => $e->isActive(), 'published_at' => $e->getPublishedAt()?->format(\DATE_ATOM)];
+                if ($e->getSlugEn() !== null) {
+                    $row += ['slug_en' => $e->getSlugEn(), 'title_en' => $e->getTitleEn()];
+                }
                 break;
             case 'prices':
                 $row += ['item_id' => $e->getItem()?->getId(), 'city' => $e->getCity()?->getSlug(), 'name_uk' => $e->getNameUk(), 'price' => $e->getPrice(), 'price_prefix' => $e->getPricePrefix(), 'price_text_uk' => $e->getPriceTextUk(), 'active' => $e->isActive()];
@@ -444,6 +467,13 @@ final class ContentService
             case 'reviews':
                 $row += ['author_uk' => $e->getAuthorUk(), 'city' => $e->getCity()?->getSlug(), 'stars' => $e->getStars(), 'has_image' => $e->getImageName() !== null, 'active' => $e->isActive()];
                 break;
+        }
+
+        foreach (['slug', 'title', 'name', 'author'] as $property) {
+            $getter = 'get' . ucfirst($property) . 'En';
+            if (method_exists($e, $getter)) {
+                $row[$property . '_en'] = $e->{$getter}();
+            }
         }
 
         return $row;

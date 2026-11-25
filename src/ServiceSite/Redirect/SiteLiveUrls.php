@@ -76,7 +76,7 @@ final class SiteLiveUrls implements LiveUrls
             $this->router->setContext($previous);
         }
         $route = (string) ($match['_canonical_route'] ?? $match['_route'] ?? '');
-        $locale = ($match['_locale'] ?? 'uk') === 'ru' ? 'ru' : 'uk';
+        $locale = \in_array($match['_locale'] ?? 'uk', ['ru', 'en'], true) ? $match['_locale'] : 'uk';
 
         return match (true) {
             $route === '' || $route === 'admin' || str_starts_with($route, 'admin_') || str_starts_with($route, 'api_') || str_starts_with($route, 'app_') => false,
