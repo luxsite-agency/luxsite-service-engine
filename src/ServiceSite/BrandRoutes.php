@@ -60,6 +60,16 @@ final class BrandRoutes implements ResetInterface
         return ['_blog' => $this->blogOf($site), '_cat_root' => $site !== null && $this->brands->categoryRoot($site), '_sub' => $this->subOf($site)];
     }
 
+    /**
+     * Мови, якими бренд має адреси.
+     *
+     * @return list<string>
+     */
+    public function localesOf(ServiceSite $site): array
+    {
+        return $this->locales->enabled($site);
+    }
+
     /** Мови бренду під префіксом через кому ('' — таких нема) — значення параметра _sub для BrandRouter */
     public function subOf(?ServiceSite $site): string
     {

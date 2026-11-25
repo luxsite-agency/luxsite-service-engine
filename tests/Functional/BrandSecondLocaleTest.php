@@ -26,6 +26,8 @@ final class BrandSecondLocaleTest extends HttpKernelTestCase
     private string $two = '';
     private string $one = '';
     private int $postId = 0;
+    private string $en = '';
+    private int $enPostId = 0;
 
     /** @param array<string, mixed> $options */
     protected static function createKernel(array $options = []): KernelInterface
@@ -38,7 +40,7 @@ final class BrandSecondLocaleTest extends HttpKernelTestCase
         self::bootKernel();
         $em = $this->em();
         $suffix = bin2hex(random_bytes(3));
-        foreach (['two' => ['uk', 'ru'], 'one' => ['uk']] as $name => $locales) {
+        foreach (['two' => ['uk', 'ru'], 'one' => ['uk'], 'en' => ['en', 'uk']] as $name => $locales) {
             $slug = 'ci-' . $name . '-' . $suffix;
             $site = (new ServiceSite())->setSlug($slug)->setName('CI ' . $name)->setApexDomain($slug . '.example')->setMode(ServiceSite::MODE_CONTENT)->setLocales($locales);
             $em->persist($site);
@@ -47,6 +49,7 @@ final class BrandSecondLocaleTest extends HttpKernelTestCase
             $em->persist($cat);
             $post = (new ServicePost())->setSite($site)->setSlugUk('stattia')->setTitleUk('Стаття')->setDescUk('<p>Текст</p>')
                 ->setSlugRu('statia')->setTitleRu('Статья')->setDescRu('<p>Текст по-русски</p>')
+                ->setSlugEn('story')->setTitleEn('Story')->setDescEn('<p>Text</p>')
                 ->setCategory($cat)->setActive(true)->setPublishedAt(new \DateTimeImmutable('-1 day'));
             $em->persist($post);
             $em->flush();
@@ -54,6 +57,9 @@ final class BrandSecondLocaleTest extends HttpKernelTestCase
             $this->{$name} = 'https://' . $slug . '.example';
             if ($name === 'two') {
                 $this->postId = (int) $post->getId();
+            }
+            if ($name === 'en') {
+                $this->enPostId = (int) $post->getId();
             }
         }
         $em->clear();
@@ -108,6 +114,28 @@ final class BrandSecondLocaleTest extends HttpKernelTestCase
         self::assertSame(301, $r->getStatusCode());
         self::assertSame($this->two . '/ru/blog/novaia/', $r->headers->get('Location'));
         self::assertSame(200, $this->http('GET', $this->two . '/blog/stattia/')->getStatusCode());
+    }
+
+    public function testSlugChangeRedirectsEnglishAddress(): void
+    {
+        $em = $this->em();
+        $post = $em->find(ServicePost::class, $this->enPostId);
+        self::assertNotNull($post);
+        $post->setSlugEn('new-story');
+        $em->flush();
+        $r = $this->http('GET', $this->en . '/blog/story/');
+        self::assertSame(301, $r->getStatusCode());
+        self::assertSame($this->en . '/blog/new-story/', $r->headers->get('Location'));
+        self::assertSame(200, $this->http('GET', $this->en . '/uk/blog/stattia/')->getStatusCode(), 'додаткова uk');
+    }
+
+    public function testExtraQueryIsStrippedUnderLocalePrefix(): void
+    {
+        foreach ([[$this->two, '/ru/blog/'], [$this->en, '/uk/blog/'], [$this->one, '/blog/']] as [$host, $path]) {
+            $r = $this->http('GET', $host . $path . '?task=no');
+            self::assertSame(301, $r->getStatusCode(), $path);
+            self::assertSame($host . $path, $r->headers->get('Location'), $path);
+        }
     }
 
     private function em(): EntityManagerInterface

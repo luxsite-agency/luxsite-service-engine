@@ -62,6 +62,7 @@ final class LegacyUrls
         array $cleanUrls = [],
         #[Autowire('%app.gone_prefixes%')]
         array $gonePrefixes = [],
+        private readonly ?SiteLocales $siteLocales = null,
     ) {
         $map = [];
         foreach ($legacyRedirects as $key => $rule) {
@@ -286,6 +287,21 @@ final class LegacyUrls
     }
 
     /**
+     * Шлях без префікса додаткової мови бренду (app.locale_prefix: false): strip_query_paths паку й рушія писані під
+     * адреси без префікса (і /ru/), а /uk/…, /en/… бренду з додатковою мовою — ті самі розділи.
+     */
+    private function withoutSecondLocale(string $path): string
+    {
+        foreach ($this->siteLocales?->secondaryFor($this->siteLocales->currentSite()) ?? [] as $locale) {
+            if (str_starts_with($path, '/' . $locale . '/')) {
+                return substr($path, \strlen($locale) + 1);
+            }
+        }
+
+        return $path;
+    }
+
+    /**
      * Параметри, що лишаються на сторінці $path за правилами strip_query; null = сторінка не під правилом
      * (або зрізання вимкнене, або query порожній) — query лишається як був.
      *
@@ -296,7 +312,7 @@ final class LegacyUrls
         if (!$this->clean['strip_query'] || $request->query->count() === 0) {
             return null;
         }
-        if (!preg_match((string) $this->clean['strip_query_paths'], $path)) {
+        if (!preg_match((string) $this->clean['strip_query_paths'], $this->withoutSecondLocale($path))) {
             return null;
         }
         $keep = [];
