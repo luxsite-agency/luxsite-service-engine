@@ -84,7 +84,7 @@
             },
         }) %}
     {% endif %}
-    {% if city.phone and svc.provider is defined %}{% set svc = svc|merge({'provider': svc.provider|merge({'telephone': city.phone})}) %}{% endif %}
+    {% if city.phone and svc['provider'] is defined %}{% set svc = svc|merge({'provider': svc['provider']|merge({'telephone': city.phone})}) %}{% endif %}
     {% set _ldLead = ov(override|default(null), item, 'lead', locale) %}
     {% if _ldLead %}{% set svc = svc|merge({'description': _ldLead|striptags}) %}{% endif %}
     {% if item.imageName %}{% set svc = svc|merge({'image': app.request.schemeAndHttpHost ~ '/media/service_item/' ~ item.imageName}) %}{% endif %}
