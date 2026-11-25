@@ -25,7 +25,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
@@ -92,7 +91,7 @@ class ServicePageCrudController extends AbstractCrudController
     {
         if ($entityInstance instanceof ServicePage && !$entityInstance->getChildren()->isEmpty()) {
             $this->addFlash('danger', sprintf('Сторінку «%s» не видалено: у неї є дочірні (%d). Спершу перенесіть або видаліть їх.',
-                $entityInstance->getTitleUk(), $entityInstance->getChildren()->count()));
+                htmlspecialchars((string) $entityInstance->getTitleUk(), \ENT_QUOTES), $entityInstance->getChildren()->count())); // флеші EasyAdmin — |raw
 
             return;
         }
@@ -179,12 +178,12 @@ class ServicePageCrudController extends AbstractCrudController
             yield TextareaField::new('leadEn', 'Вступ en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
         yield TextareaField::new('leadRu', 'Вступ ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
+        yield HtmlField::new('descUk', 'Текст uk')->hideOnIndex()->setColumns(12)
             ->setHelp('Основний текст сторінки.');
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12)->setRequired(false);
+            yield HtmlField::new('descEn', 'Текст en')->hideOnIndex()->setColumns(12)->setRequired(false);
         }
-        yield TextEditorField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
+        yield HtmlField::new('descRu', 'Текст ru')->hideOnIndex()->setColumns(12);
 
         yield FormField::addTab('Галерея', 'fa fa-images');
         yield CollectionField::new('images', 'Зображення')->hideOnIndex()->setColumns(12)

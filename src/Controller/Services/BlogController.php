@@ -70,8 +70,12 @@ final class BlogController extends AbstractController
         if ($page > $pages) {
             throw $this->createNotFoundException('Такої сторінки блогу немає.');
         }
-        $params = function (string $l) use ($site, $page, $perPage): ?array {
+        $params = function (string $l) use ($site, $page, $perPage, $total): ?array {
             $count = $this->posts->countPublishedBySite($site, $l);
+            // порожній блог поточною мовою (стор. 1): адреси всіма мовами, як до мов розгортання — canonical, hreflang, перемикач
+            if ($count === 0 && $total === 0 && $page === 1) {
+                return [];
+            }
             if ($count === 0 || ($perPage > 0 && $page > (int) ceil($count / $perPage))) {
                 return null;
             }

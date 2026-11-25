@@ -25,6 +25,10 @@ parameters:
     # Bitrix24 (CRM клієнта): вхідний вебхук https://<портал>/rest/<id>/<токен>/ - СЕКРЕТ, лише .env.local сайту.
     # Порожньо = конектор вимкнений (стенд і dev у чужу CRM не пишуть, лише info «CRM вимкнено» в лог)
     env(BITRIX24_WEBHOOK_URL): ''
+    # Telegram (app.crm.system: telegram): токен бота від @BotFather і id чату (особа, група, канал) - СЕКРЕТИ, лише
+    # .env.local сайту. Порожній будь-який із двох = конектор вимкнений
+    env(TELEGRAM_BOT_TOKEN): ''
+    env(TELEGRAM_CHAT_ID): ''
     # IP, які не впираються в ліміт заявок (свої, для тестів); кома між адресами,
     # приймає й підмережі
     env(LEAD_RATE_LIMIT_ALLOWLIST): ''
@@ -134,8 +138,9 @@ parameters:
         trailing_slash: true
         skip_prefixes: ['/api/', '/admin', '/account', '/_', '/connect/']
         strip_query: true
-        # порожньо = за схемою каталогу, префіксом блогу й app.locales (LegacyUrls)
-        strip_query_paths: ''
+        # дефолт — той самий літерал, що до мов розгортання: /services/, /districts/, /blog/ (група (ru/)? LegacyUrls замінює на
+        # префікси app.locales, для [uk, ru] значення байт-у-байт це); '' = за схемою каталогу (root/slug — і кореневі сторінки)
+        strip_query_paths: '#^/(ru/)?(services|districts|blog)(/|$)#'
         keep_query: ['utm_*', 'gclid', 'fbclid', 'yclid', 'msclkid', 'dclid', 'wbraid', 'gbraid', 'ttclid', 'x', 'src']
         # 404 району на хості одного міста, а район з таким slug є в іншому місті сайту → 301 туди (CrossCityDistrictSubscriber)
         cross_city: true
@@ -209,7 +214,8 @@ parameters:
     app.blog_per_page: 12
     # CRM сайту (App\ServiceSite\Crm\LeadCrmRegistry): куди йдуть заявки форм і калькулятора.
     #   system: auto (дефолт: Pipedrive, якщо є PIPEDRIVE_API_TOKEN, інакше none - поведінка до конекторів) |
-    #           none | pipedrive (налаштування - app.pipedrive нижче) | bitrix24 (налаштування - bitrix24 нижче).
+    #           none | pipedrive (налаштування - app.pipedrive нижче) | bitrix24 (налаштування - bitrix24 нижче) |
+    #           telegram (повідомлення в чат; без налаштувань у паку, лише TELEGRAM_* в .env.local).
     #   Доступи (токени, вебхуки) - лише .env.local. Пак задає app.crm цілком (перекриває всю мапу).
     #   bitrix24: category_id, stage_id, title ('Lead from: {host}'), source_id (website), utm_medium_default ('_organic'),
     #     register_sonet_event (true), contact_fields / deal_fields: { UF_CRM_…: джерело | '{шаблон}' | '=константа' | число }.

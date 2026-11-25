@@ -37,7 +37,7 @@ site-<key>/
 | `themes/<key>/*` | `public/themes/<key>/` | `App\ServiceSite\SiteTheme` (`app.theme`, лише відмінні ключі; невідомий ключ — виняток). Twig-глобал `theme`: `theme.url('logo')`, `theme.cssVars()`, `theme.get('key')` → клас `body.theme-<key>`, `stylesheet` — додатковий CSS. |
 | `translations/servicesite.{uk,ru,en}.yaml` | `translations/site/` | `framework.translator.paths` (`config/packages/translation.yaml`). Файли вантажаться в порядку повного шляху: `servicesite.*` < `site/…`, тож ключі паку перекривають дефолти рушія. **Теку не перейменовувати**: ім'я має сортуватися після `servicesite`. Порожнє значення ключа = елемент не показується (слоган, переваги, футерний рядок міст, `about.legal`, напрями робіт району). |
 | `templates/**` | `templates/site/` | `twig.paths` (`config/packages/twig.yaml`): `templates/site` стоїть перед `templates`, тож однойменний шаблон паку перекриває шаблон рушія; рушій доступний ще й як `@engine/…` для `extends`. На сервері перед smoke — `lint:twig templates/site`. |
-| секрети | `.env.local` на сервері | `DATABASE_URL`, `MAILER_DSN`, `MAIL_FROM`, `ADMIN_HOST`, `DEFAULT_URI`, `STUDIO_API_TOKEN`, `GOOGLE_CLIENT_*` (запасне джерело — див. нижче), `PIPEDRIVE_API_TOKEN`, `BITRIX24_WEBHOOK_URL`, `LEAD_RATE_LIMIT_ALLOWLIST`, `SETTINGS_SECRET_KEY` (ключ шифрування секретів «Налаштування сайту»; `bin/site deploy` дописує сам) — у пак не потрапляють. |
+| секрети | `.env.local` на сервері | `DATABASE_URL`, `MAILER_DSN`, `MAIL_FROM`, `ADMIN_HOST`, `DEFAULT_URI`, `STUDIO_API_TOKEN`, `GOOGLE_CLIENT_*` (запасне джерело — див. нижче), `PIPEDRIVE_API_TOKEN`, `BITRIX24_WEBHOOK_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `LEAD_RATE_LIMIT_ALLOWLIST`, `SETTINGS_SECRET_KEY` (ключ шифрування секретів «Налаштування сайту»; `bin/site deploy` дописує сам), `CLOUDFLARE_DNS_TOKEN` (Zone:Read + DNS:Edit — TXT підтвердження GSC з адмінки бренду; порожньо — вручну) — у пак не потрапляють. |
 
 Відгуки на сайті залишають через вхід Google. Ключі OAuth клієнт вводить сам в адмінці → «Налаштування сайту» → «Вхід через Google» (з 21.10.2026, мають пріоритет; там же адреси для Google Cloud Console по кожному місту й кнопка «Перевірити налаштування» — `docs/site-ops.md`, розділ «Налаштування в адмінці»); запасне джерело, поки перемикач в адмінці вимкнено, — `GOOGLE_CLIENT_ID` і `GOOGLE_CLIENT_SECRET` у `.env.local`. Без ключів блок «Залишити відгук» на `/reviews/` не показується (кнопки й технічних повідомлень відвідувач не бачить), попередження з посиланням на налаштування — на дашборді адмінки, у «Відгуках клієнтів» і в лозі (`/connect/google`). Свій шаблон відгуків у паку — з тією ж умовою: `{% if app.user or google_oauth.configured %}`. Параметри паку `app.clarity_id` і `app.site_verification` лишаються запасними значеннями: якщо ці поля задано в «Налаштуваннях сайту», діють вони.
 
@@ -265,7 +265,7 @@ parameters:
 ### CRM сайту (`app.crm`, 13.10.2026)
 
 Заявка спершу зберігається в БД і йде листом, потім — best effort — у CRM через конектор
-(`App\ServiceSite\Crm\LeadCrmConnector`: `none`, `pipedrive`, `bitrix24`; нова CRM = новий клас конектора). Помилка CRM
+(`App\ServiceSite\Crm\LeadCrmConnector`: `none`, `pipedrive`, `bitrix24`, `telegram`; нова CRM = новий клас конектора). Помилка CRM
 заявку не губить: текст лягає в «Помилка CRM» в адмінці, добирає `app:crm:sync` (крон, `docs/site-ops.md`). Поля заявки
 нейтральні: `crm_external_id` (id ліда/угоди), `crm_system`, `crm_synced_at`, `crm_error`.
 
@@ -275,6 +275,7 @@ parameters:
 | `none` | лише БД і лист | — | — |
 | `pipedrive` | контакт (без дубля за номером) + лід у Leads Inbox + примітка | `app.pipedrive` | `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_OWNER_ID` |
 | `bitrix24` | `crm.contact.add` → `crm.deal.add` з `CONTACT_ID`; `crm_external_id` = id угоди | `app.crm.bitrix24` | `BITRIX24_WEBHOOK_URL` |
+| `telegram` | повідомлення в чат (Bot API `sendMessage`): ім'я, телефон, послуга, сторінка, джерело/UTM, текст; `crm_external_id` = `message_id`. Це сповіщення, не CRM; активний лише один конектор, тож разом з Bitrix24/Pipedrive не працює | — | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
 
 `app.crm.bitrix24` (усі ключі необов'язкові; рушій не знає UF-кодів клієнта — вони лише тут):
 `category_id` (воронка), `stage_id`, `title` (дефолт `'Lead from: {host}'`), `source_id` (`website`), `utm_medium_default`
@@ -563,8 +564,9 @@ parameters:
 Шаблони паку: перемикач і hreflang будуйте з `altUrls` (там уже нема мов без перекладу), підпис — `sv_locale_code(l, 'label')`
 (UA / RU / EN). Для власних меню й списків — `sv_has(entity)`: запис є мовою сторінки. Посилання на сторінки app.pages
 не будуйте як `path('sv_page', {path: '<uk-слаг>'})` (на `/en/` uk-слаг не адреса): `sv_page_path('<uk-шлях>')` дає адресу
-мовою сторінки або null, коли сторінки цією мовою нема — тоді посилання не виводьте. Назви міст англійською
-(`name_nom_en`) заповнюйте для всіх міст: без них назва показується українською.
+мовою сторінки або null, коли сторінки цією мовою нема — тоді посилання не виводьте. Назви й адреси міст англійською
+(`name_nom_en`, `address_en`) заповнюйте для всіх міст: без `name_nom_en` назва на en — зі slug міста латиницею (kyiv → Kyiv),
+без `address_en` адреси на en нема (українська не показується).
 
 Seed: кожне поле `<key>_uk` приймає пару `<key>_en`, адреси — `slug_en` (категорії, послуги, райони, сторінки).
 Розгортання `[uk, ru]` і `[en]` поводяться як раніше.

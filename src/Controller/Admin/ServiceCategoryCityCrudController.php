@@ -16,7 +16,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\FormField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -84,21 +83,21 @@ class ServiceCategoryCityCrudController extends AbstractCrudController
         yield TextField::new('titleRu', 'Назва ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addTab('Тексти', 'fa fa-align-left');
-        yield TextEditorField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('descUk', 'Опис uk')->hideOnIndex()->setColumns(6);
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('descEn', 'Опис en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('descRu', 'Опис ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc2Uk', 'Опис 2 uk')->hideOnIndex()->setColumns(6);
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('desc2En', 'Опис 2 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('desc2En', 'Опис 2 en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
-        yield TextEditorField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc2Ru', 'Опис 2 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc3Uk', 'Опис 3 uk')->hideOnIndex()->setColumns(6);
         if (\in_array('en', $this->locales, true)) {
-            yield TextEditorField::new('desc3En', 'Опис 3 en')->hideOnIndex()->setColumns(6)->setRequired(false);
+            yield HtmlField::new('desc3En', 'Опис 3 en')->hideOnIndex()->setColumns(6)->setRequired(false);
         }
-        yield TextEditorField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
+        yield HtmlField::new('desc3Ru', 'Опис 3 ru')->hideOnIndex()->setColumns(6);
 
         yield FormField::addTab('SEO', 'fa fa-magnifying-glass');
         yield TextField::new('metaTitleUk', 'Meta title uk')->hideOnIndex()->setColumns(6);

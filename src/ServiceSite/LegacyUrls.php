@@ -72,6 +72,8 @@ final class LegacyUrls
         $clean = $cleanUrls + self::CLEAN_DEFAULTS;
         if (!isset($clean['strip_query_paths']) || (string) $clean['strip_query_paths'] === '') {
             $clean['strip_query_paths'] = $this->defaultStripQueryPaths();
+        } elseif ($clean['strip_query_paths'] === self::ENGINE_STRIP_QUERY_PATHS) {
+            $clean['strip_query_paths'] = $this->localizedEngineStripQueryPaths();
         }
         $clean['prefix_redirects'] = self::validatedPrefixRedirects((array) $clean['prefix_redirects']);
         $this->clean = $clean;
@@ -84,6 +86,24 @@ final class LegacyUrls
      * (CatalogUrls::RESERVED_SEGMENTS), бо каталог там живе від кореня, а ?Itemid= Joomla стоїть саме на цих адресах.
      * Пак може задати свій.
      */
+    /** Дефолт app.clean_urls.strip_query_paths рушія (config/services.yaml) — літерал до мов розгортання (рев'ю gls-rev B1) */
+    public const ENGINE_STRIP_QUERY_PATHS = '#^/(ru/)?(services|districts|blog)(/|$)#';
+
+    /**
+     * Дефолт рушія з префіксами мов розгортання замість зашитого (ru/)?: [uk, ru] — той самий літерал; [uk, ru, en] —
+     * ((?:ru|en)/)?; [en] — без префікса. Група лишається першою, решта регекса — без змін.
+     */
+    private function localizedEngineStripQueryPaths(): string
+    {
+        $prefixes = \array_slice($this->siteLocales?->deployment() ?? LocalizedRoutes::DECLARED, 1);
+        if ($prefixes === ['ru']) {
+            return self::ENGINE_STRIP_QUERY_PATHS;
+        }
+        $group = $prefixes === [] ? '()' : '((?:' . implode('|', array_map(static fn (string $l): string => preg_quote($l, '#'), $prefixes)) . ')/)?';
+
+        return str_replace('(ru/)?', $group, self::ENGINE_STRIP_QUERY_PATHS);
+    }
+
     public function defaultStripQueryPaths(): string
     {
         $blog = preg_quote($this->catalogUrls->blogPrefix(), '#');

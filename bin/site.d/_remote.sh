@@ -230,7 +230,7 @@ first_run() {
                 echo "DATABASE_URL=mysql://$dbu:$dbp@mysql:3306/$KEY?serverVersion=8.0&charset=utf8mb4"
                 echo "MAILER_DSN=null://null"; echo "MAIL_FROM=noreply@${SITE_HOST:-$KEY}"
                 echo "ADMIN_HOST=${SITE_ADMIN:-admin.$KEY}"; echo "DEFAULT_URI=https://${SITE_HOST:-$KEY}"
-                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
+                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "CLOUDFLARE_DNS_TOKEN="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
             } > "$env"
             umask 022; own "$env"; log "створено shared/.env.local (edge: БД стека з db.env, пошта null)"
         elif [ "$RUNTIME" = docker ]; then
@@ -241,7 +241,7 @@ first_run() {
                 echo "DATABASE_URL=mysql://engine:engine@mysql:3306/$KEY?serverVersion=8.0&charset=utf8mb4"
                 echo "MAILER_DSN=smtp://mailpit:1025"; echo "MAIL_FROM=noreply@${SITE_HOST:-$KEY.local}"
                 echo "ADMIN_HOST=${SITE_ADMIN:-$KEY-admin.local}"; echo "DEFAULT_URI=https://${SITE_HOST:-$KEY.local}"
-                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "BITRIX24_WEBHOOK_URL="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
+                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "CLOUDFLARE_DNS_TOKEN="; echo "BITRIX24_WEBHOOK_URL="; echo "TELEGRAM_BOT_TOKEN="; echo "TELEGRAM_CHAT_ID="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
             } > "$env"
             umask 022; own "$env"; log "створено shared/.env.local (стенд)"
         else
@@ -252,7 +252,7 @@ first_run() {
                 echo "DATABASE_URL=mysql://USER:PASSWORD@127.0.0.1:3306/DBNAME?serverVersion=8.0&charset=utf8mb4"
                 echo "MAILER_DSN=null://null"; echo "MAIL_FROM=noreply@${SITE_HOST:-$KEY}"
                 echo "ADMIN_HOST=${SITE_ADMIN:-admin.$KEY}"; echo "DEFAULT_URI=https://${SITE_HOST:-$KEY}"
-                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "BITRIX24_WEBHOOK_URL="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
+                echo "GOOGLE_CLIENT_ID="; echo "GOOGLE_CLIENT_SECRET="; echo "STUDIO_API_TOKEN="; echo "PIPEDRIVE_API_TOKEN="; echo "CLOUDFLARE_DNS_TOKEN="; echo "BITRIX24_WEBHOOK_URL="; echo "TELEGRAM_BOT_TOKEN="; echo "TELEGRAM_CHAT_ID="; echo "LEAD_RATE_LIMIT_ALLOWLIST="
             } > "$env"
             umask 022; own "$env"
             die "створено $env із заготовкою — заповніть DATABASE_URL (і MAILER_DSN) на сервері й повторіть deploy"
@@ -323,7 +323,10 @@ do_deploy() {
     if [ "$RUNTIME" = docker ]; then
         # контейнери стартують із нового релізу (./ → /app); vendor і var — спільні томи проєкту
         COMPOSE_REL="$rel"
-        run compose up -d --build --remove-orphans
+        # --pull: Dockerfile бере плаваючий php:8.4-fpm; без нього збірка лишається на локальному старому базовому образі
+        # і сайт не отримує патчів PHP (shop-engine 23.11.2026: частина магазинів на 8.4.27 замість 8.4.28 з виправленням RCE)
+        run compose build --pull
+        run compose up -d --remove-orphans
         [ "$DRY_RUN" = 1 ] || wait_mysql
         # var — спільний том: скомпільований контейнер попереднього релізу посилається на його бандли, і cache:clear нового
         # релізу (auto-scripts composer) падає на першому ж прибраному пакеті («Class …Bundle not found», 17.10 після #74)
