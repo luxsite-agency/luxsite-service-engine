@@ -226,6 +226,7 @@ cd <рушій> && SITES_FILE=<ops>/stand.yaml bin/site deploy <key> && SITES_FI
 |---|---|---|
 | `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_OWNER_ID` | Pipedrive (`app.crm.system: pipedrive` або `auto`) | вимкнено |
 | `BITRIX24_WEBHOOK_URL` | Bitrix24 (`system: bitrix24`): вхідний вебхук `https://<портал>/rest/<id>/<токен>/` з правом `crm` | вимкнено, у лог лише info «CRM вимкнено» |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Telegram (`system: telegram`): токен бота від @BotFather і id чату/групи/каналу (бота додати в чат; для групи id від'ємний) | вимкнено, якщо порожній будь-який із двох |
 
 Вебхук і токени — секрети: не в пак, не в git, не в чат. Стенд створює `.env.local` з порожніми значеннями,
 тож у чужу CRM не пише. Заявка, що не дійшла (CRM лежала, протух токен), лишається в черзі (`crm_external_id` порожній,
