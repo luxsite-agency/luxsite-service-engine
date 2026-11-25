@@ -142,9 +142,9 @@ final class AutoRedirects
 
         return match (true) {
             $entity instanceof ServiceItem => $this->itemPath($entity, $locale, $entity->getCategory()?->slug($locale) ?? '', $slug),
-            $entity instanceof ServiceCategory => $this->catalogUrls->isNested() ? $this->generate('sv_category', ['category' => $slug, '_locale' => $locale]) : null,
-            $entity instanceof ServiceDistrict => $this->generate('sv_district', ['slug' => $slug, '_locale' => $locale]),
-            $entity instanceof ServicePost => $this->generate('sv_blog_post', ['slug' => $slug, '_locale' => $locale, '_blog' => $this->brandRoutes->blogOf($entity->getSite())]),
+            $entity instanceof ServiceCategory => $this->catalogUrls->isNested() ? $this->generate('sv_category', ['category' => $slug, '_locale' => $locale] + $this->sub($entity)) : null,
+            $entity instanceof ServiceDistrict => $this->generate('sv_district', ['slug' => $slug, '_locale' => $locale] + $this->sub($entity)),
+            $entity instanceof ServicePost => $this->generate('sv_blog_post', ['slug' => $slug, '_locale' => $locale, '_blog' => $this->brandRoutes->blogOf($entity->getSite())] + $this->sub($entity)),
             default => null,
         };
     }
@@ -159,7 +159,19 @@ final class AutoRedirects
             $params['category'] = $categorySlug;
         }
 
-        return $this->generate('sv_service', $params);
+        return $this->generate('sv_service', $params + $this->sub($item));
+    }
+
+    /**
+     * Друга мова бренду (/ru/…): правило пишеться з адмін-хоста, де контекст роутера не знає бренду — передаємо явно.
+     *
+     * @return array{_sub?: string}
+     */
+    private function sub(object $entity): array
+    {
+        $sub = $this->brandRoutes->subOf(self::siteOf($entity));
+
+        return $sub === '' ? [] : ['_sub' => $sub];
     }
 
     /** @param array<string, string> $params */

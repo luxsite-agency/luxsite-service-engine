@@ -20,8 +20,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * мовами є сторінка» — замість зашитих uk/ru. При типовому [uk, ru] і бренді без власного набору дає ті самі значення,
  * що були зашиті.
  *
- * app.locale_prefix: false (24.10.2026) — бренди різними мовами в одному розгортанні: префіксів нема, мова за
- * замовчуванням — перша мова бренду (ServiceSite.locales), а не розгортання.
+ * app.locale_prefix: false (24.10.2026) — бренди різними мовами в одному розгортанні: мова за замовчуванням (без
+ * префікса) — перша мова бренду (ServiceSite.locales), а не розгортання; наступні мови бренду — під /<мова>/
+ * (25.11.2026, лише в бренду, якому їх задано).
  */
 final class SiteLocales
 {
@@ -76,7 +77,22 @@ final class SiteLocales
             return $this->locales[0];
         }
 
-        return $site->enabledLocales($this->locales)[0] ?? $this->locales[0];
+        return $site->orderedLocales($this->locales)[0] ?? $this->locales[0];
+    }
+
+    /**
+     * Мови бренду під префіксом /<мова>/ у розгортанні без префіксів (app.locale_prefix: false): усі задані, крім першої.
+     * Порожньо — з префіксами (там префікс визначає порядок app.locales), без бренду й для бренду без власного набору.
+     *
+     * @return list<string>
+     */
+    public function secondaryFor(?ServiceSite $site): array
+    {
+        if ($this->prefixed || $site?->getLocales() === null) {
+            return [];
+        }
+
+        return \array_slice($site->orderedLocales($this->locales), 1);
     }
 
     /**
@@ -88,7 +104,11 @@ final class SiteLocales
     {
         $site ??= $this->currentSite();
 
-        return $site === null ? $this->locales : $site->enabledLocales($this->locales);
+        if ($site === null) {
+            return $this->locales;
+        }
+
+        return $this->prefixed ? $site->enabledLocales($this->locales) : $site->orderedLocales($this->locales);
     }
 
     /** Мова поточного запиту, якщо вона з мов розгортання; інакше — мова за замовчуванням */
@@ -122,10 +142,8 @@ final class SiteLocales
 
     private function prefixOf(string $path): ?string
     {
-        if (!$this->prefixed) {
-            return null;
-        }
-        foreach (\array_slice($this->locales, 1) as $l) {
+        $candidates = $this->prefixed ? \array_slice($this->locales, 1) : $this->secondaryFor($this->currentSite());
+        foreach ($candidates as $l) {
             if (str_starts_with($path, '/' . $l . '/')) {
                 return $l;
             }

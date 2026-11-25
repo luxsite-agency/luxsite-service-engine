@@ -369,6 +369,46 @@ class ServiceSite implements TimestampableInterface
         return array_values(array_intersect($deployment, $this->locales));
     }
 
+    /**
+     * Мови бренду в порядку, як збережені (app.locale_prefix: false: перша — без префікса, решта — під /<мова>/);
+     * null — мови розгортання.
+     *
+     * @param list<string> $deployment app.locales
+     *
+     * @return list<string>
+     */
+    public function orderedLocales(array $deployment): array
+    {
+        return $this->locales === null ? $deployment : array_values(array_intersect($this->locales, $deployment));
+    }
+
+    /** Поле адмінки «Головна мова» (розгортання без префіксів): перша зі збережених мов — без префікса в адресі */
+    public function getPrimaryLocale(): ?string
+    {
+        return $this->locales[0] ?? null;
+    }
+
+    public function setPrimaryLocale(?string $locale): self
+    {
+        return $this->setLocales(array_values(array_filter([$locale, ...$this->getExtraLocales()])));
+    }
+
+    /**
+     * Поле адмінки «Додаткові мови» (розгортання без префіксів): кожна під /<мова>/; [] — сайт одномовний.
+     *
+     * @return list<string>
+     */
+    public function getExtraLocales(): array
+    {
+        return \array_slice($this->locales ?? [], 1);
+    }
+
+    /** @param list<string> $locales головна мова серед них ігнорується */
+    public function setExtraLocales(array $locales): self
+    {
+        return $this->setLocales(array_values(array_filter([$this->getPrimaryLocale(), ...array_values($locales)])));
+    }
+
     public function getHeroImagePath(): ?string
     {
         return $this->heroImagePath;

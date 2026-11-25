@@ -22,6 +22,7 @@ use Symfony\Contracts\Service\ResetInterface;
  *    params['_blog'] == service('brand_routes').blog(request): на хості бренду матчиться лише його розділ, а path()
  *    бере _blog з параметра контексту роутера (ставить SiteLocaleSubscriber), тож шаблони не змінюються;
  *  - мова без префіксів (app.locale_prefix: false): service('brand_routes').locale(request) — перша мова бренду;
+ *    service('brand_routes').secondary(request, 'ru') — друга мова бренду, її адреси під /ru/ (параметр контексту _sub);
  *  - рубрики від кореня (app.brands.<slug>.category_url: root, 24.10.2026): маршрут /{slug}/ з умовою
  *    service('brand_routes').rootCategory(request, params) — у бренду є активна рубрика з таким slug і він не зайнятий
  *    фіксованим розділом; path('sv_blog_category', …) дає /<slug>/ (App\Routing\BrandRouter за параметром контексту _cat_root).
@@ -52,11 +53,23 @@ final class BrandRoutes implements ResetInterface
      * Параметри контексту роутера для адрес бренду: розділ статей (_blog) і рубрики від кореня (_cat_root).
      * Ставлять SiteLocaleSubscriber (хост бренду) і студія (адмін-хост).
      *
-     * @return array{_blog: string, _cat_root: bool}
+     * @return array{_blog: string, _cat_root: bool, _sub: string}
      */
     public function contextParams(?ServiceSite $site): array
     {
-        return ['_blog' => $this->blogOf($site), '_cat_root' => $site !== null && $this->brands->categoryRoot($site)];
+        return ['_blog' => $this->blogOf($site), '_cat_root' => $site !== null && $this->brands->categoryRoot($site), '_sub' => $this->subOf($site)];
+    }
+
+    /** Мови бренду під префіксом через кому ('' — таких нема) — значення параметра _sub для BrandRouter */
+    public function subOf(?ServiceSite $site): string
+    {
+        return implode(',', $this->locales->secondaryFor($site));
+    }
+
+    /** Умова варіанта маршруту під /<мова>/: у бренду запиту ця мова — друга */
+    public function secondary(?Request $request, string $locale): bool
+    {
+        return \in_array($locale, $this->locales->secondaryFor(self::siteOf($request)), true);
     }
 
     /**

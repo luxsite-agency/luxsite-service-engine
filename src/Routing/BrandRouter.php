@@ -7,10 +7,12 @@ declare(strict_types=1);
 
 namespace App\Routing;
 
+use App\ServiceSite\LocalizedRoutes;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Matcher\RequestMatcherInterface;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
@@ -21,6 +23,9 @@ use Symfony\Component\Routing\RouterInterface;
  * роутера _cat_root, ставлять SiteLocaleSubscriber і студія) адреса рубрики — /<slug>/ замість /<блог>/category/<slug>/.
  * Генерація sv_blog_category(_page) підміняється на sv_blog_category_root(_page) тут, щоб шаблони рушія й паків, sitemap,
  * canonical і хлібні крихти не змінювались. Решта — без змін, матчинг — як був.
+ *
+ * Друга мова бренду без префіксів розгортання (25.11.2026, app.locale_prefix: false): якщо мова адреси є в параметрі
+ * _sub (контекст або явний параметр), генерується варіант `<name>.<мова>.sub` на /<мова>/…
  */
 #[AsDecorator('router')]
 final class BrandRouter implements RouterInterface, RequestMatcherInterface, WarmableInterface
@@ -38,6 +43,19 @@ final class BrandRouter implements RouterInterface, RequestMatcherInterface, War
     {
         if (isset(self::ROOT_ROUTES[$name]) && $this->inner->getContext()->getParameter('_cat_root') === true) {
             $name = self::ROOT_ROUTES[$name];
+        }
+
+        $sub = (string) ($parameters['_sub'] ?? $this->inner->getContext()->getParameter('_sub'));
+        unset($parameters['_sub']);
+        if ($sub !== '') {
+            $locale = (string) ($parameters['_locale'] ?? $this->inner->getContext()->getParameter('_locale'));
+            if (\in_array($locale, explode(',', $sub), true)) {
+                try {
+                    return $this->inner->generate($name . '.' . $locale . LocalizedRoutes::SUB, ['_locale' => $locale] + $parameters, $referenceType);
+                } catch (RouteNotFoundException) {
+                    // нелокалізований маршрут (/lead, sitemap) — одна адреса на всі мови
+                }
+            }
         }
 
         return $this->inner->generate($name, $parameters, $referenceType);
