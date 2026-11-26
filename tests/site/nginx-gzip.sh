@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2317  # функції викликаються через trap і check "$@"
+# shellcheck disable=SC2317,SC2329  # функції викликаються через trap і check "$@"
 # gzip у nginx стенда (docker/nginx/traefik.conf): справжній nginx:1.27-alpine з цим конфігом поверх тимчасового public/.
 # Перевіряє дію, а не рядок у конфігу: текстові відповіді з Accept-Encoding: gzip стиснуті (і розпаковуються в оригінал),
 # без заголовка — ні; картинки не стискаються. Запуск: bash tests/site/nginx-gzip.sh (потрібен docker); код 0 = усе гаразд.
