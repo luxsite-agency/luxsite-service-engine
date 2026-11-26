@@ -90,7 +90,7 @@ final class LeadCrmContactFieldsTest extends TestCase
                 default => 9,
             }]));
         });
-        $crm = new Bitrix24Crm($http, $this->createStub(ServiceItemRepository::class), $this->createStub(EntityManagerInterface::class), new NullLogger(), 'https://ci.bitrix24.example/rest/1/citokencitoken/');
+        $crm = new Bitrix24Crm($http, $this->createStub(ServiceItemRepository::class), $this->createStub(EntityManagerInterface::class), new NullLogger(), 'https://ci.bitrix24.example/rest/1/ci-token/');
         $crm->setLeadExtraFields($this->extraFields());
 
         $lead = $this->lead();
