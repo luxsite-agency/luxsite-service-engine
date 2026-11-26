@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\ServiceLead;
+use App\ServiceSite\LeadExtraFields;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
@@ -34,6 +35,10 @@ class ServiceLeadCrudController extends AbstractCrudController
 
     /** У списку виноситься наперед: телефон - головне в заявці */
     private const INDEX_PRIMARY = 'phone';
+
+    public function __construct(private readonly LeadExtraFields $extraFields)
+    {
+    }
 
     public static function getEntityFqcn(): string
     {
@@ -72,6 +77,8 @@ class ServiceLeadCrudController extends AbstractCrudController
             ->setHelp('Як його ввела людина. Саме за цим номером CRM (Pipedrive) шукає дублі контактів.');
         yield TextField::new('name', 'Ім\'я')
             ->setHelp('Необовʼязкове поле у формі, тому часто порожнє.');
+        yield TextField::new('email', 'Email')
+            ->setHelp('Поле email форми, якщо воно є на сайті. Необовʼязкове; адресу перевірено за форматом.');
         yield TextareaField::new('message', 'Повідомлення')->hideOnIndex()
             ->setHelp(
                 'Текст із форми або розрахунок калькулятора: тип, площа, коефіцієнти, опції, сума. Суму '
@@ -81,6 +88,9 @@ class ServiceLeadCrudController extends AbstractCrudController
             ->setHelp('Послуга з кнопки «Замовити», з якої надіслали форму (поле service). Порожньо — форма без послуги.');
         yield TextField::new('context', 'Звідки')->hideOnIndex()
             ->setHelp('Яка саме форма чи блок сторінки (поле context): шапка, картка ціни, доставка…');
+        yield TextareaField::new('extraText', 'Поля форми')->onlyOnDetail()
+            ->formatValue(fn ($value, ServiceLead $lead): string => implode("\n", $this->extraFields->lines($lead->getExtra())))
+            ->setHelp('Додаткові поля форми сайту (app.lead.extra_fields паку): адреса, тема, день показу…');
         yield IntegerField::new('filesCount', 'Файли')->onlyOnIndex()
             ->setHelp('Скільки файлів людина додала до заявки (app.lead_files).');
         yield Field::new('files', 'Файли')->onlyOnDetail()->setTemplatePath('admin/lead/field/files.html.twig')
