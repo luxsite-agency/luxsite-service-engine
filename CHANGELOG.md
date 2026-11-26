@@ -4,6 +4,9 @@
 
 ## Невипущене
 
+- **gzip на стендах за traefik.** `docker/nginx/traefik.conf` стискає текстові відповіді (HTML, CSS, JS, JSON, SVG, XML)
+  для запитів з `Accept-Encoding: gzip`; картинки й відповіді до 1 КБ — як були. Прод (FastPanel, docker за edge і
+  Cloudflare) не зачеплено. Дія: нема — стенд підхопить конфіг з наступною викладкою рушія (nginx перестворюється з релізом).
 - **Кеш зображень: адреса з розширенням формату фільтра.** Фільтри з `format: webp` (`item_hero`, `item_hero_sm`,
   `page_gallery`) клали WEBP за адресою `….jpg`, і сервер віддавав його з `Content-Type: image/jpeg`; PNG через
   jpg-фільтр ішов як `image/png`. Тепер файл кешу — `x.jpg.webp` / `x.png.jpg` (де тип уже збігався, адреса не

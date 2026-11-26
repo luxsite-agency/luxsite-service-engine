@@ -20,7 +20,7 @@ t() { # t <опис> <очікуваний код: 0|!0> <команда…>
 has() { if grep -qF -- "$1" <<<"$LAST"; then pass=$((pass + 1)); echo "ok     ↳ є «$1»"; else fail=$((fail + 1)); echo "FAIL   ↳ нема «$1»"; fi; }
 hasnt() { if grep -qF -- "$1" <<<"$LAST"; then fail=$((fail + 1)); echo "FAIL   ↳ є «$1»"; else pass=$((pass + 1)); echo "ok     ↳ нема «$1»"; fi; }
 
-sc_files=(bin/site bin/site.d/*.sh tests/site/run.sh)
+sc_files=(bin/site bin/site.d/*.sh tests/site/run.sh tests/site/nginx-gzip.sh)
 if command -v shellcheck >/dev/null; then t "shellcheck" 0 shellcheck -x "${sc_files[@]}"
 elif command -v docker >/dev/null; then t "shellcheck (docker)" 0 docker run --rm -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x "${sc_files[@]}"
 else echo "skip shellcheck: нема ні shellcheck, ні docker"; fi
@@ -88,6 +88,9 @@ t "site_ctx: compose на fastpanel — відмова" '!0' env SITES_FILE="$ba
 
 # compose стенда
 if command -v docker >/dev/null; then
+    # gzip у nginx стенда: справжній nginx з docker/nginx/traefik.conf (HTML, css, js, json, svg стиснуті лише з Accept-Encoding)
+    t "nginx стенда: gzip текстових відповідей" 0 bash tests/site/nginx-gzip.sh
+    has "nginx-gzip: OK"
     t "compose config: стенд за traefik" 0 env SITE=demo SITE_ROOT=/tmp/site-demo docker compose -f docker-compose.traefik.yml config --services
     has nginx; has mysql; has mailpit
     t "compose config: хости з реєстру в мітках traefik" 0 env SITE=demo SITE_ROOT=/tmp/site-demo SITE_HOST=demo.example.com SITE_ADMIN=demo-admin.example.com SITE_MAIL_HOST=demo-mail.example.com docker compose -f docker-compose.traefik.yml config
