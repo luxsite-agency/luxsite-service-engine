@@ -14,6 +14,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
@@ -24,6 +25,13 @@ use Vich\UploaderBundle\Form\Type\VichImageType;
 #[IsGranted('ROLE_MODERATOR')]
 class ServicePageImageCrudController extends AbstractCrudController
 {
+    /** Мови розгортання (app.locales): які підписи показувати у формі */
+    public function __construct(
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
+    }
+
     public static function getEntityFqcn(): string
     {
         return ServicePageImage::class;
@@ -53,6 +61,10 @@ class ServicePageImageCrudController extends AbstractCrudController
         yield ImageField::new('imageName', 'Зображення')->setBasePath('/media/service_page')->onlyOnIndex();
         yield TextField::new('captionUk', 'Підпис uk')->setColumns(5)
             ->setHelp('Під зображенням і в alt: «Ліцензія МОЗ на медичну практику».');
+        if (\in_array('en', $this->locales, true)) {
+            yield TextField::new('captionEn', 'Підпис en')->setColumns(5)->setRequired(false)
+                ->setHelp('Порожньо = український підпис.');
+        }
         yield TextField::new('captionRu', 'Підпис ru')->setColumns(5)
             ->setHelp('Порожньо = український підпис.');
         yield IntegerField::new('position', 'Порядок')->setColumns(2)

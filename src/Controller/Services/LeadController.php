@@ -9,6 +9,7 @@ namespace App\Controller\Services;
 
 use App\Controller\Api\Admin\ImageApiController;
 use App\ServiceSite\LeadAttribution;
+use App\ServiceSite\LeadExtraFields;
 use App\ServiceSite\LeadFiles;
 use App\Entity\ServiceLead;
 use App\Repository\ServiceLeadRepository;
@@ -24,8 +25,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Заявка з форми (телефон + ім'я + повідомлення; необов'язково — послуга service, контекст context і файли files[] з
- * app.lead_files, форма multipart/form-data). Виправляє типовий борг
+ * Заявка з форми (телефон + ім'я + повідомлення; необов'язково — email, послуга service, контекст context, файли files[] з
+ * app.lead_files, форма multipart/form-data, і довільні поля з app.lead.extra_fields паку). Виправляє типовий борг
  * Joomla-сайтів: персистенція в БД, маршрутизація на email МІСТА (не хардкод),
  * rate limit + honeypot + CSRF. Мейл шле LeadNotifier (best effort: заявка
  * вже в БД, падіння SMTP її не втрачає).
@@ -45,6 +46,7 @@ final class LeadController extends AbstractController
         private readonly LeadCrmConnector $crm,
         private readonly LeadRateLimit $rateLimit,
         private readonly LeadFiles $files,
+        private readonly LeadExtraFields $extraFields,
     ) {
     }
 
@@ -96,6 +98,15 @@ final class LeadController extends AbstractController
             return $this->redirect($back);
         }
 
+        // email необов'язковий; заповнений і невалідний — помилка форми, а не заявка з обрізаним чи чужим значенням
+        $emailRaw = $request->request->all()['email'] ?? '';
+        $email = \is_scalar($emailRaw) ? trim((string) $emailRaw) : '';
+        if ($email !== '' && (mb_strlen($email) > 180 || preg_match('/[\r\n]/', $email) === 1 || filter_var($email, \FILTER_VALIDATE_EMAIL) === false)) {
+            $this->addFlash('lead_error', $locale === 'en' ? 'Please check your email address.' : ($locale === 'ru' ? 'Проверьте адрес email.' : 'Перевірте адресу email.'));
+
+            return $this->redirect($back);
+        }
+
         // файли: лише з app.lead_files.enabled; без нього поле ігнорується, як до файлів
         $uploads = $this->files->enabled() ? LeadFiles::fromRequest($request->files->get('files')) : [];
         if (($fileError = $this->files->validate($uploads, $locale)) !== null) {
@@ -122,7 +133,9 @@ final class LeadController extends AbstractController
             ->setCity($city)
             ->setPhone(mb_substr($phone, 0, 32))
             ->setName($name !== '' ? $name : null)
+            ->setEmail($email)
             ->setMessage($message !== '' ? $message : null)
+            ->setExtra($this->extraFields->collect($request->request->all()))
             ->setService($service)
             ->setContext($context)
             ->setPageUrl(mb_substr($back, 0, 512))

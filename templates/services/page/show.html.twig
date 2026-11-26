@@ -81,7 +81,7 @@
     <section class="block page-gallery">
         <div class="works-grid">
             {% for img in page.images %}{% if img.imageName %}
-            {% set _cap = img.loc('caption', locale) %}
+            {% set _cap = img.caption(locale) %}
             <figure class="work-card">
                 <a href="/media/service_page/{{ img.imageName }}" target="_blank" rel="noopener">
                     <img src="{{ asset('media/service_page/' ~ img.imageName)|imagine_filter('page_gallery') }}"

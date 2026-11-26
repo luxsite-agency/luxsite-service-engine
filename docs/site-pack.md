@@ -88,6 +88,10 @@ live (токен) > пак > рушій.
 2. Шрифти — лише `@font-face` з `font-display: swap|optional`, без `<link rel=preload>` (у headless Chrome блокує кадр на 2 с).
 3. Текст акцентним кольором — через `--accent-ink` (контраст 4.5+), не `--accent`.
 4. Фото послуги — рушій сам віддає webp через Liip (`item_hero`), оригінал лишається для og:image.
+   Адреса файлу в кеші має розширення формату фільтра (26.11.2026): `/media/cache/item_hero/media/…/x.jpg.webp`
+   (jpg-фільтр з PNG — `x.png.jpg`; де тип уже збігається — без змін), тож веб-сервер віддає правильний `Content-Type`.
+   Адреси беріть лише з `imagine_filter` (не складайте руками); формат задавайте у `filter_sets`, не в runtime-конфігу
+   фільтра. Стара адреса без файлу на диску → 301 на генерацію.
 5. Після вмикання на проді — `/analytics-healthcheck`: page_view без взаємодії через 10 с, `gtm.js` = 1 при взаємодії на 0-й с.
 `site-template` для нових паків ставить обидва `true`; на вже живих сайтах — вмикати лише з «так» власника сайту.
 
@@ -98,6 +102,7 @@ live (токен) > пак > рушій.
 | `app.catalog.url_scheme` | `flat` | `flat` = `/services/<послуга>/`; `nested` = `/services/<категорія>/<послуга>/` + сторінки категорій; `root` = `/<категорія>/<послуга>/` від кореня (як у сайтів з Joomla; фіксовані сторінки мають пріоритет, невідомий `/<x>/` — legacy-редирект або 404); `slug` = послуга `/<послуга>/` і категорія `/<категорія>/` від кореня одним сегментом (старі CMS, де кожна сторінка жила на `/<слаг>/`; невідомий `/<x>/` — legacy-редирект або 404, не категорія; див. «Адреси від кореня» нижче). Послуга під чужою категорією — 301 на справжню адресу (nested/root). Маршрути — `config/routes/catalog/<scheme>.yaml`, вибір у `Kernel::configureRoutes`. У коді посилання на послугу — лише `service_path(item, locale)` (Twig) / `CatalogUrls::itemParams()` (PHP). |
 | `app.site_verification` | `''` | `<meta name="google-site-verification">` у `<head>`. |
 | `app.lead_events` | `[generate_lead]` | події dataLayer на `/thanks` після заявки (усі з `lead_type`, `city`, `site_host`; з полями форми `service`/`context` — ще `lead_service`, `lead_context`); чужий GTM з ціллю на `form_submit` — `[generate_lead, form_submit]`. |
+| `app.lead.extra_fields` | `[]` | Довільні поля форми заявки: перелік дозволених ключів (рядок або `{key, label}`) — див. «Форма заявки» нижче. Невалідний чи зайнятий ключ (`phone`, `email`, `utm_*`…) — помилка збирання контейнера. |
 | `app.lead_files` | `{enabled: false, max_files: 5, max_file_mb: 10, max_total_mb: 25, mime: [image/jpeg, image/png, image/webp, image/gif, image/heic, image/heif, application/pdf], retention_days: 0}` | Файли в заявці — див. «Форма заявки: послуга, контекст, файли» нижче. Пак задає лише змінені ключі (`{enabled: true}`). |
 | `app.analytics_defer` | `false` | `true` = GTM/gtag і Clarity стартують після `window.load` + 800 мс або на першу взаємодію (прапорець проти подвійного старту; пасивні візити рахуються таймером). Знімає ~310 КБ з ланцюжка LCP (PSI mobile 69–75 → 89–94). Для нових паків `site-template` ставить `true`. Після вмикання на проді — `/analytics-healthcheck` (page_view без взаємодії через 10 с). |
 | `app.viber_plus` | `true` | Viber-посилання `viber://chat?number=%2B<номер>` (так чат відкривають усі клієнти). `false` — без плюса, лише якщо чужий тригер GTM шукає `number=380…`. |
@@ -141,19 +146,23 @@ live (токен) > пак > рушій.
 | `app.ru_mode` | `full` | Російська версія (02.11.2026): `full` — як є; `noindex` — ru ще без перекладу (тексти записів падають на uk, на проді це дублі): кожна `/ru/`-сторінка `noindex, follow` (meta і `X-Robots-Tag`), hreflang нема на обох мовах, `sitemap.xml` лише з uk-адресами, перемикач мов лишається; `off` — ru вимкнено: `/ru/…` → 404 (legacy-301 і 410 паку спрацьовують раніше), перемикач мов і hreflang зникають, sitemap лише uk. Пак зі своїм перемикачем мов перевіряє Twig-глобал `ru_mode`. |
 | `env(PIPEDRIVE_OWNER_ID)` | `'0'` | id власника лідів (не секрет). |
 
-### Форма заявки: послуга, контекст, файли (02.11.2026)
+### Форма заявки: послуга, контекст, файли (02.11.2026), email і довільні поля (26.11.2026)
 
 `POST /lead` крім `phone`, `name`, `message` приймає (усе необов'язкове, CSRF `sv_lead`, пастка `website` і ліміт частоти —
 як були):
 
 | Поле | Що | Де видно |
 |---|---|---|
+| `email` | адреса людини; порожнє — можна, заповнене невалідне (формат, довше 180) — флеш `lead_error` «Перевірте адресу email», заявка не створюється | колонка «Email» заявки, лист (рядок `Email:` і `Reply-To`), CRM: контакт Pipedrive (новий) і Bitrix24 (джерело `email` у `contact_fields`), рядок у примітці/Telegram |
+| ключі з `app.lead.extra_fields` | довільні поля форми паку: `app.lead.extra_fields: [address, topic, {key: showing_day, label: 'День показу'}]` — ключ `[a-z][a-z0-9_]*` до 40, не власне поле форми; значення — рядок без тегів і переносів, до 500. Незнайомі ключі відкидаються | JSON-колонка `service_lead.extra` (`{ключ: значення}`), «Поля форми» в перегляді заявки, рядки `<підпис чи ключ>: значення` у листі й CRM |
 | `service` | назва послуги з кнопки «Замовити» (до 255, без тегів) | колонка заявки «Послуга», лист, CRM (Bitrix24 — поле `service` з пріоритетом над послугою за адресою сторінки; Pipedrive — примітка), dataLayer `/thank-you/` — `lead_service` |
 | `context` | звідки заявка: блок чи форма сторінки («шапка», «картка ціни»…) | «Звідки» в заявці, листі, CRM; dataLayer — `lead_context` |
 | `files[]` | лише з `app.lead_files.enabled: true`: до `max_files` файлів, кожен до `max_file_mb`, разом до `max_total_mb`, тип **за вмістом** із `mime` (типово фото й PDF; ще можна `application/msword`, `…wordprocessingml.document`) | «Файли» в перегляді заявки (адмінка → Заявки → 👁), у листі й CRM — посилання `https://<ADMIN_HOST>/admin/lead-file/<id>` (відкривається лише після входу модератора) |
 
 Форма рушія (`partials/_lead_form.html.twig`) з увімкненими файлами сама стає `multipart/form-data` і показує поле
 (`lead.files` — підпис з `%count%`, `%mb%`); `service`/`context` — параметри include `lead_service`, `lead_context`.
+Поля `email` і довільні форма рушія не виводить — їх додає форма паку (`<input type="email" name="email">`,
+`<input name="address">`); телефон лишається обов'язковим.
 Свої форми паку: `enctype="multipart/form-data"`, `<input type="file" name="files[]" multiple accept="{{ lead_files().accept }}">`
 лише коли `lead_files().enabled`. Невдалий файл — флеш `lead_error` з причиною, заявка не створюється (людина повторює без нього).
 
@@ -354,6 +363,32 @@ parameters:
 `page_extra` — частина за шаблоном; різні сторінки — розгалуження за `page.slugUk` або `page.template`).
 Наповнення з YAML — `pages:` у `app:site:seed` (`slug`, `slug_ru`, `parent`, `title_uk`, `h1_uk`, `lead_uk`, `desc_uk` або
 `body_uk`, `meta_*`, `template`, `items`, `noindex`, `in_sitemap`, `position`, `footer`, `active`, `hidden_cities`).
+
+**Поля, обкладинка й галерея сторінки з seed** (26.11.2026) — каталог на сторінках (будинки, вакансії, авто) наповнюється
+одним `app:site:seed`, без SQL і скриптів паку:
+
+```yaml
+pages:
+  - slug: 390-edge-of-woods
+    parent: homes-for-sale
+    title_en: 390 Edge Of Woods
+    extra: { price: 11950000, village: Water Mill, note: { uk: 'Нова', en: 'New build' } }
+    cover: { file: img/390-front.jpg, alt: 'Front of the house' }
+    gallery:
+      - { file: img/390-front.jpg, caption: 'Вид спереду', caption_en: 'Front view' }
+      - { file: img/390-kitchen.jpg, caption_en: 'Kitchen' }
+```
+
+- `extra` — значення `app.custom_fields.page`. Скаляр пишеться мовами розгортання (`app.locales`; ru окремо не пишеться —
+  бере uk), мапа `{uk, ru, en}` — як є. Ключі, яких у файлі нема, лишаються (внесене в адмінці); `null` чи порожній
+  рядок прибирає ключ.
+- `cover` (`файл` або `{file, alt}`) і `gallery` (`file`, `caption` = `caption_uk`, `caption_ru`, `caption_en`, `position`):
+  шлях файлу — відносно теки `seed.yaml`, далі — кореня паку (коли seed лежить у `content/`), лише в межах паку;
+  JPG/PNG/WebP до 10 МБ. Копія лягає в `media/service_page` під унікальним іменем, як з адмінки. Повторний seed упізнає
+  вже залитий файл за вмістом: нічого не дублює, оновлює підпис і порядок. Зображення, яких у файлі нема, не
+  видаляються (це робить адмінка). `--dry-run` файлів не копіює. Seed запускати там, де лежать файли паку.
+- Підпис галереї: `img.caption(locale)` — підпис мовою сторінки, порожній англійський чи російський = український
+  (`img.loc('caption', locale)` для en фолбеку не має). Поле «Підпис en» у вкладці «Галерея» є на розгортаннях з `en`.
 
 **Шаблони сторінок, H1, noindex** (02.11.2026; поля сторінки — адмінка, seed, REST/MCP `kind=pages`):
 

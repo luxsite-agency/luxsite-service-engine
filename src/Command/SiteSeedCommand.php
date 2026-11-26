@@ -12,6 +12,7 @@ use App\Entity\ServiceCity;
 use App\Entity\ServiceDistrict;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePage;
+use App\Entity\ServicePageImage;
 use App\Entity\ServicePost;
 use App\Entity\ServicePrice;
 use App\Entity\ServiceReview;
@@ -23,7 +24,10 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Yaml\Yaml;
+use Vich\UploaderBundle\FileAbstraction\ReplacingFile;
+use Vich\UploaderBundle\Storage\StorageInterface;
 
 /**
  * Наповнення сайту з YAML (пак: content/seed.yaml) — новий сайт, демо, стенд. Ідемпотентно:
@@ -46,7 +50,16 @@ use Symfony\Component\Yaml\Yaml;
  *   posts: [{slug, title_uk, lead_uk?, desc_uk?, meta_title_uk?, meta_desc_uk?, published?: YYYY-MM-DD}]
  *   pages: [{slug, slug_ru?, slug_en?, parent?: slug, title_uk, title_ru?, title_en?, h1_uk?, lead_uk?, desc_uk? (або body_uk?), meta_title_uk?,
  *            meta_desc_uk?, template?: page|hub|sitemap|form:<ключ>, items?: [slug послуги] (hub), noindex?, in_sitemap?,
- *            position?, footer?: bool, active?: bool, hidden_cities?: [slug]}]   — сторінки app.pages (/slug/, /parent/slug/)
+ *            position?, footer?: bool, active?: bool, hidden_cities?: [slug],
+ *            extra?: {<ключ app.custom_fields.page>: значення | {uk?, ru?, en?}},
+ *            cover?: файл | {file, alt?}, gallery?: [{file, caption? (= caption_uk), caption_ru?, caption_en?, position?}]}]
+ *     — сторінки app.pages (/slug/, /parent/slug/).
+ *     extra: скаляр пишеться мовами розгортання (app.locales без ru: ru бере uk), мапа — як є; ключі, яких у файлі нема,
+ *     лишаються (внесене в адмінці), null чи порожній рядок прибирає ключ.
+ *     cover/gallery: файл — шлях відносно теки seed.yaml (або кореня паку, коли seed лежить у content/), не поза паком;
+ *     JPG/PNG/WebP до 10 МБ. Копія лягає в media/service_page під унікальним іменем (Vich, як з адмінки). Повторний seed
+ *     упізнає вже залитий файл за вмістом: галерея не дублюється, підпис і порядок оновлюються; зображення, яких у файлі
+ *     нема, лишаються (видаляти — в адмінці).
  */
 #[AsCommand(name: 'app:site:seed', description: 'Наповнити сайт з YAML (пак content/seed.yaml): сайт, міста, послуги, прайс, райони, відгуки, команда, блог, сторінки; ідемпотентно за slug')]
 final class SiteSeedCommand
@@ -56,8 +69,23 @@ final class SiteSeedCommand
     /** @var array<string, int> */
     private array $report = [];
 
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    /** JPG/PNG/WebP до 10 МБ — ті самі межі, що у формі адмінки (Assert\Image сутностей) */
+    private const array IMAGE_TYPES = [\IMAGETYPE_JPEG, \IMAGETYPE_PNG, \IMAGETYPE_WEBP];
+    private const int IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+    /** Тека seed.yaml: від неї шляхи файлів обкладинки й галереї */
+    private string $baseDir = '';
+
+    /** dry-run: файлів не копіюємо (Vich заливає файл уже на persist(), до flush) */
+    private bool $dryRun = false;
+
+    /** @param list<string> $locales мови розгортання (app.locales) */
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly StorageInterface $storage,
+        #[Autowire('%app.locales%')]
+        private readonly array $locales = ['uk', 'ru'],
+    ) {
     }
 
     public function __invoke(
@@ -77,6 +105,19 @@ final class SiteSeedCommand
             return Command::FAILURE;
         }
 
+        $this->baseDir = (string) realpath(\dirname($file));
+        $this->dryRun = $dryRun;
+        // файли обкладинок і галерей перевіряємо до першого запису: Vich копіює файл на persist(), і помилка в останній
+        // сторінці лишила б у медіа файли перших
+        foreach ($data['pages'] ?? [] as $p) {
+            $slug = (string) ($p['slug'] ?? '');
+            if (!empty($p['cover'])) {
+                $this->packFile((string) (\is_array($p['cover']) ? ($p['cover']['file'] ?? '') : $p['cover']), 'cover', $slug);
+            }
+            foreach ((array) ($p['gallery'] ?? []) as $row) {
+                $this->packFile((string) (\is_array($row) ? ($row['file'] ?? '') : $row), 'gallery', $slug);
+            }
+        }
         $site = $this->site($data['site']);
         $cities = [];
         foreach ($data['cities'] ?? [] as $c) {
@@ -395,10 +436,142 @@ final class SiteSeedCommand
         foreach ($d['hidden_cities'] ?? [] as $slug) {
             $page->addHiddenCity($this->cityOf($cities, $slug));
         }
+        if (\array_key_exists('extra', $d)) {
+            $page->setExtra($this->extra((array) $d['extra'], (array) $page->getExtra()));
+        }
+        if (!empty($d['cover'])) {
+            $this->cover($page, \is_array($d['cover']) ? $d['cover'] : ['file' => (string) $d['cover']]);
+        }
+        if (\array_key_exists('gallery', $d)) {
+            $this->gallery($page, (array) $d['gallery']);
+        }
         $this->em->persist($page);
         $this->count('page', $new);
 
         return $page;
+    }
+
+    /**
+     * Значення додаткових полів запису (ExtraFieldsTrait): скаляр → мовами розгортання, мапа {uk, ru, en} → як є.
+     *
+     * @param array<string, mixed>                 $values
+     * @param array<string, array<string, string>> $current
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function extra(array $values, array $current): array
+    {
+        $langs = array_values(array_intersect(['uk', 'en'], $this->locales)) ?: ['uk'];
+        foreach ($values as $key => $value) {
+            $key = (string) $key;
+            if (preg_match('/^[a-z0-9_]{1,40}$/', $key) !== 1) {
+                throw new \RuntimeException(sprintf('pages: extra — ключ «%s»: лише [a-z0-9_], до 40 символів (як в app.custom_fields).', $key));
+            }
+            if (\is_array($value)) {
+                if (array_diff(array_keys($value), ['uk', 'ru', 'en']) !== []) {
+                    throw new \RuntimeException(sprintf('pages: extra.%s — мови лише uk, ru, en.', $key));
+                }
+                $current[$key] = array_map(static fn ($v): string => \is_scalar($v) ? (string) $v : '', $value);
+            } elseif ($value === null || trim((string) $value) === '') {
+                unset($current[$key]);
+            } else {
+                $current[$key] = array_fill_keys($langs, (string) $value);
+            }
+        }
+
+        return $current;
+    }
+
+    /** @param array<string, mixed> $d {file, alt?} */
+    private function cover(ServicePage $page, array $d): void
+    {
+        $src = $this->packFile((string) ($d['file'] ?? ''), 'cover', $page->getSlugUk());
+        if (!$this->sameFile($this->storedPath($page), $src)) {
+            if (!$this->dryRun) {
+                $page->setImageFile(new ReplacingFile($src));
+            }
+            $this->count('page cover', true);
+        }
+        if (\array_key_exists('alt', $d)) {
+            $page->setImageAlt($d['alt'] === null ? null : (string) $d['alt']);
+        }
+    }
+
+    /** @param array<int, mixed> $rows [{file, caption?, caption_uk?, caption_ru?, caption_en?, position?}] */
+    private function gallery(ServicePage $page, array $rows): void
+    {
+        // уже залиті зображення сторінки за вмістом файлу; кожне зіставляється не більше ніж з одним рядком seed
+        $stored = [];
+        foreach ($page->getImages() as $image) {
+            $path = $this->storedPath($image);
+            if ($path !== null) {
+                $stored[(string) sha1_file($path)][] = $image;
+            }
+        }
+        foreach (array_values($rows) as $i => $row) {
+            $row = \is_array($row) ? $row : ['file' => (string) $row];
+            $src = $this->packFile((string) ($row['file'] ?? ''), 'gallery', $page->getSlugUk());
+            $hash = (string) sha1_file($src);
+            $image = isset($stored[$hash]) ? array_shift($stored[$hash]) : null;
+            $new = $image === null;
+            if ($new) {
+                $image = new ServicePageImage();
+                if (!$this->dryRun) {
+                    $image->setImageFile(new ReplacingFile($src));
+                }
+                $page->addImage($image);
+            }
+            if (\array_key_exists('caption', $row) && !\array_key_exists('caption_uk', $row)) {
+                $row['caption_uk'] = $row['caption'];
+            }
+            $this->loc($image, $row, ['caption' => 'caption']);
+            $image->setPosition((int) ($row['position'] ?? ($i + 1) * 10));
+            $this->count('page image', $new);
+        }
+    }
+
+    /** Шлях уже збереженого файлу сутності (обкладинка сторінки, зображення галереї); null — файлу нема. */
+    private function storedPath(ServicePage|ServicePageImage $entity): ?string
+    {
+        if ($entity->getImageName() === null || $entity->getImageName() === '') {
+            return null;
+        }
+        $path = $this->storage->resolvePath($entity, 'imageFile');
+
+        return $path !== null && is_file($path) ? $path : null;
+    }
+
+    private function sameFile(?string $stored, string $src): bool
+    {
+        return $stored !== null && filesize($stored) === filesize($src) && sha1_file($stored) === sha1_file($src);
+    }
+
+    /**
+     * Файл паку за шляхом із seed: відносно теки seed.yaml, далі — кореня паку (коли seed лежить у content/). Лише всередині
+     * паку (без виходу через ..), лише зображення, які приймає адмінка.
+     */
+    private function packFile(string $rel, string $what, string $slug): string
+    {
+        $root = basename($this->baseDir) === 'content' ? \dirname($this->baseDir) : $this->baseDir;
+        $found = null;
+        if ($rel !== '' && !str_starts_with($rel, '/')) {
+            foreach (array_unique([$this->baseDir, $root]) as $dir) {
+                $path = realpath($dir . '/' . $rel);
+                if ($path !== false && is_file($path) && str_starts_with($path, $root . '/')) {
+                    $found = $path;
+                    break;
+                }
+            }
+        }
+        if ($found === null) {
+            throw new \RuntimeException(sprintf('pages: %s — нема файлу «%s» (сторінка %s): шлях відносно %s, у межах паку.', $what, $rel, $slug, $this->baseDir));
+        }
+        $info = @getimagesize($found);
+        if ($info === false || !\in_array($info[2], self::IMAGE_TYPES, true) || filesize($found) > self::IMAGE_MAX_BYTES) {
+            throw new \RuntimeException(sprintf('pages: %s — «%s» (сторінка %s): дозволено JPG/PNG/WebP до 10 МБ.', $what, $rel, $slug));
+        }
+
+        return $found;
     }
 
     /**
