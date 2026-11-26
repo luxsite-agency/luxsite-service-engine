@@ -14,6 +14,8 @@ liip_imagine:
                     - '%kernel.project_dir%/public'
                     - '%kernel.project_dir%/public/media'
 
+    # Файл у кеші отримує розширення формату фільтра, коли воно інше, ніж в оригіналу (x.jpg → x.jpg.webp, x.png → x.png.jpg):
+    # App\Imagine\FormatExtensionResolver, інакше веб-сервер віддає WEBP як image/jpeg. Формат — лише тут, у filter_sets
     default_filter_set_settings:
         quality: 82
         format: jpg
