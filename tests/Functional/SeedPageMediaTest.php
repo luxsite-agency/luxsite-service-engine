@@ -58,6 +58,8 @@ final class SeedPageMediaTest extends HttpKernelTestCase
             }
         }
         (new Filesystem())->remove($this->pack);
+        // сторінки й галерея — ON DELETE CASCADE від сайту
+        $this->em()->getConnection()->executeStatement('DELETE FROM service_site WHERE slug = ?', ["seed-pg-{$this->s}"]);
         parent::tearDown();
     }
 
@@ -75,7 +77,8 @@ final class SeedPageMediaTest extends HttpKernelTestCase
             YAML, $out), $out);
 
         $page = $this->page("edge-{$this->s}");
-        self::assertSame(
+        // MySQL JSON впорядковує ключі сам — порівнюємо без порядку
+        self::assertEquals(
             ['price' => ['en' => '11950000'], 'village' => ['en' => 'Water Mill'], 'note' => ['uk' => 'Нова', 'en' => 'New build']],
             json_decode((string) $this->em()->getConnection()->fetchOne('SELECT extra FROM service_page WHERE id = ?', [$page->getId()]), true),
             'скаляр — значення мовами розгортання (app.locales: [en]), мапа — як є, порожнє не пишеться',
@@ -91,7 +94,7 @@ final class SeedPageMediaTest extends HttpKernelTestCase
             pages:
               - {slug: edge-{$this->s}, title_en: 390 Edge Of Woods, extra: {price: 9990000, village: null}}
             YAML, $out), $out);
-        self::assertSame(['price' => ['en' => '9990000'], 'note' => ['uk' => 'Нова', 'en' => 'New build']], $this->page("edge-{$this->s}")->getExtra());
+        self::assertEquals(['price' => ['en' => '9990000'], 'note' => ['uk' => 'Нова', 'en' => 'New build']], $this->page("edge-{$this->s}")->getExtra());
     }
 
     /** A2: cover і gallery → image_name, рядки галереї й файли в media; повторний seed нічого не дублює */

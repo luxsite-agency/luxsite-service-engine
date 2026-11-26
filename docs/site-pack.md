@@ -355,6 +355,32 @@ parameters:
 Наповнення з YAML — `pages:` у `app:site:seed` (`slug`, `slug_ru`, `parent`, `title_uk`, `h1_uk`, `lead_uk`, `desc_uk` або
 `body_uk`, `meta_*`, `template`, `items`, `noindex`, `in_sitemap`, `position`, `footer`, `active`, `hidden_cities`).
 
+**Поля, обкладинка й галерея сторінки з seed** (26.11.2026) — каталог на сторінках (будинки, вакансії, авто) наповнюється
+одним `app:site:seed`, без SQL і скриптів паку:
+
+```yaml
+pages:
+  - slug: 390-edge-of-woods
+    parent: homes-for-sale
+    title_en: 390 Edge Of Woods
+    extra: { price: 11950000, village: Water Mill, note: { uk: 'Нова', en: 'New build' } }
+    cover: { file: img/390-front.jpg, alt: 'Front of the house' }
+    gallery:
+      - { file: img/390-front.jpg, caption: 'Вид спереду', caption_en: 'Front view' }
+      - { file: img/390-kitchen.jpg, caption_en: 'Kitchen' }
+```
+
+- `extra` — значення `app.custom_fields.page`. Скаляр пишеться мовами розгортання (`app.locales`; ru окремо не пишеться —
+  бере uk), мапа `{uk, ru, en}` — як є. Ключі, яких у файлі нема, лишаються (внесене в адмінці); `null` чи порожній
+  рядок прибирає ключ.
+- `cover` (`файл` або `{file, alt}`) і `gallery` (`file`, `caption` = `caption_uk`, `caption_ru`, `caption_en`, `position`):
+  шлях файлу — відносно теки `seed.yaml`, далі — кореня паку (коли seed лежить у `content/`), лише в межах паку;
+  JPG/PNG/WebP до 10 МБ. Копія лягає в `media/service_page` під унікальним іменем, як з адмінки. Повторний seed упізнає
+  вже залитий файл за вмістом: нічого не дублює, оновлює підпис і порядок. Зображення, яких у файлі нема, не
+  видаляються (це робить адмінка). `--dry-run` файлів не копіює. Seed запускати там, де лежать файли паку.
+- Підпис галереї: `img.caption(locale)` — підпис мовою сторінки, порожній англійський чи російський = український
+  (`img.loc('caption', locale)` для en фолбеку не має). Поле «Підпис en» у вкладці «Галерея» є на розгортаннях з `en`.
+
 **Шаблони сторінок, H1, noindex** (02.11.2026; поля сторінки — адмінка, seed, REST/MCP `kind=pages`):
 
 | `template` | Що під текстом | Перекрити в паку |
