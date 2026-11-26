@@ -167,6 +167,10 @@ parameters:
         max_total_mb: 25
         mime: [image/jpeg, image/png, image/webp, image/gif, image/heic, image/heif, application/pdf]
         retention_days: 0
+    # Довільні поля форми заявки (/lead): пак перелічує дозволені ключі — [address, topic, {key: showing_day, label: 'День показу'}].
+    # Значення (короткі рядки без розмітки) лягають у JSON-колонку заявки, видно в адмінці, листі й CRM; незнайомі ключі
+    # відкидаються. [] — довільних полів нема (як до 26.11.2026). Схема — App\ServiceSite\LeadExtraFields.
+    app.lead.extra_fields: []
     # Приватна тека файлів заявок: на проді bin/site deploy веде var/lead-files релізу в shared/lead-files
     app.lead_files_dir: '%kernel.project_dir%/var/lead-files'
     # Форми анкет (анкета перекладача, резюме, заявка партнера): POST /application/<ключ>, адмінка «Анкети», лист на

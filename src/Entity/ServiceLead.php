@@ -46,8 +46,20 @@ class ServiceLead implements TimestampableInterface
     #[ORM\Column(length: 128, nullable: true)]
     private ?string $name = null;
 
+    /** Email з форми (поле email, необов'язкове): лист-сповіщення, адмінка, контакт у CRM */
+    #[ORM\Column(length: 180, nullable: true)]
+    private ?string $email = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
+
+    /**
+     * Довільні поля форми, дозволені паком (app.lead.extra_fields, LeadExtraFields): {ключ: значення}.
+     *
+     * @var array<string, string>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $extra = null;
 
     /** Послуга з кнопки «Замовити» (поле service форми) — окремо від повідомлення, у листі, адмінці, CRM і dataLayer */
     #[ORM\Column(length: 255, nullable: true)]
@@ -124,6 +136,44 @@ class ServiceLead implements TimestampableInterface
     public function __construct()
     {
         $this->files = new ArrayCollection();
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): self
+    {
+        $email = $email !== null ? trim($email) : '';
+        $this->email = $email !== '' ? $email : null;
+
+        return $this;
+    }
+
+    /** @return array<string, string>|null */
+    public function getExtra(): ?array
+    {
+        return $this->extra;
+    }
+
+    /** @param array<string, string>|null $extra */
+    public function setExtra(?array $extra): self
+    {
+        $this->extra = $extra === null || $extra === [] ? null : $extra;
+
+        return $this;
+    }
+
+    /** Довільні поля рядками «ключ: значення» — віртуальне поле перегляду заявки (підписи паку підставляє адмінка) */
+    public function getExtraText(): string
+    {
+        $rows = [];
+        foreach ((array) $this->extra as $key => $value) {
+            $rows[] = $key . ': ' . $value;
+        }
+
+        return implode("\n", $rows);
     }
 
     public function getService(): ?string
