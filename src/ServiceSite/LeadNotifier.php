@@ -28,6 +28,7 @@ final class LeadNotifier
         #[Autowire(env: 'MAIL_FROM')]
         private readonly string $mailFrom = '',
         private readonly ?LeadFiles $files = null,
+        private readonly ?LeadExtraFields $extraFields = null,
     ) {
     }
 
@@ -56,7 +57,7 @@ final class LeadNotifier
         try {
             $fromDomain = $city->getSite()?->getApexDomain() ?? $fallbackHost;
             $from = $this->mailFrom !== '' ? $this->mailFrom : 'noreply@' . $fromDomain;
-            $this->mailer->send((new Email())
+            $mail = (new Email())
                 ->from(new Address($from, $city->getSite()?->getName() ?? 'Заявки'))
                 ->to(...$recipients)
                 ->subject(sprintf('%s з %s: %s (%s)', $subjectPrefix, $city->getHost(), $subjectPhone, $city->getNameNomUk()))
@@ -70,22 +71,33 @@ final class LeadNotifier
                     LeadAttribution::summary($lead),
                     self::pageLink($lead, $city->getHost()),
                     $city->getHost(),
-                )));
+                ));
+            // відповідь на лист іде людині, що лишила заявку (адресу вже перевірено у формі)
+            if ($lead->getEmail() !== null) {
+                $mail->replyTo($lead->getEmail());
+            }
+            $this->mailer->send($mail);
         } catch (\Throwable $e) {
             // заявка вже в БД (черга в адмінці) - мейл лише дублює
             $this->logger->error('Не вдалося надіслати мейл заявки: ' . $e->getMessage(), ['lead_id' => $lead->getId()]);
         }
     }
 
-    /** Послуга й контекст форми (рядки є, лише коли поля заповнені — листи без них не змінюються) */
+    /** Email, послуга, контекст і довільні поля форми (рядки є, лише коли поля заповнені — листи без них не змінюються) */
     private function extraLines(ServiceLead $lead): string
     {
         $rows = '';
+        if ($lead->getEmail() !== null) {
+            $rows .= 'Email: ' . $lead->getEmail() . "\n";
+        }
         if ($lead->getService() !== null) {
             $rows .= 'Послуга: ' . $lead->getService() . "\n";
         }
         if ($lead->getContext() !== null) {
             $rows .= 'Звідки: ' . $lead->getContext() . "\n";
+        }
+        foreach ($this->extraFields?->lines($lead->getExtra()) ?? [] as $line) {
+            $rows .= $line . "\n";
         }
 
         return $rows;

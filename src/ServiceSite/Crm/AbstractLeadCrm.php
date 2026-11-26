@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\ServiceSite\Crm;
 
 use App\Entity\ServiceLead;
+use App\ServiceSite\LeadExtraFields;
 use App\ServiceSite\LeadFiles;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -34,6 +35,15 @@ abstract class AbstractLeadCrm implements LeadCrmConnector
         $this->leadFiles = $leadFiles;
     }
 
+    private ?LeadExtraFields $leadExtraFields = null;
+
+    /** Підписи довільних полів заявки (app.lead.extra_fields) — так само сетером */
+    #[Required]
+    public function setLeadExtraFields(LeadExtraFields $leadExtraFields): void
+    {
+        $this->leadExtraFields = $leadExtraFields;
+    }
+
     /**
      * Рядки для опису в CRM: «Звідки: …» (context форми) і файли посиланнями на адмінку. Послугу кожен конектор бере сам
      * (Bitrix24 — у поле service). Порожньо — у заявці цих даних нема.
@@ -43,9 +53,14 @@ abstract class AbstractLeadCrm implements LeadCrmConnector
     protected function detailLines(ServiceLead $lead): array
     {
         $rows = [];
+        if ($lead->getEmail() !== null) {
+            $rows[] = 'Email: ' . $lead->getEmail();
+        }
         if ($lead->getContext() !== null) {
             $rows[] = 'Звідки: ' . $lead->getContext();
         }
+        // довільні поля форми: з підписами паку, а без сервісу (конектор зібрано вручну) — за ключем
+        array_push($rows, ...($this->leadExtraFields ?? new LeadExtraFields())->lines($lead->getExtra()));
         $files = $this->leadFiles?->lines($lead->getFiles()) ?? [];
         if ($files !== []) {
             $rows[] = 'Файли (в адмінці сайту):';

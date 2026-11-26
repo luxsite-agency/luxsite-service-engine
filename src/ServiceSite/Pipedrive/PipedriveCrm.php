@@ -111,6 +111,8 @@ final class PipedriveCrm extends AbstractLeadCrm
         $person = $this->client->post('persons', array_filter([
             'name' => $lead->getName() ?? $phone,
             'phone' => [['value' => $phone, 'primary' => true, 'label' => 'mobile']],
+            // email з форми — лише новому контакту: знайденому за номером чужу адресу не дописуємо
+            'email' => $lead->getEmail() !== null ? [['value' => $lead->getEmail(), 'primary' => true, 'label' => 'work']] : null,
             'owner_id' => $this->ownerId ?: null,
         ]));
 

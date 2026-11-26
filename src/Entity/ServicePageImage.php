@@ -53,6 +53,9 @@ class ServicePageImage implements TimestampableInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $captionRu = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $captionEn = null;
+
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $position = 0;
 
@@ -132,6 +135,32 @@ class ServicePageImage implements TimestampableInterface
         $this->captionRu = $captionRu;
 
         return $this;
+    }
+
+    public function getCaptionEn(): ?string
+    {
+        return $this->captionEn;
+    }
+
+    public function setCaptionEn(?string $captionEn): self
+    {
+        $this->captionEn = $captionEn;
+
+        return $this;
+    }
+
+    /**
+     * Підпис мовою сторінки. На відміну від loc() англійський підпис має фолбек на український: підпис під сканом чи фото —
+     * часто власна назва чи адреса, і порожній figcaption/alt гірший за підпис основною мовою (26.11.2026).
+     */
+    public function caption(string $locale): ?string
+    {
+        $value = $this->loc('caption', $locale);
+        if (($value === null || trim((string) $value) === '') && $locale === 'en') {
+            $value = $this->captionUk;
+        }
+
+        return $value === null || trim((string) $value) === '' ? null : (string) $value;
     }
 
     public function getPosition(): int
