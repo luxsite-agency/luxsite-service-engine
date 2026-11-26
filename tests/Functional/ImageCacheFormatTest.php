@@ -95,7 +95,7 @@ final class ImageCacheFormatTest extends HttpKernelTestCase
         self::assertFileDoesNotExist($this->public . "/media/cache/item_hero/$src.webp");
     }
 
-    /** C2: стара адреса кешу (розширення оригіналу) без файлу на диску → 301 на генерацію, не 404 */
+    /** C2 / E3: стара адреса звичайного фільтра (розширення оригіналу) без файлу на диску → 301 на генерацію, не 404 */
     public function testLegacyCacheUrlRedirectsInsteadOf404(): void
     {
         $old = "/media/cache/item_hero/media/service_page/{$this->s}.jpg";
@@ -105,11 +105,6 @@ final class ImageCacheFormatTest extends HttpKernelTestCase
         $r = $this->http('GET', (string) $r->headers->get('Location'));
         self::assertStringEndsWith("/media/cache/item_hero/media/service_page/{$this->s}.jpg.webp", (string) $r->headers->get('Location'));
 
-        // адреси runtime-конфігу паків (rc/<hash>/) — так само
-        $r = $this->http('GET', self::HOST . "/media/cache/item_hero/rc/Kii80gyr/media/service_page/{$this->s}.jpg");
-        self::assertSame(301, $r->getStatusCode());
-        self::assertSame("/media/cache/resolve/item_hero/rc/Kii80gyr/media/service_page/{$this->s}.jpg", parse_url((string) $r->headers->get('Location'), \PHP_URL_PATH));
-
         // без петлі й зайвих редиректів: адреса вже у форматі фільтра, невідомий фільтр, чужий шлях
         foreach ([
             "/media/cache/item_hero/media/service_page/{$this->s}.jpg.webp",
@@ -118,6 +113,40 @@ final class ImageCacheFormatTest extends HttpKernelTestCase
             '/media/cache/item_hero/../../.env',
         ] as $url) {
             self::assertSame(404, $this->http('GET', self::HOST . $url)->getStatusCode(), $url);
+        }
+    }
+
+    /**
+     * E1 (після #81, us217): стара адреса runtime-конфігу `rc/<хеш>/…x.jpg`, файл під новим ім'ям уже є → 301 прямо на нього.
+     * На resolve вести не можна: для rc/ він вимагає filters[...] у query, якого стара адреса не має → 400.
+     */
+    public function testLegacyRuntimeConfigUrlRedirectsToStoredFile(): void
+    {
+        $new = $this->generateRuntimeVariant();
+        self::assertStringEndsWith('.jpg.webp', $new);
+        $old = substr($new, 0, -\strlen('.webp'));
+
+        foreach ([$old, $old . '?x=2'] as $url) {
+            $r = $this->http('GET', self::HOST . $url);
+            self::assertSame(301, $r->getStatusCode(), $url);
+            $location = (string) $r->headers->get('Location');
+            self::assertSame($new, $location, 'прямо на файл кешу, без resolve і без query');
+            self::assertFileExists($this->public . $location);
+            self::assertSame('image/webp', (new \finfo(\FILEINFO_MIME_TYPE))->file($this->public . $location), 'далі веб-сервер віддає цей файл як image/webp');
+        }
+    }
+
+    /** E2: стара адреса rc/, файлу під новим ім'ям нема → 404 (як до #81), а не 301 на resolve, що відповідає 400 */
+    public function testLegacyRuntimeConfigUrlWithoutStoredFileIs404(): void
+    {
+        foreach ([
+            "/media/cache/item_hero/rc/Kii80gyr/media/service_page/{$this->s}.jpg",
+            "/media/cache/item_hero/rc/Kii80gyr/media/service_page/{$this->s}.jpg?x=2",
+            "/media/cache/item_hero/rc/Kii80gyr/media/service_page/nope-{$this->s}.jpg",
+            '/media/cache/item_hero/rc/Kii80gyr',
+        ] as $url) {
+            $r = $this->http('GET', self::HOST . $url);
+            self::assertSame(404, $r->getStatusCode(), $url . ' → ' . $r->headers->get('Location'));
         }
     }
 
@@ -134,6 +163,17 @@ final class ImageCacheFormatTest extends HttpKernelTestCase
         self::assertMatchesRegularExpression("~^/media/cache/item_hero/rc/[^/]+/media/service_page/{$this->s}\\.jpg\\.webp$~", $path);
         self::assertSame('image/webp', (new \finfo(\FILEINFO_MIME_TYPE))->file($this->public . $path));
         self::assertSame([300, 200], \array_slice((array) getimagesize($this->public . $path), 0, 2));
+    }
+
+    /** Генерує варіант runtime-конфігу (rc/<хеш>/) і повертає шлях файлу кешу: /media/cache/item_hero/rc/<хеш>/…jpg.webp */
+    private function generateRuntimeVariant(): string
+    {
+        $cache = static::getContainer()->get('liip_imagine.cache.manager');
+        $url = $cache->getBrowserPath("media/service_page/{$this->s}.jpg", 'item_hero', ['thumbnail' => ['size' => [300, 200], 'mode' => 'outbound']]);
+        $r = $this->http('GET', self::HOST . parse_url($url, \PHP_URL_PATH) . '?' . parse_url($url, \PHP_URL_QUERY));
+        self::assertTrue($r->isRedirect(), (string) $r->getStatusCode());
+
+        return (string) parse_url((string) $r->headers->get('Location'), \PHP_URL_PATH);
     }
 
     private function source(string $ext): string
