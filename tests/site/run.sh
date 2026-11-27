@@ -25,6 +25,7 @@ if command -v shellcheck >/dev/null; then t "shellcheck" 0 shellcheck -x "${sc_f
 elif command -v docker >/dev/null; then t "shellcheck (docker)" 0 docker run --rm -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x "${sc_files[@]}"
 else echo "skip shellcheck: нема ні shellcheck, ні docker"; fi
 t "python: синтаксис валідатора" 0 python3 -m py_compile bin/site.d/_validate.py
+t "unittest: tests/site/test_*.py (validate: symlink у паку)" 0 python3 -m unittest discover -s tests/site -p "test_*.py"
 
 # Валідатор
 t "validate: реєстр-фікстура" 0 bin/site validate
@@ -130,6 +131,22 @@ has "[dry-run] ssh client.example.com deploy"
 t "deploy demo (local, docker, --pack)" 0 bin/site deploy demo HEAD --pack tests/site/pack-demo
 has "[dry-run] smoke"; has "перемикання на"
 has "https://north-demo.example.org/sitemap.xml"; has "http_check demo.example.com north-demo.example.org"
+# Пак із symlink (рев'ю 27.11.2026): deploy робить `cat $pack/config/parameters.yaml` і cp -a теми/шаблонів у реліз від root —
+# симлінк на /root/.ssh/id_ed25519, /etc/shadow чи файли іншого сайту віддав би їх будь-кому з push у репо паку. Будь-який symlink
+# поза .git — відмова validate, deploy не починається.
+for rel in config/parameters.yaml themes/demo/theme.css templates/partials/evil.html.twig translations/messages.uk.yaml content/dir; do
+    lp="$bad/pack-link"; rm -rf "$lp"; cp -a tests/site/pack-demo "$lp"; mkdir -p "$lp/$(dirname "$rel")"; rm -f "$lp/$rel"
+    if [ "$rel" = content/dir ]; then ln -s /etc "$lp/$rel"; else ln -s /etc/hostname "$lp/$rel"; fi
+    t "validate: пак із symlink $rel — відмова" '!0' bin/site validate "$lp"
+    has "символьне посилання"; has "$rel"
+done
+t "deploy demo з паком із symlink — не починається" '!0' bin/site deploy demo HEAD --pack "$lp"
+has "символьне посилання"
+t "  ↳ без «перемикання на» і без вмісту файла сервера" 0 bash -c '! grep -q "перемикання на" <<<"$1" && ! grep -qF -- "$2" <<<"$1"' _ "$LAST" "$(cat /etc/hostname)"
+lp="$bad/pack-link"; rm -rf "$lp"; cp -a tests/site/pack-demo "$lp"; rm -f "$lp/config/parameters.yaml"; ln -s /nonexistent/secret "$lp/config/parameters.yaml"
+t "validate: пак із битим symlink — відмова" '!0' bin/site validate "$lp"
+has "символьне посилання"
+rm -rf "$lp"
 t "backup edgedemo (ssh, docker + proxy edge)" 0 bin/site backup edgedemo
 has "[dry-run] ssh edge.example.com backup"
 t "_remote.sh deploy: docker/edge (сухий прогін на сервері)" 0 env SITE_RUNTIME=docker SITE_PROXY=edge SITE_CRON=0 bash bin/site.d/_remote.sh deploy edgedemo /tmp/nonexistent/site-edgedemo t1
