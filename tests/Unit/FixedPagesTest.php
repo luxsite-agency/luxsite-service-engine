@@ -36,6 +36,15 @@ final class FixedPagesTest extends TestCase
         self::assertSame('/custom/', (new FixedPages(new SiteLocales(new RequestStack(), ['en']), $urls, ['faq' => '/custom/']))->path('faq', 'en'));
     }
 
+    /** bin/smoke.php: FAQ відкриваємо, коли сторінка увімкнена; адреса паку — вона; вимкнена — не відкриваємо (404 валив деплой) */
+    public function testSmokeUrlsFollowFixedPages(): void
+    {
+        self::assertSame(['https://a.example/faq/'], FixedPages::smokeUrls([], 'https://a.example'));
+        self::assertSame(['https://a.example/faq/'], FixedPages::smokeUrls(['faq' => true, 'reviews' => false], 'https://a.example'));
+        self::assertSame([], FixedPages::smokeUrls(['faq' => false], 'https://a.example'));
+        self::assertSame(['https://a.example/help/'], FixedPages::smokeUrls(['faq' => '/help/'], 'https://a.example'));
+    }
+
     public function testExternalTargetIsRejected(): void
     {
         $this->expectException(\InvalidArgumentException::class);
