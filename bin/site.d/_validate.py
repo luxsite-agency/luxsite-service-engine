@@ -306,9 +306,18 @@ def check_pack(engine_dir, pack_dir, reg_path, key=None):
     for dp, dirs, files in os.walk(pack_dir):
         # local/ у корені паку — git-ignored робочі файли (дамп Joomla для app:joomla:import), у реліз не йдуть
         dirs[:] = [d for d in dirs if d != ".git" and not (dp == pack_dir and d == "local")]
+        # symlink будь-де в паку (файл, тека, битий) — відмова: deploy робить `cat $pack/config/parameters.yaml` і cp -a теми/шаблонів
+        # у реліз від root на сервері; config/parameters.yaml -> /root/.ssh/id_ed25519 чи /etc/shadow віддав би вміст файла будь-кому
+        # з push у репо паку (рев'ю 27.11.2026). os.walk лінки не розкриває, але лістить — перевіряємо lstat'ом, не читаючи ціль.
+        for d in dirs:
+            if os.path.islink(os.path.join(dp, d)):
+                err(f"{where}: {os.path.relpath(os.path.join(dp, d), pack_dir).replace(os.sep, '/')} — символьне посилання (тека) в паку заборонено")
         for f in files:
             p = os.path.join(dp, f)
             rel = os.path.relpath(p, pack_dir).replace(os.sep, "/")
+            if os.path.islink(p):
+                err(f"{where}: {rel} — символьне посилання в паку заборонено (читало б файли сервера при деплої)")
+                continue
             if SECRET_FILE_RE.match(rel) or SECRET_FILE_RE.match("/" + rel):
                 err(f"{where}: {rel} — файл секретів/дампів у паку заборонено")
             size = os.path.getsize(p)
